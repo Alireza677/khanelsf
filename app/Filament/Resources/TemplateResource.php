@@ -427,7 +427,27 @@ class TemplateResource extends Resource
                         ->default('default')
                         ->live(),
                     Forms\Components\TextInput::make('eyebrow')->maxLength(255),
+                    Forms\Components\TextInput::make('hero_1_eyebrow_icon')
+                        ->label('Eyebrow icon')
+                        ->maxLength(80)
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                    Forms\Components\Select::make('hero_1_theme')
+                        ->label('Hero 1 appearance')
+                        ->options([
+                            'image' => 'Dark image',
+                            'light_grid' => 'Light grid',
+                        ])
+                        ->default('image')
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\TextInput::make('title')->required()->maxLength(255),
+                    Forms\Components\TextInput::make('hero_1_title_second_line')
+                        ->label('Hero 1 title second line')
+                        ->maxLength(255)
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                    Forms\Components\Toggle::make('hero_1_show_underline')
+                        ->label('Show Hero 1 underline')
+                        ->default(false)
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\TextInput::make('subtitle')->maxLength(255),
                     Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
                     Forms\Components\TextInput::make('primary_button_label')->maxLength(255),
@@ -501,6 +521,20 @@ class TemplateResource extends Resource
                         ->columns(4)
                         ->columnSpanFull()
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_3'),
+                    Forms\Components\Repeater::make('hero_1_social_links')
+                        ->label('Hero 1 bottom links')
+                        ->schema([
+                            Forms\Components\TextInput::make('label')->required()->maxLength(120),
+                            Forms\Components\TextInput::make('url')->required()->maxLength(255),
+                            Forms\Components\TextInput::make('icon')->maxLength(80),
+                        ])
+                        ->columns(3)
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                    Forms\Components\TextInput::make('hero_1_scroll_label')
+                        ->label('Hero 1 scroll label')
+                        ->maxLength(120)
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\ViewField::make('image')
                         ->label('Image')
                         ->view('filament.forms.components.media-library-url-picker')

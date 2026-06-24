@@ -95,6 +95,29 @@ class PageResource extends Resource
                                                 ->maxLength(255)
                                                 ->helperText('یک برچسب کوتاه اختیاری بالای عنوان.')
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            Forms\Components\TextInput::make('hero_1_eyebrow_icon')
+                                                ->label('آیکن برچسب')
+                                                ->maxLength(80)
+                                                ->helperText('متن کوتاه یا نماد اختیاری کنار برچسب بالای عنوان.')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            Forms\Components\Select::make('hero_1_theme')
+                                                ->label('نمای هیرو ۱')
+                                                ->options([
+                                                    'image' => 'تصویر تیره',
+                                                    'light_grid' => 'روشن شبکه‌ای',
+                                                ])
+                                                ->default('image')
+                                                ->helperText('حالت روشن شبکه‌ای برای هیروهایی شبیه نمونه ارسالی است. حالت تصویر تیره با نسخه قبلی سازگار می‌ماند.')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            Forms\Components\TextInput::make('hero_1_title_second_line')
+                                                ->label('خط دوم عنوان')
+                                                ->maxLength(255)
+                                                ->helperText('برای نمایش عنوان در دو خط، مثل نام شخص یا عبارت تاکیدشده.')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            Forms\Components\Toggle::make('hero_1_show_underline')
+                                                ->label('نمایش خط تاکید زیر عنوان')
+                                                ->default(false)
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                                             Forms\Components\Select::make('hero_2_alignment')
                                                 ->label('چیدمان محتوا')
                                                 ->options([
@@ -248,6 +271,33 @@ class PageResource extends Resource
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_3')
                                                 ->columnSpanFull()
                                                 ->columns(4),
+                                            Forms\Components\Repeater::make('hero_1_social_links')
+                                                ->label('لینک‌های پایین هیرو')
+                                                ->cloneable()
+                                                ->schema([
+                                                    Forms\Components\TextInput::make('label')
+                                                        ->label('عنوان')
+                                                        ->required()
+                                                        ->maxLength(120),
+                                                    Forms\Components\TextInput::make('url')
+                                                        ->label('لینک')
+                                                        ->required()
+                                                        ->maxLength(255),
+                                                    Forms\Components\TextInput::make('icon')
+                                                        ->label('آیکن')
+                                                        ->maxLength(80)
+                                                        ->helperText('متن کوتاه، نماد یا نام آیکن برای نمایش داخل دکمه.'),
+                                                ])
+                                                ->defaultItems(0)
+                                                ->helperText('برای دکمه‌های کوچک پایین هیرو مثل ایمیل، لینکدین یا گیت‌هاب.')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1')
+                                                ->columnSpanFull()
+                                                ->columns(3),
+                                            Forms\Components\TextInput::make('hero_1_scroll_label')
+                                                ->label('متن اسکرول')
+                                                ->maxLength(120)
+                                                ->helperText('اگر پر شود زیر لینک‌های پایین هیرو نمایش داده می‌شود.')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                                             Forms\Components\ViewField::make('image')
                                                 ->label('تصویر')
                                                 ->view('filament.forms.components.media-library-url-picker')
