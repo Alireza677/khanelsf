@@ -78,7 +78,7 @@
                     @endforeach
                     <label class="sr-only" for="shop-template-q">جستجوی محصولات</label>
                     <span class="shop-template__search-field">
-                        <span class="shop-template__search-icon" aria-hidden="true">⌕</span>
+                        <i class="shop-template__search-icon icon-search-normal" aria-hidden="true"></i>
                         <input
                             id="shop-template-q"
                             name="q"
@@ -98,12 +98,12 @@
                                 </option>
                             @endforeach
                         </select>
-                        <span class="shop-template__select-icon" aria-hidden="true">⌄</span>
+                        <i class="shop-template__select-icon icon-arrow-down-1" aria-hidden="true"></i>
                     </span>
 
                     <button type="submit" aria-label="جستجوی محصولات">
                         <span>جستجو</span>
-                        <span aria-hidden="true">⌕</span>
+                        <i class="icon-search-normal" aria-hidden="true"></i>
                     </button>
                 </form>
             </div>
@@ -177,7 +177,7 @@
                     <label class="sr-only" for="shop-sidebar-q">جستجوی محصول</label>
                     <span class="shop-template__sidebar-search">
                         <input id="shop-sidebar-q" name="q" type="search" value="{{ $query['q'] }}" placeholder="جستجوی محصول...">
-                        <i aria-hidden="true"></i>
+                        <i class="icon-search-normal" aria-hidden="true"></i>
                     </span>
 
                     <details class="shop-template__filter-group" open>
@@ -302,7 +302,7 @@
                                         aria-pressed="{{ $isFavorite ? 'true' : 'false' }}"
                                         title="{{ $isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها' }}"
                                     >
-                                        <i class="icon-heart" aria-hidden="true">♡</i>
+                                        <i class="icon-heart" aria-hidden="true"></i>
                                     </button>
                                 </form>
 

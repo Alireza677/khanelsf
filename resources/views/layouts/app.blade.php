@@ -45,6 +45,8 @@
         <link rel="icon" href="{{ app(\App\Services\SettingsService::class)->faviconUrl() }}">
     @endif
 
+    <link rel="stylesheet" href="{{ asset('assets/iconsax/outline/style.css') }}">
+
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @else

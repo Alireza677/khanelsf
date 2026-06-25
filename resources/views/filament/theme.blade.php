@@ -143,26 +143,31 @@
         scrollbar-gutter: stable;
     }
 
-    .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor,
-    .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor > div {
+    .post-content-scroll-editor.fi-fo-rich-editor,
+    .post-content-scroll-editor.fi-fo-rich-editor > div {
         display: flex;
         flex-direction: column;
         min-height: 0;
     }
 
-    .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor {
+    .post-content-scroll-editor.fi-fo-rich-editor {
         height: min(62dvh, 42rem);
         min-height: 24rem;
+        overflow: hidden !important;
+    }
+
+    .post-content-scroll-editor.fi-fo-rich-editor > div {
+        flex: 1 1 auto;
+        height: 100%;
+        min-height: 0;
         overflow: hidden;
     }
 
-    .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor > div {
-        flex: 1;
-    }
-
     .post-content-scroll-editor .fi-fo-rich-editor-toolbar {
+        position: sticky;
+        top: 0;
         z-index: 5;
-        flex-shrink: 0;
+        flex: 0 0 auto;
         background: rgb(255 255 255 / 0.98);
         backdrop-filter: blur(8px);
     }
@@ -173,11 +178,12 @@
 
     .post-content-scroll-editor .fi-fo-rich-editor-editor {
         display: block;
-        flex: 1;
-        height: 100%;
-        max-height: 100%;
+        flex: 1 1 auto;
+        height: auto !important;
+        max-height: none !important;
         min-height: 0;
         overflow-y: auto !important;
+        overflow-x: hidden;
         overscroll-behavior: contain;
         scrollbar-gutter: stable;
     }
