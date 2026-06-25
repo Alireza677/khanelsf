@@ -143,6 +143,44 @@
         scrollbar-gutter: stable;
     }
 
+    .fi-page-editor-locked-scroll .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor,
+    .fi-page-editor-locked-scroll .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor > div {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .fi-page-editor-locked-scroll .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor {
+        height: calc(100dvh - 21rem);
+        min-height: 24rem;
+        overflow: hidden;
+    }
+
+    .fi-page-editor-locked-scroll .fi-input-wrp.post-content-scroll-editor.fi-fo-rich-editor > div {
+        flex: 1;
+    }
+
+    .fi-page-editor-locked-scroll .post-content-scroll-editor .fi-fo-rich-editor-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        flex-shrink: 0;
+        background: rgb(255 255 255 / 0.98);
+        backdrop-filter: blur(8px);
+    }
+
+    .dark .fi-page-editor-locked-scroll .post-content-scroll-editor .fi-fo-rich-editor-toolbar {
+        background: rgb(17 24 39 / 0.98);
+    }
+
+    .fi-page-editor-locked-scroll .post-content-scroll-editor .fi-fo-rich-editor-editor {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
     .fi-page-editor-locked-scroll .fi-resource-pages form#form .fi-form-actions {
         position: sticky;
         bottom: 0;

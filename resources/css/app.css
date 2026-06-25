@@ -390,18 +390,19 @@ article {
     background-position: center;
     background-size: cover;
     border-radius: 0;
+    box-sizing: border-box;
     color: #fff;
     display: flex;
     justify-content: center;
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    max-width: 100vw;
     min-height: clamp(520px, 70vh, 760px);
     overflow: hidden;
     padding: 5rem 1.25rem;
-    left: 50%;
     position: relative;
     text-align: center;
-    transform: translateX(-50%);
+    transform: none;
     width: 100vw;
 }
 

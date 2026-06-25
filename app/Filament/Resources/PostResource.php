@@ -40,7 +40,7 @@ class PostResource extends Resource
                                 ->maxLength(255)
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set, ?string $state) => blank($get('slug'))
-                                    ? $set('slug', Str::slug($state ?? ''))
+                                    ? $set('slug', static::slugFromTranslatedTitle($state))
                                     : null),
                             Forms\Components\TextInput::make('slug')
                                 ->required()
@@ -62,6 +62,7 @@ class PostResource extends Resource
                                 ])
                                 ->columnSpanFull(),
                             Forms\Components\RichEditor::make('content')
+                                ->extraAttributes(['class' => 'post-content-scroll-editor'])
                                 ->toolbarButtons([
                                     'blockquote',
                                     'bold',
@@ -226,5 +227,91 @@ class PostResource extends Resource
     {
         return $post->status === 'published'
             && (blank($post->published_at) || $post->published_at->lte(now()));
+    }
+
+    protected static function slugFromTranslatedTitle(?string $title): string
+    {
+        $title = trim((string) $title);
+
+        if ($title === '') {
+            return '';
+        }
+
+        $words = array_slice(
+            preg_split('/\s+/u', $title, flags: PREG_SPLIT_NO_EMPTY) ?: [],
+            0,
+            3,
+        );
+
+        $translatedWords = array_filter(
+            array_map(fn (string $word): string => static::translateSlugWord($word), $words),
+        );
+
+        $slugSource = $translatedWords === []
+            ? implode(' ', $words)
+            : implode(' ', $translatedWords);
+
+        return Str::slug($slugSource);
+    }
+
+    protected static function translateSlugWord(string $word): string
+    {
+        $normalizedWord = static::normalizePersianSlugWord($word);
+
+        $translations = [
+            'آموزش' => 'training',
+            'اخبار' => 'news',
+            'استراتژی' => 'strategy',
+            'اصول' => 'principles',
+            'افزایش' => 'increase',
+            'بازاریابی' => 'marketing',
+            'بررسی' => 'review',
+            'برنامه' => 'program',
+            'بهینه' => 'optimized',
+            'بهینه‌سازی' => 'optimization',
+            'تجارت' => 'business',
+            'تجربه' => 'experience',
+            'تحلیل' => 'analysis',
+            'توسعه' => 'development',
+            'دیجیتال' => 'digital',
+            'راهنمای' => 'guide',
+            'راهکار' => 'solution',
+            'روش' => 'method',
+            'روش‌های' => 'methods',
+            'رشد' => 'growth',
+            'سئو' => 'seo',
+            'سایت' => 'website',
+            'ساخت' => 'build',
+            'طراحی' => 'design',
+            'فروش' => 'sales',
+            'فروشگاه' => 'store',
+            'فروشگاهی' => 'store',
+            'کسب' => 'business',
+            'کسب‌وکار' => 'business',
+            'کسب‌وکارها' => 'businesses',
+            'کسب‌وکارهای' => 'businesses',
+            'مدیریت' => 'management',
+            'محتوا' => 'content',
+            'محصول' => 'product',
+            'مشتری' => 'customer',
+            'مشتریان' => 'customers',
+            'مقاله' => 'article',
+            'نکات' => 'tips',
+            'وب' => 'web',
+            'وب‌سایت' => 'website',
+        ];
+
+        return $translations[$normalizedWord] ?? Str::slug($word);
+    }
+
+    protected static function normalizePersianSlugWord(string $word): string
+    {
+        $word = str_replace(
+            ['ي', 'ك', 'ة', 'ۀ', "\u{200C}"],
+            ['ی', 'ک', 'ه', 'ه', '‌'],
+            trim($word),
+        );
+
+        return preg_replace('/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/u', '', $word) ?? '';
     }
 }
