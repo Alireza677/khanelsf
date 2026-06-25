@@ -63,23 +63,6 @@ class PostResource extends Resource
                                 ->columnSpanFull(),
                             Forms\Components\RichEditor::make('content')
                                 ->extraAttributes(['class' => 'post-content-scroll-editor'])
-                                ->extraAlpineAttributes([
-                                    'x-on:wheel' => <<<'JS'
-                                        const editor = $el.querySelector('trix-editor')
-
-                                        if (! editor || editor.scrollHeight <= editor.clientHeight) {
-                                            return
-                                        }
-
-                                        const canScrollUp = editor.scrollTop > 0
-                                        const canScrollDown = editor.scrollTop + editor.clientHeight < editor.scrollHeight
-
-                                        if (($event.deltaY < 0 && canScrollUp) || ($event.deltaY > 0 && canScrollDown)) {
-                                            editor.scrollTop += $event.deltaY
-                                            $event.preventDefault()
-                                        }
-                                    JS,
-                                ])
                                 ->toolbarButtons([
                                     'blockquote',
                                     'bold',

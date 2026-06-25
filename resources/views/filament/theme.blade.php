@@ -213,3 +213,37 @@
         }
     }
 </style>
+
+<script>
+    (() => {
+        if (window.__postContentScrollEditorBound) {
+            return;
+        }
+
+        window.__postContentScrollEditorBound = true;
+
+        document.addEventListener('wheel', (event) => {
+            const wrapper = event.target instanceof Element
+                ? event.target.closest('.post-content-scroll-editor')
+                : null;
+
+            if (! wrapper) {
+                return;
+            }
+
+            const editor = wrapper.querySelector('trix-editor');
+
+            if (! editor || editor.scrollHeight <= editor.clientHeight) {
+                return;
+            }
+
+            const canScrollUp = editor.scrollTop > 0;
+            const canScrollDown = editor.scrollTop + editor.clientHeight < editor.scrollHeight;
+
+            if ((event.deltaY < 0 && canScrollUp) || (event.deltaY > 0 && canScrollDown)) {
+                editor.scrollTop += event.deltaY;
+                event.preventDefault();
+            }
+        }, { passive: false });
+    })();
+</script>
