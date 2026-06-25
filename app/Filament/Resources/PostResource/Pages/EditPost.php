@@ -10,13 +10,6 @@ class EditPost extends EditRecord
 {
     protected static string $resource = PostResource::class;
 
-    public function getExtraBodyAttributes(): array
-    {
-        return [
-            'class' => 'fi-page-editor-locked-scroll',
-        ];
-    }
-
     protected function afterSave(): void
     {
         PostResource::syncFeaturedImage(
