@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ContactMessageExportController;
+use App\Http\Controllers\Admin\InternalLinkSearchController;
 use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Admin\OrderPrintController;
 use App\Http\Controllers\Admin\PreviewController;
@@ -67,6 +68,13 @@ Route::match(['get', 'post'], '/payments/zarinpal/callback', ZarinpalCallbackCon
 
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsController::class)->name('robots');
+
+Route::middleware('auth')
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/internal-links/search', InternalLinkSearchController::class)->name('internal-links.search');
+    });
 
 Route::middleware('auth')
     ->prefix('admin')
