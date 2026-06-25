@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\PageResource\Pages;
 
 use App\Filament\Resources\PageResource;
+use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 
 class EditPage extends EditRecord
 {
+    use LogsFilamentEditDebug;
+
     protected static string $resource = PageResource::class;
 
     public function getExtraBodyAttributes(): array

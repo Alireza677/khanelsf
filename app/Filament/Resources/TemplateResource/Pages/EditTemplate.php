@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\TemplateResource\Pages;
 
 use App\Filament\Resources\TemplateResource;
+use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Pages\EditRecord;
 
 class EditTemplate extends EditRecord
 {
+    use LogsFilamentEditDebug;
+
     protected static string $resource = TemplateResource::class;
 
     protected function getHeaderActions(): array

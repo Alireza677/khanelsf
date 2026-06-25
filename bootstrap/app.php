@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\LogLivewireRequests;
 use App\Http\Middleware\ResolveRedirects;
+use App\Support\TemporaryDebugLogger;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,8 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/admin/login');
         $middleware->web(append: [
             ResolveRedirects::class,
+            // TEMP DEBUG - remove after production save issue is fixed.
+            LogLivewireRequests::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // TEMP DEBUG - remove after production save issue is fixed.
+        $exceptions->report(function (\Throwable $exception): void {
+            TemporaryDebugLogger::logException('TEMP DEBUG - global throwable reported', $exception);
+        });
     })->create();

@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\CategoryResource\Pages;
 
 use App\Filament\Resources\CategoryResource;
+use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditCategory extends EditRecord
 {
+    use LogsFilamentEditDebug;
+
     protected static string $resource = CategoryResource::class;
 
     protected function getHeaderActions(): array

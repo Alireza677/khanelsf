@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\PageResource\Pages;
 
 use App\Filament\Resources\PageResource;
+use App\Filament\Resources\Concerns\LogsFilamentCreateDebug;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreatePage extends CreateRecord
 {
+    use LogsFilamentCreateDebug;
+
     protected static string $resource = PageResource::class;
 
     protected static bool $canCreateAnother = false;

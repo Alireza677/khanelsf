@@ -19,6 +19,9 @@ use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ZarinpalCallbackController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -92,5 +95,24 @@ Route::middleware('auth')
         Route::get('/products/{product}', [PreviewController::class, 'product'])->name('products.show');
         Route::get('/templates/{template}', [PreviewController::class, 'template'])->name('templates.show');
     });
+
+// TEMP DEBUG - remove after production save issue is fixed.
+Route::middleware('auth')->get('/admin/debug/log-test', function (Request $request) {
+    abort_unless(Auth::user()?->is_admin, 403);
+
+    Log::debug('TEMP DEBUG - Server log test', [
+        'user_id' => Auth::id(),
+        'route_name' => $request->route()?->getName(),
+        'url' => $request->fullUrl(),
+        'method' => $request->method(),
+        'ip' => $request->ip(),
+        'user_agent' => $request->userAgent(),
+    ]);
+
+    return response()->json([
+        'ok' => true,
+        'message' => 'Server log test written.',
+    ]);
+})->name('admin.debug.log-test');
 
 Route::get('/{slug}', [PageController::class, 'show'])->name('pages.show');

@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\ProductResource;
+use App\Filament\Resources\Concerns\LogsFilamentCreateDebug;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateProduct extends CreateRecord
 {
+    use LogsFilamentCreateDebug;
+
     protected static string $resource = ProductResource::class;
 
     protected function afterCreate(): void

@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\GalleryResource\Pages;
 
 use App\Filament\Resources\GalleryResource;
+use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditGallery extends EditRecord
 {
+    use LogsFilamentEditDebug;
+
     protected static string $resource = GalleryResource::class;
 
     protected function afterSave(): void

@@ -6,6 +6,7 @@ use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Services\ModuleCleanupService;
 use App\Services\ModuleRedirectSuggestionService;
 use App\Services\SettingsService;
+use App\Support\TemporaryDebugLogger;
 use Filament\Forms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -731,8 +732,27 @@ class ManageSiteSettings extends Page implements HasForms
     {
         $state = $this->form->getState();
 
-        foreach ($this->settingsMeta as $key => [$group, $type]) {
-            $settings->set($key, $this->normalizeValue($state[$key] ?? null), $group, $type);
+        // TEMP DEBUG - remove after production save issue is fixed.
+        TemporaryDebugLogger::settingsSaveStarted($state);
+
+        try {
+            foreach ($this->settingsMeta as $key => [$group, $type]) {
+                $settings->set($key, $this->normalizeValue($state[$key] ?? null), $group, $type);
+            }
+
+            // TEMP DEBUG - remove after production save issue is fixed.
+            TemporaryDebugLogger::settingsSaveCompleted($state);
+        } catch (\Throwable $exception) {
+            // TEMP DEBUG - remove after production save issue is fixed.
+            TemporaryDebugLogger::logException('TEMP DEBUG - Filament settings save failed', $exception, null, [
+                'action' => 'settings-save',
+                'model_class' => 'App\\Models\\Setting',
+                'payload' => TemporaryDebugLogger::payloadSummary($state),
+                'large_field_lengths' => TemporaryDebugLogger::largeFieldLengths($state),
+                'save_failed' => true,
+            ]);
+
+            throw $exception;
         }
 
         Notification::make()
