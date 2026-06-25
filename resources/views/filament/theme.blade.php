@@ -348,7 +348,7 @@
 
         window.__internalLinkSearchBound = true;
 
-        const endpoint = @json(route('admin.internal-links.search'));
+        const endpoint = @json(\Illuminate\Support\Facades\Route::has('admin.internal-links.search') ? route('admin.internal-links.search') : url('/admin/internal-links/search'));
         const strings = {
             label: 'جستجوی لینک داخلی',
             placeholder: 'جستجوی نوشته، برگه، محصول...',

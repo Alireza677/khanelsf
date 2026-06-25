@@ -253,6 +253,18 @@ article {
     margin-bottom: 2rem;
 }
 
+article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header-cta),
+.project-section :where(p, li) a:not(.button):not(.header-cta) {
+    color: var(--theme-link, #2563eb);
+}
+
+article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header-cta):hover,
+article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header-cta):focus,
+.project-section :where(p, li) a:not(.button):not(.header-cta):hover,
+.project-section :where(p, li) a:not(.button):not(.header-cta):focus {
+    color: var(--theme-primary-hover, #1d4ed8);
+}
+
 .home-hero {
     background: #eef2ff;
     border: 1px solid #dbe3ff;

@@ -44,6 +44,7 @@ class SettingResource extends Resource
                     'number' => 'Number',
                     'boolean' => 'Boolean',
                     'json' => 'JSON',
+                    'color' => 'Color',
                 ])
                 ->default('text'),
             Forms\Components\Textarea::make('value')
@@ -87,6 +88,7 @@ class SettingResource extends Resource
                         'number' => 'Number',
                         'boolean' => 'Boolean',
                         'json' => 'JSON',
+                        'color' => 'Color',
                     ]),
             ])
             ->actions([

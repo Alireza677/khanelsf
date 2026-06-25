@@ -135,6 +135,7 @@ class SettingsService
             '--theme-secondary' => $this->color('secondary_color', '#111827'),
             '--theme-accent' => $this->color('accent_color', '#0f766e'),
             '--theme-text' => $this->color('text_color', '#1f2937'),
+            '--theme-link' => $this->color('link_color', '#2563eb'),
             '--theme-heading' => $this->color('secondary_color', '#111827'),
             '--theme-background' => $this->color('background_color', '#f8fafc'),
             '--theme-button-radius' => $this->cssLength('button_radius', '6px'),

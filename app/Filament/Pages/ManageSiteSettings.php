@@ -88,6 +88,7 @@ class ManageSiteSettings extends Page implements HasForms
         'secondary_color' => ['theme', 'color'],
         'accent_color' => ['theme', 'color'],
         'text_color' => ['theme', 'color'],
+        'link_color' => ['theme', 'color'],
         'background_color' => ['theme', 'color'],
         'font_family' => ['theme', 'select'],
         'custom_font_name' => ['theme', 'text'],
@@ -563,6 +564,10 @@ class ManageSiteSettings extends Page implements HasForms
                                 Forms\Components\ColorPicker::make('text_color')
                                     ->label('رنگ متن')
                                     ->default('#1f2937')
+                                    ->live(),
+                                Forms\Components\ColorPicker::make('link_color')
+                                    ->label('رنگ لینک‌های متن')
+                                    ->default('#2563eb')
                                     ->live(),
                                 Forms\Components\ColorPicker::make('background_color')
                                     ->label('رنگ پس‌زمینه')

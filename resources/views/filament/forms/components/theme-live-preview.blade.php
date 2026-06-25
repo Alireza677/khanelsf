@@ -12,6 +12,7 @@
             secondaryColor: $wire.entangle('data.secondary_color').live,
             accentColor: $wire.entangle('data.accent_color').live,
             textColor: $wire.entangle('data.text_color').live,
+            linkColor: $wire.entangle('data.link_color').live,
             backgroundColor: $wire.entangle('data.background_color').live,
             fontFamilyValue: $wire.entangle('data.font_family').live,
             customFontName: $wire.entangle('data.custom_font_name').live,
@@ -100,7 +101,9 @@
                 class="m-0 leading-8"
                 x-bind:style="{ color: value(textColor, '#1f2937'), fontSize: size(baseFontSize, baseFontSizeMobile, '16px') }"
             >
-                این متن نمونه برای بررسی اندازه متن‌های عمومی، رنگ متن و خانواده فونت سایت است.
+                این متن نمونه برای بررسی اندازه متن‌های عمومی، رنگ متن و
+                <a href="#" class="font-bold underline underline-offset-4" x-bind:style="{ color: value(linkColor, '#2563eb') }">رنگ لینک‌های داخل متن</a>
+                سایت است.
             </p>
 
             <div class="flex flex-wrap items-center gap-3">

@@ -97,6 +97,7 @@ class DatabaseSeeder extends Seeder
             ['secondary_color', '#111827', 'theme', 'color'],
             ['accent_color', '#0f766e', 'theme', 'color'],
             ['text_color', '#1f2937', 'theme', 'color'],
+            ['link_color', '#2563eb', 'theme', 'color'],
             ['background_color', '#f8fafc', 'theme', 'color'],
             ['font_family', 'system', 'theme', 'select'],
             ['custom_font_name', 'Client Custom Font', 'theme', 'text'],
