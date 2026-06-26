@@ -450,6 +450,14 @@ class TemplateResource extends Resource
                         ->label('Show Hero 1 underline')
                         ->default(false)
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                    Forms\Components\TextInput::make('hero_1_height')
+                        ->label('Hero 1 block height')
+                        ->numeric()
+                        ->minValue(0)
+                        ->suffix('px')
+                        ->placeholder('Example: 560')
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1')
+                        ->columnSpan(1),
                     Forms\Components\TextInput::make('subtitle')->maxLength(255),
                     Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
                     Forms\Components\TextInput::make('primary_button_label')->maxLength(255),

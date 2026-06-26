@@ -9,6 +9,14 @@
         : null;
     $backgroundVariables = $theme === 'image' ? \App\Support\BlockImageStyle::backgroundVariables($data, 'image') : null;
     $backgroundVariables = $theme === 'image' && blank($backgroundVariables) ? '--block-background-size: cover' : $backgroundVariables;
+    $blockHeight = trim((string) ($data['hero_1_height'] ?? ''));
+    $blockHeight = is_numeric($blockHeight) ? max(0, (int) $blockHeight) : null;
+    $heightVariable = $blockHeight ? "--hero-template-1-height: {$blockHeight}px;" : null;
+    $heightClass = $blockHeight ? 'hero-template-1--fixed-height' : null;
+    $sectionStyle = collect([$backgroundImage, $backgroundVariables, $heightVariable])
+        ->filter()
+        ->map(fn (string $style): string => trim($style, ' ;'))
+        ->implode('; ');
     $description = $data['subtitle'] ?? $data['description'] ?? null;
     $secondLine = trim((string) ($data['hero_1_title_second_line'] ?? ''));
     $showUnderline = (bool) ($data['hero_1_show_underline'] ?? false);
@@ -24,9 +32,10 @@
         'content-block',
         'hero-template-1',
         "hero-template-1--{$theme}",
+        $heightClass,
         'block-configured-background' => $theme === 'image',
     ])
-    @if ($backgroundImage || $backgroundVariables) style="{!! trim($backgroundImage.' '.$backgroundVariables, ' ;') !!}" @endif
+    @if ($sectionStyle) style="{!! $sectionStyle !!}" @endif
 >
     <div class="hero-template-1__inner">
         @if (! empty($data['eyebrow']))

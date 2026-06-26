@@ -409,13 +409,21 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
     max-width: 100vw;
-    min-height: clamp(520px, 70vh, 760px);
+    height: var(--hero-template-1-height, auto);
+    max-height: var(--hero-template-1-height, none);
+    min-height: var(--hero-template-1-height, clamp(520px, 70vh, 760px));
     overflow: hidden;
     padding: 5rem 1.25rem;
     position: relative;
     text-align: center;
     transform: none;
     width: 100vw;
+}
+
+.hero-template-1--fixed-height {
+    height: var(--hero-template-1-height) !important;
+    max-height: var(--hero-template-1-height) !important;
+    min-height: var(--hero-template-1-height) !important;
 }
 
 .hero-template-1--light-grid {
@@ -2670,8 +2678,14 @@ input[name*="email"] {
     }
 
     .hero-template-1 {
-        min-height: 460px;
+        min-height: var(--hero-template-1-height, 460px);
         padding: 4rem 1rem;
+    }
+
+    .hero-template-1--fixed-height {
+        height: var(--hero-template-1-height) !important;
+        max-height: var(--hero-template-1-height) !important;
+        min-height: var(--hero-template-1-height) !important;
     }
 
     .hero-template-1__actions,

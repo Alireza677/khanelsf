@@ -126,6 +126,15 @@ class PageResource extends Resource
                                                 ->label('نمایش خط تاکید زیر عنوان')
                                                 ->default(false)
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            Forms\Components\TextInput::make('hero_1_height')
+                                                ->label('ارتفاع بلوک')
+                                                ->numeric()
+                                                ->minValue(0)
+                                                ->suffix('px')
+                                                ->placeholder('مثلا 560')
+                                                ->helperText('فقط برای هیرو ۱. اگر خالی باشد ارتفاع پیش‌فرض استفاده می‌شود.')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1')
+                                                ->columnSpan(1),
                                             Forms\Components\Select::make('hero_2_alignment')
                                                 ->label('چیدمان محتوا')
                                                 ->options([
