@@ -33,7 +33,7 @@
             <p class="hero-template-1__eyebrow">
                 @if (! empty($data['hero_1_eyebrow_icon']))
                     <span class="hero-template-1__eyebrow-icon" aria-hidden="true">
-                        @include('partials.blocks._icon', ['icon' => $data['hero_1_eyebrow_icon']])
+                        @include('partials.blocks._icon', ['icon' => $data['hero_1_eyebrow_icon'], 'size' => $data['hero_1_eyebrow_icon_size'] ?? null])
                     </span>
                 @endif
                 <span>{{ $data['eyebrow'] }}</span>
@@ -74,7 +74,7 @@
                     <div class="hero-template-1__socials">
                         @foreach ($socialLinks as $link)
                             <a class="hero-template-1__social" href="{{ $link['url'] }}" aria-label="{{ $link['label'] }}">
-                                @include('partials.blocks._icon', ['icon' => $link['icon'] ?? null, 'fallback' => $link['label']])
+                                @include('partials.blocks._icon', ['icon' => $link['icon'] ?? null, 'fallback' => $link['label'], 'size' => $link['icon_size'] ?? null])
                             </a>
                         @endforeach
                     </div>

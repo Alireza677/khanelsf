@@ -106,6 +106,8 @@ class PageResource extends Resource
                                                 'یک آیکن Iconsax اختیاری کنار برچسب بالای عنوان.'
                                             )
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            static::iconsaxIconSizeInput('hero_1_eyebrow_icon_size')
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                                             Forms\Components\Select::make('hero_1_theme')
                                                 ->label('نمای هیرو ۱')
                                                 ->options([
@@ -268,12 +270,13 @@ class PageResource extends Resource
                                                         ->label('توضیحات')
                                                         ->maxLength(160),
                                                     static::iconsaxIconPicker('icon', 'آیکن'),
+                                                    static::iconsaxIconSizeInput(),
                                                 ])
                                                 ->defaultItems(0)
                                                 ->helperText('فقط برای هیرو ۳. کارت‌های آماری اختیاری زیر دکمه‌ها.')
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_3')
                                                 ->columnSpanFull()
-                                                ->columns(4),
+                                                ->columns(5),
                                             Forms\Components\Repeater::make('hero_1_social_links')
                                                 ->label('لینک‌های پایین هیرو')
                                                 ->cloneable()
@@ -287,12 +290,13 @@ class PageResource extends Resource
                                                         ->required()
                                                         ->maxLength(255),
                                                     static::iconsaxIconPicker('icon', 'آیکن'),
+                                                    static::iconsaxIconSizeInput(),
                                                 ])
                                                 ->defaultItems(0)
                                                 ->helperText('برای دکمه‌های کوچک پایین هیرو مثل ایمیل، لینکدین یا گیت‌هاب.')
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1')
                                                 ->columnSpanFull()
-                                                ->columns(3),
+                                                ->columns(4),
                                             Forms\Components\TextInput::make('hero_1_scroll_label')
                                                 ->label('متن اسکرول')
                                                 ->maxLength(120)
@@ -427,6 +431,7 @@ class PageResource extends Resource
                                                         ->required()
                                                         ->maxLength(255),
                                                     static::iconsaxIconPicker('icon', 'آیکن'),
+                                                    static::iconsaxIconSizeInput(),
                                                     Forms\Components\ViewField::make('image')
                                                         ->label('تصویر')
                                                         ->view('filament.forms.components.media-library-url-picker')
@@ -446,7 +451,7 @@ class PageResource extends Resource
                                                         ->label('لینک دکمه')
                                                         ->maxLength(255),
                                                 ])
-                                                ->columns(2)
+                                                ->columns(3)
                                                 ->columnSpanFull()
                                                 ->collapsible()
                                                 ->collapsed()

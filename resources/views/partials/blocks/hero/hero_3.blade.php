@@ -53,7 +53,7 @@
                         <div class="hero-template-3__stat">
                             @if (! empty($stat['icon']))
                                 <span class="hero-template-3__stat-icon">
-                                    @include('partials.blocks._icon', ['icon' => $stat['icon']])
+                                    @include('partials.blocks._icon', ['icon' => $stat['icon'], 'size' => $stat['icon_size'] ?? null])
                                 </span>
                             @endif
                             @if (! empty($stat['value']))

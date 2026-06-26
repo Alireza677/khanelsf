@@ -24,6 +24,19 @@ trait UsesIconsaxIconPicker
         return $field;
     }
 
+    protected static function iconsaxIconSizeInput(string $name = 'icon_size', ?string $label = null): Forms\Components\TextInput
+    {
+        return Forms\Components\TextInput::make($name)
+            ->label($label ?? 'سایز')
+            ->numeric()
+            ->minValue(1)
+            ->maxValue(240)
+            ->suffix('px')
+            ->placeholder('24')
+            ->extraInputAttributes(['style' => 'max-width: 5rem'])
+            ->columnSpan(1);
+    }
+
     protected static function iconsaxIconItems(): array
     {
         static $icons = null;

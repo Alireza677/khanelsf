@@ -431,6 +431,8 @@ class TemplateResource extends Resource
                     Forms\Components\TextInput::make('eyebrow')->maxLength(255),
                     static::iconsaxIconPicker('hero_1_eyebrow_icon', 'Eyebrow icon')
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                    static::iconsaxIconSizeInput('hero_1_eyebrow_icon_size', 'Size')
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\Select::make('hero_1_theme')
                         ->label('Hero 1 appearance')
                         ->options([
@@ -517,8 +519,9 @@ class TemplateResource extends Resource
                             Forms\Components\TextInput::make('label')->required()->maxLength(120),
                             Forms\Components\TextInput::make('description')->maxLength(160),
                             static::iconsaxIconPicker('icon', 'Icon'),
+                            static::iconsaxIconSizeInput(label: 'Size'),
                         ])
-                        ->columns(4)
+                        ->columns(5)
                         ->columnSpanFull()
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_3'),
                     Forms\Components\Repeater::make('hero_1_social_links')
@@ -527,8 +530,9 @@ class TemplateResource extends Resource
                             Forms\Components\TextInput::make('label')->required()->maxLength(120),
                             Forms\Components\TextInput::make('url')->required()->maxLength(255),
                             static::iconsaxIconPicker('icon', 'Icon'),
+                            static::iconsaxIconSizeInput(label: 'Size'),
                         ])
-                        ->columns(3)
+                        ->columns(4)
                         ->columnSpanFull()
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\TextInput::make('hero_1_scroll_label')
@@ -558,8 +562,10 @@ class TemplateResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('title')->required()->maxLength(255),
                             static::iconsaxIconPicker('icon', 'Icon'),
+                            static::iconsaxIconSizeInput(label: 'Size'),
                             Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
                         ])
+                        ->columns(3)
                         ->columnSpanFull()
                         ->collapsible()
                         ->collapsed(),

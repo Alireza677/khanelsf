@@ -81,7 +81,7 @@
                     >
                 @elseif (! empty($item['icon']))
                     <div class="block-card__icon">
-                        @include('partials.blocks._icon', ['icon' => $item['icon']])
+                        @include('partials.blocks._icon', ['icon' => $item['icon'], 'size' => $item['icon_size'] ?? null])
                     </div>
                 @endif
 
