@@ -126,15 +126,26 @@ class PageResource extends Resource
                                                 ->label('نمایش خط تاکید زیر عنوان')
                                                 ->default(false)
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
-                                            Forms\Components\TextInput::make('hero_1_height')
-                                                ->label('ارتفاع بلوک')
-                                                ->numeric()
-                                                ->minValue(0)
-                                                ->suffix('px')
-                                                ->placeholder('مثلا 560')
-                                                ->helperText('فقط برای هیرو ۱. اگر خالی باشد ارتفاع پیش‌فرض استفاده می‌شود.')
+                                            Forms\Components\Fieldset::make('سایز')
+                                                ->schema([
+                                                    Forms\Components\TextInput::make('hero_1_desktop_height')
+                                                        ->label('ارتفاع دسکتاپ')
+                                                        ->numeric()
+                                                        ->minValue(0)
+                                                        ->suffix('px')
+                                                        ->prefixIcon('heroicon-o-computer-desktop')
+                                                        ->placeholder('مثلا 560'),
+                                                    Forms\Components\TextInput::make('hero_1_mobile_height')
+                                                        ->label('ارتفاع موبایل')
+                                                        ->numeric()
+                                                        ->minValue(0)
+                                                        ->suffix('px')
+                                                        ->prefixIcon('heroicon-o-device-phone-mobile')
+                                                        ->placeholder('مثلا 460'),
+                                                ])
+                                                ->columns(2)
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1')
-                                                ->columnSpan(1),
+                                                ->columnSpanFull(),
                                             Forms\Components\Select::make('hero_2_alignment')
                                                 ->label('چیدمان محتوا')
                                                 ->options([
@@ -218,6 +229,7 @@ class PageResource extends Resource
                                                 ->label('عنوان')
                                                 ->required()
                                                 ->maxLength(255),
+                                            static::headingTagField(),
                                             Forms\Components\TextInput::make('subtitle')
                                                 ->label('زیرعنوان')
                                                 ->helperText('در قالب پیش‌فرض به‌عنوان برچسب کوچک نمایش داده می‌شود. در هیرو ۱ متن کوتاه زیر عنوان است.')
@@ -346,6 +358,7 @@ class PageResource extends Resource
                                                 ->label('عنوان بخش')
                                                 ->required()
                                                 ->maxLength(255),
+                                            static::headingTagField(),
                                             Forms\Components\Textarea::make('section_description')
                                                 ->label('توضیحات بخش')
                                                 ->rows(3)
@@ -475,6 +488,7 @@ class PageResource extends Resource
                                             Forms\Components\TextInput::make('section_title')
                                                 ->label('عنوان بخش')
                                                 ->maxLength(255),
+                                            static::headingTagField(),
                                             Forms\Components\Textarea::make('section_description')
                                                 ->label('توضیحات بخش')
                                                 ->rows(3)
@@ -521,6 +535,7 @@ class PageResource extends Resource
                                                 ->label('عنوان بخش')
                                                 ->required()
                                                 ->maxLength(255),
+                                            static::headingTagField(),
                                             Forms\Components\Repeater::make('items')
                                                 ->label('پرسش‌ها')
                                                 ->cloneable()
@@ -546,6 +561,7 @@ class PageResource extends Resource
                                                 ->label('عنوان بخش')
                                                 ->required()
                                                 ->maxLength(255),
+                                            static::headingTagField(),
                                             Forms\Components\Repeater::make('images')
                                                 ->label('تصاویر')
                                                 ->cloneable()
@@ -576,6 +592,7 @@ class PageResource extends Resource
                                                 ->label('عنوان بخش')
                                                 ->required()
                                                 ->maxLength(255),
+                                            static::headingTagField(),
                                             Forms\Components\Repeater::make('items')
                                                 ->label('نظرات')
                                                 ->cloneable()
@@ -615,6 +632,7 @@ class PageResource extends Resource
                                                 ->required()
                                                 ->maxLength(255)
                                                 ->default('پروژه‌های ویژه'),
+                                            static::headingTagField(),
                                             Forms\Components\Textarea::make('section_description')
                                                 ->label('توضیحات بخش')
                                                 ->rows(3)
@@ -664,6 +682,7 @@ class PageResource extends Resource
                                                 ->required()
                                                 ->maxLength(255)
                                                 ->default('محصولات ویژه'),
+                                            static::headingTagField(),
                                             Forms\Components\Textarea::make('section_description')
                                                 ->label('توضیحات بخش')
                                                 ->rows(3)
@@ -713,6 +732,7 @@ class PageResource extends Resource
                                                 ->required()
                                                 ->maxLength(255)
                                                 ->default('گالری‌های ویژه'),
+                                            static::headingTagField(),
                                             Forms\Components\Textarea::make('section_description')
                                                 ->label('توضیحات بخش')
                                                 ->rows(3)
@@ -1085,6 +1105,18 @@ class PageResource extends Resource
         ];
     }
 
+    protected static function headingTagField(string $label = 'تگ عنوان'): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('heading_tag')
+            ->label($label)
+            ->options([
+                'h1' => 'H1',
+                'h2' => 'H2',
+            ])
+            ->default('h2')
+            ->native(false);
+    }
+
     protected static function ctaFields(): array
     {
         return [
@@ -1146,6 +1178,7 @@ class PageResource extends Resource
                 ->label('عنوان')
                 ->required()
                 ->maxLength(255),
+            static::headingTagField(),
             Forms\Components\Textarea::make('description')
                 ->label('توضیحات')
                 ->rows(3)

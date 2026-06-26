@@ -9,17 +9,23 @@
         : null;
     $backgroundVariables = $theme === 'image' ? \App\Support\BlockImageStyle::backgroundVariables($data, 'image') : null;
     $backgroundVariables = $theme === 'image' && blank($backgroundVariables) ? '--block-background-size: cover' : $backgroundVariables;
-    $blockHeight = trim((string) ($data['hero_1_height'] ?? ''));
-    $blockHeight = is_numeric($blockHeight) ? max(0, (int) $blockHeight) : null;
-    $heightVariable = $blockHeight ? "--hero-template-1-height: {$blockHeight}px;" : null;
-    $heightClass = $blockHeight ? 'hero-template-1--fixed-height' : null;
-    $sectionStyle = collect([$backgroundImage, $backgroundVariables, $heightVariable])
+    $desktopHeight = trim((string) ($data['hero_1_desktop_height'] ?? $data['hero_1_height'] ?? ''));
+    $desktopHeight = is_numeric($desktopHeight) ? max(0, (int) $desktopHeight) : null;
+    $mobileHeight = trim((string) ($data['hero_1_mobile_height'] ?? ''));
+    $mobileHeight = is_numeric($mobileHeight) ? max(0, (int) $mobileHeight) : null;
+    $desktopHeightVariable = $desktopHeight ? "--hero-template-1-height: {$desktopHeight}px;" : null;
+    $mobileHeightVariable = $mobileHeight ? "--hero-template-1-mobile-height: {$mobileHeight}px;" : null;
+    $heightClass = $desktopHeight ? 'hero-template-1--fixed-height' : null;
+    $mobileHeightClass = $mobileHeight ? 'hero-template-1--mobile-fixed-height' : null;
+    $sectionStyle = collect([$backgroundImage, $backgroundVariables, $desktopHeightVariable, $mobileHeightVariable])
         ->filter()
         ->map(fn (string $style): string => trim($style, ' ;'))
         ->implode('; ');
     $description = $data['subtitle'] ?? $data['description'] ?? null;
     $secondLine = trim((string) ($data['hero_1_title_second_line'] ?? ''));
     $showUnderline = (bool) ($data['hero_1_show_underline'] ?? false);
+    $requestedHeadingTag = $data['heading_tag'] ?? 'h2';
+    $headingTag = in_array($requestedHeadingTag, ['h1', 'h2'], true) ? $requestedHeadingTag : 'h2';
     $socialLinks = collect($data['hero_1_social_links'] ?? [])
         ->filter(fn ($item) => filled($item['label'] ?? null) && filled($item['url'] ?? null))
         ->values();
@@ -33,6 +39,7 @@
         'hero-template-1',
         "hero-template-1--{$theme}",
         $heightClass,
+        $mobileHeightClass,
         'block-configured-background' => $theme === 'image',
     ])
     @if ($sectionStyle) style="{!! $sectionStyle !!}" @endif
@@ -50,7 +57,7 @@
         @endif
 
         @if (! empty($data['title']))
-            <h1 @class(['hero-template-1__title--decorated' => $showUnderline])>
+            <{{ $headingTag }} @class(['block-title', 'hero-template-1__title--decorated' => $showUnderline])>
                 <span class="hero-template-1__title-main">{{ $data['title'] }}</span>
                 @if ($showUnderline)
                     <span class="hero-template-1__underline" aria-hidden="true"></span>
@@ -58,7 +65,7 @@
                 @if ($secondLine !== '')
                     <span class="hero-template-1__title-second">{{ $secondLine }}</span>
                 @endif
-            </h1>
+            </{{ $headingTag }}>
         @endif
 
         @if (! empty($description))

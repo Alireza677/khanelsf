@@ -22,7 +22,7 @@
     >
         <div class="block-cta-image__content" @if ($contentWidth) style="max-width: {{ $contentWidth }}px" @endif>
             @if (! empty($data['title']))
-                <h2>{{ $data['title'] }}</h2>
+                @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
             @endif
 
             @if (! empty($data['description']))
@@ -55,7 +55,7 @@
             @endif
 
             @if (! empty($data['title']))
-                <h2>{{ $data['title'] }}</h2>
+                @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
             @endif
 
             @if (! empty($data['description']))

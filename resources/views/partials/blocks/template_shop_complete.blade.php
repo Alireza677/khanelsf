@@ -112,7 +112,11 @@
         @if ($categories->isNotEmpty())
             <section class="shop-template__categories" aria-labelledby="shop-template-categories-title" data-shop-category-slider>
                 <div class="shop-template__section-heading shop-template__section-heading--center">
-                    <h2 id="shop-template-categories-title">{{ $data['category_section_title'] ?? 'خرید بر اساس دسته‌بندی' }}</h2>
+                    @php
+                        $requestedCategoryHeadingTag = $data['category_heading_tag'] ?? 'h2';
+                        $categoryHeadingTag = in_array($requestedCategoryHeadingTag, ['h1', 'h2'], true) ? $requestedCategoryHeadingTag : 'h2';
+                    @endphp
+                    <{{ $categoryHeadingTag }} id="shop-template-categories-title" class="block-title">{{ $data['category_section_title'] ?? 'خرید بر اساس دسته‌بندی' }}</{{ $categoryHeadingTag }}>
                     <span class="shop-template__heading-rule" aria-hidden="true"></span>
                     <div class="shop-template__category-controls">
                         <button class="shop-template__category-control shop-template__category-control--prev" type="button" aria-label="دسته‌بندی‌های قبلی" data-shop-category-prev>

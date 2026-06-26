@@ -34,7 +34,7 @@
             @endif
 
             @if (! empty($data['section_title']))
-                <h2>{{ $data['section_title'] }}</h2>
+                @include('partials.blocks._heading', ['title' => $data['section_title'], 'tag' => $data['heading_tag'] ?? 'h2'])
             @endif
 
             @if (! empty($data['section_description']))

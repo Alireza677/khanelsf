@@ -7,7 +7,7 @@
 <section class="content-block">
     @if (! empty($data['title']))
         <div class="section-heading">
-            <h2>{{ $data['title'] }}</h2>
+            @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
         </div>
     @endif
 

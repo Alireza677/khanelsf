@@ -49,7 +49,7 @@
     <div class="hero-template-2__inner">
         <div class="hero-template-2__content">
             @if (! empty($data['title']))
-                <h1>{{ $data['title'] }}</h1>
+                @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
             @endif
 
             @if (! empty($data['subtitle']))

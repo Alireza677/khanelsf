@@ -14,7 +14,7 @@
 
 @if ($model && $type === 'gallery' && $model->video_url)
     <section class="content-block project-section">
-        <h2>{{ $data['video_title'] ?? 'Video' }}</h2>
+        @include('partials.blocks._heading', ['title' => $data['video_title'] ?? 'Video', 'tag' => $data['video_heading_tag'] ?? 'h2'])
 
         @if ($model->videoEmbedUrl())
             <div class="gallery-video">
@@ -28,7 +28,7 @@
 
 @if ($images->isNotEmpty())
     <section class="content-block project-section">
-        <h2>{{ $data['title'] ?? 'Gallery' }}</h2>
+        @include('partials.blocks._heading', ['title' => $data['title'] ?? 'Gallery', 'tag' => $data['heading_tag'] ?? 'h2'])
 
         <div class="block-gallery">
             @foreach ($images as $image)

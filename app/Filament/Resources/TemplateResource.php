@@ -442,6 +442,7 @@ class TemplateResource extends Resource
                         ->default('image')
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\TextInput::make('title')->required()->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\TextInput::make('hero_1_title_second_line')
                         ->label('Hero 1 title second line')
                         ->maxLength(255)
@@ -450,14 +451,26 @@ class TemplateResource extends Resource
                         ->label('Show Hero 1 underline')
                         ->default(false)
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
-                    Forms\Components\TextInput::make('hero_1_height')
-                        ->label('Hero 1 block height')
-                        ->numeric()
-                        ->minValue(0)
-                        ->suffix('px')
-                        ->placeholder('Example: 560')
+                    Forms\Components\Fieldset::make('Hero 1 size')
+                        ->schema([
+                            Forms\Components\TextInput::make('hero_1_desktop_height')
+                                ->label('Desktop height')
+                                ->numeric()
+                                ->minValue(0)
+                                ->suffix('px')
+                                ->prefixIcon('heroicon-o-computer-desktop')
+                                ->placeholder('Example: 560'),
+                            Forms\Components\TextInput::make('hero_1_mobile_height')
+                                ->label('Mobile height')
+                                ->numeric()
+                                ->minValue(0)
+                                ->suffix('px')
+                                ->prefixIcon('heroicon-o-device-phone-mobile')
+                                ->placeholder('Example: 460'),
+                        ])
+                        ->columns(2)
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1')
-                        ->columnSpan(1),
+                        ->columnSpanFull(),
                     Forms\Components\TextInput::make('subtitle')->maxLength(255),
                     Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
                     Forms\Components\TextInput::make('primary_button_label')->maxLength(255),
@@ -564,6 +577,7 @@ class TemplateResource extends Resource
                 ->label('Static: Feature Grid')
                 ->schema(static::sectionFields([
                     Forms\Components\TextInput::make('section_title')->required()->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\Textarea::make('section_description')->rows(3)->columnSpanFull(),
                     Forms\Components\Repeater::make('items')
                         ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'Item')
@@ -582,6 +596,7 @@ class TemplateResource extends Resource
                 ->label('Static: FAQ')
                 ->schema(static::sectionFields([
                     Forms\Components\TextInput::make('section_title')->required()->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\Repeater::make('items')
                         ->schema([
                             Forms\Components\TextInput::make('question')->required()->maxLength(255),
@@ -593,6 +608,7 @@ class TemplateResource extends Resource
                 ->label('Static: Gallery')
                 ->schema(static::sectionFields([
                     Forms\Components\TextInput::make('section_title')->required()->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\Repeater::make('images')
                         ->schema([
                             Forms\Components\ViewField::make('url')
@@ -609,6 +625,7 @@ class TemplateResource extends Resource
                 ->label('Static: Testimonials')
                 ->schema(static::sectionFields([
                     Forms\Components\TextInput::make('section_title')->required()->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\Repeater::make('items')
                         ->schema([
                             Forms\Components\TextInput::make('name')->required()->maxLength(255),
@@ -693,6 +710,7 @@ class TemplateResource extends Resource
                         ->label('Category section title')
                         ->default('Shop by category')
                         ->maxLength(255),
+                    static::headingTagField('Category heading tag', 'category_heading_tag'),
                     Forms\Components\ViewField::make('all_categories_image')
                         ->label('All products category image')
                         ->view('filament.forms.components.media-library-url-picker')
@@ -720,6 +738,7 @@ class TemplateResource extends Resource
                     Forms\Components\TextInput::make('title')
                         ->label('Optional section title')
                         ->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\TextInput::make('empty_message')
                         ->label('Empty message')
                         ->maxLength(255),
@@ -770,9 +789,11 @@ class TemplateResource extends Resource
                     Forms\Components\TextInput::make('title')
                         ->default('Gallery')
                         ->maxLength(255),
+                    static::headingTagField(),
                     Forms\Components\TextInput::make('video_title')
                         ->default('Video')
                         ->maxLength(255),
+                    static::headingTagField('Video heading tag', 'video_heading_tag'),
                 ])
                 ->columns(2),
             Forms\Components\Builder\Block::make('template_add_to_cart')
@@ -816,6 +837,18 @@ class TemplateResource extends Resource
                 ->maxLength(255),
             ...$fields,
         ];
+    }
+
+    private static function headingTagField(string $label = 'Heading tag', string $name = 'heading_tag'): Forms\Components\Select
+    {
+        return Forms\Components\Select::make($name)
+            ->label($label)
+            ->options([
+                'h1' => 'H1',
+                'h2' => 'H2',
+            ])
+            ->default('h2')
+            ->native(false);
     }
 
     private static function ctaFields(): array
@@ -862,6 +895,7 @@ class TemplateResource extends Resource
             Forms\Components\TextInput::make('title')
                 ->required()
                 ->maxLength(255),
+            static::headingTagField('Heading tag'),
             Forms\Components\Textarea::make('description')
                 ->rows(3)
                 ->columnSpanFull(),
