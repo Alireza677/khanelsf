@@ -4,15 +4,30 @@ namespace App\Services;
 
 use App\Models\Setting;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SettingsService
 {
+    protected static array $requestCache = [];
+
     public function get(string $key, mixed $fallback = null): mixed
     {
+        if (! static::requestCacheEnabled()) {
+            return rescue(
+                fn () => Setting::query()->where('key', $key)->value('value') ?? $fallback,
+                $fallback,
+                report: false,
+            );
+        }
+
+        if (array_key_exists($key, static::$requestCache)) {
+            return static::$requestCache[$key] ?? $fallback;
+        }
+
         return rescue(
-            fn () => Setting::query()->where('key', $key)->value('value') ?? $fallback,
+            fn () => static::$requestCache[$key] = Setting::query()->where('key', $key)->value('value') ?? $fallback,
             $fallback,
             report: false,
         );
@@ -20,17 +35,50 @@ class SettingsService
 
     public function many(array $keys): Collection
     {
+        if (! static::requestCacheEnabled()) {
+            return rescue(
+                fn () => Setting::query()
+                    ->whereIn('key', $keys)
+                    ->pluck('value', 'key'),
+                collect(),
+                report: false,
+            );
+        }
+
+        $keys = array_values(array_unique($keys));
+        $missingKeys = array_values(array_filter(
+            $keys,
+            fn (string $key): bool => ! array_key_exists($key, static::$requestCache),
+        ));
+
+        if ($missingKeys === []) {
+            return collect($keys)
+                ->mapWithKeys(fn (string $key): array => [$key => static::$requestCache[$key] ?? null]);
+        }
+
         return rescue(
-            fn () => Setting::query()
-                ->whereIn('key', $keys)
-                ->pluck('value', 'key'),
-            collect(),
+            function () use ($keys, $missingKeys): Collection {
+                Setting::query()
+                    ->whereIn('key', $missingKeys)
+                    ->pluck('value', 'key')
+                    ->each(fn (mixed $value, string $key) => static::$requestCache[$key] = $value);
+
+                foreach ($missingKeys as $key) {
+                    static::$requestCache[$key] ??= null;
+                }
+
+                return collect($keys)
+                    ->mapWithKeys(fn (string $key): array => [$key => static::$requestCache[$key] ?? null]);
+            },
+            collect($keys)->mapWithKeys(fn (string $key): array => [$key => static::$requestCache[$key] ?? null]),
             report: false,
         );
     }
 
     public function set(string $key, mixed $value, ?string $group = null, string $type = 'text'): Setting
     {
+        unset(static::$requestCache[$key]);
+
         return Setting::query()->updateOrCreate(
             ['key' => $key],
             [
@@ -39,6 +87,11 @@ class SettingsService
                 'type' => $type,
             ],
         );
+    }
+
+    protected static function requestCacheEnabled(): bool
+    {
+        return ! app()->runningUnitTests();
     }
 
     public function siteName(): string
@@ -129,7 +182,37 @@ class SettingsService
 
     public function themeVariables(): array
     {
-        return [
+        $startedAt = hrtime(true);
+
+        $this->many([
+            'primary_color',
+            'secondary_color',
+            'accent_color',
+            'text_color',
+            'link_color',
+            'background_color',
+            'button_radius',
+            'container_width',
+            'font_family',
+            'custom_font_file',
+            'custom_font_name',
+            'base_font_size',
+            'h1_font_size',
+            'h2_font_size',
+            'h3_font_size',
+            'h4_font_size',
+            'button_font_size',
+            'base_font_size_mobile',
+            'h1_font_size_mobile',
+            'h2_font_size_mobile',
+            'h3_font_size_mobile',
+            'h4_font_size_mobile',
+            'button_font_size_mobile',
+            'button_radius_mobile',
+            'container_width_mobile',
+        ]);
+
+        $variables = [
             '--theme-primary' => $this->color('primary_color', '#2563eb'),
             '--theme-primary-hover' => $this->color('primary_color', '#1d4ed8'),
             '--theme-secondary' => $this->color('secondary_color', '#111827'),
@@ -138,24 +221,33 @@ class SettingsService
             '--theme-link' => $this->color('link_color', '#2563eb'),
             '--theme-heading' => $this->color('secondary_color', '#111827'),
             '--theme-background' => $this->color('background_color', '#f8fafc'),
-            '--theme-button-radius' => $this->cssLength('button_radius', '6px'),
-            '--theme-container-width' => $this->cssLength('container_width', '1180px'),
+            '--theme-button-radius' => $this->cssLength('button_radius', '10px'),
+            '--theme-container-width' => $this->cssLength('container_width', '1200px'),
             '--theme-font-family' => $this->fontFamily(),
             '--theme-base-font-size' => $this->cssLength('base_font_size', '16px'),
-            '--theme-h1-font-size' => $this->cssLength('h1_font_size', '2.5rem'),
-            '--theme-h2-font-size' => $this->cssLength('h2_font_size', '2rem'),
-            '--theme-h3-font-size' => $this->cssLength('h3_font_size', '1.25rem'),
-            '--theme-h4-font-size' => $this->cssLength('h4_font_size', '1.125rem'),
-            '--theme-button-font-size' => $this->cssLength('button_font_size', '1rem'),
-            '--theme-base-font-size-mobile' => $this->cssLength('base_font_size_mobile', $this->cssLength('base_font_size', '16px')),
-            '--theme-h1-font-size-mobile' => $this->cssLength('h1_font_size_mobile', '2rem'),
-            '--theme-h2-font-size-mobile' => $this->cssLength('h2_font_size_mobile', '1.75rem'),
-            '--theme-h3-font-size-mobile' => $this->cssLength('h3_font_size_mobile', '1.2rem'),
-            '--theme-h4-font-size-mobile' => $this->cssLength('h4_font_size_mobile', '1.05rem'),
-            '--theme-button-font-size-mobile' => $this->cssLength('button_font_size_mobile', $this->cssLength('button_font_size', '1rem')),
-            '--theme-button-radius-mobile' => $this->cssLength('button_radius_mobile', $this->cssLength('button_radius', '6px')),
-            '--theme-container-width-mobile' => $this->cssLength('container_width_mobile', '100%'),
+            '--theme-h1-font-size' => $this->cssLength('h1_font_size', '24px'),
+            '--theme-h2-font-size' => $this->cssLength('h2_font_size', '22px'),
+            '--theme-h3-font-size' => $this->cssLength('h3_font_size', '20px'),
+            '--theme-h4-font-size' => $this->cssLength('h4_font_size', '18px'),
+            '--theme-button-font-size' => $this->cssLength('button_font_size', '16px'),
+            '--theme-base-font-size-mobile' => $this->cssLength('base_font_size_mobile', '15px'),
+            '--theme-h1-font-size-mobile' => $this->cssLength('h1_font_size_mobile', '22px'),
+            '--theme-h2-font-size-mobile' => $this->cssLength('h2_font_size_mobile', '20px'),
+            '--theme-h3-font-size-mobile' => $this->cssLength('h3_font_size_mobile', '18px'),
+            '--theme-h4-font-size-mobile' => $this->cssLength('h4_font_size_mobile', '16px'),
+            '--theme-button-font-size-mobile' => $this->cssLength('button_font_size_mobile', '15px'),
+            '--theme-button-radius-mobile' => $this->cssLength('button_radius_mobile', '10px'),
+            '--theme-container-width-mobile' => $this->cssLength('container_width_mobile', '343px'),
         ];
+
+        if (request()->routeIs('filament.admin.resources.pages.edit')) {
+            Log::info('PERF PageResource edit: settings load ms', [
+                'ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+                'keys' => count($variables),
+            ]);
+        }
+
+        return $variables;
     }
 
     public function customFontUrl(): ?string

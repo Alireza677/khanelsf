@@ -7,12 +7,64 @@ use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EditPage extends EditRecord
 {
     use LogsFilamentEditDebug;
 
     protected static string $resource = PageResource::class;
+
+    protected array $pageEditPerfQueries = [];
+
+    protected int $pageEditPerfStartedAt = 0;
+
+    public function boot(): void
+    {
+        $this->pageEditPerfStartedAt = hrtime(true);
+        $this->pageEditPerfQueries = [];
+
+        DB::listen(function ($query): void {
+            $this->pageEditPerfQueries[] = [
+                'sql' => preg_replace('/\s+/', ' ', $query->sql),
+                'bindings' => $query->bindings,
+                'time' => $query->time,
+            ];
+        });
+    }
+
+    public function dehydrate(): void
+    {
+        $rawState = $this->form->getRawState();
+        $queryTime = array_sum(array_column($this->pageEditPerfQueries, 'time'));
+        $duplicates = collect($this->pageEditPerfQueries)
+            ->map(fn (array $query): string => $query['sql'].' | '.json_encode($query['bindings']))
+            ->countBy()
+            ->filter(fn (int $count): bool => $count > 1)
+            ->sortDesc()
+            ->take(10)
+            ->all();
+
+        Log::info('PERF PageResource edit: query count', [
+            'count' => count($this->pageEditPerfQueries),
+            'duplicates' => $duplicates,
+        ]);
+
+        Log::info('PERF PageResource edit: total query time', [
+            'ms' => round($queryTime, 2),
+            'request_ms' => $this->pageEditPerfStartedAt > 0
+                ? round((hrtime(true) - $this->pageEditPerfStartedAt) / 1_000_000, 2)
+                : null,
+        ]);
+
+        Log::info('PERF PageResource edit: Livewire state bytes', [
+            'raw_state_bytes' => strlen(json_encode($rawState)),
+            'content_bytes' => strlen((string) data_get($rawState, 'content')),
+            'blocks_json_bytes' => strlen(json_encode(data_get($rawState, 'blocks', []))),
+            'block_count' => count(data_get($rawState, 'blocks', []) ?? []),
+        ]);
+    }
 
     public function getExtraBodyAttributes(): array
     {

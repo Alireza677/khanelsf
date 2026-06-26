@@ -18,6 +18,25 @@ class ManageSiteSettings extends Page implements HasForms
     use Forms\Concerns\InteractsWithForms;
     use UsesMediaLibraryImages;
 
+    private const THEME_SIZE_DEFAULTS = [
+        'base_font_size' => '16px',
+        'button_font_size' => '16px',
+        'h1_font_size' => '24px',
+        'h2_font_size' => '22px',
+        'h3_font_size' => '20px',
+        'h4_font_size' => '18px',
+        'button_radius' => '10px',
+        'container_width' => '1200px',
+        'base_font_size_mobile' => '15px',
+        'button_font_size_mobile' => '15px',
+        'h1_font_size_mobile' => '22px',
+        'h2_font_size_mobile' => '20px',
+        'h3_font_size_mobile' => '18px',
+        'h4_font_size_mobile' => '16px',
+        'button_radius_mobile' => '10px',
+        'container_width_mobile' => '343px',
+    ];
+
     protected static ?string $navigationGroup = 'تنظیمات سایت';
 
     protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
@@ -113,7 +132,15 @@ class ManageSiteSettings extends Page implements HasForms
 
     public function mount(SettingsService $settings): void
     {
-        $this->form->fill($settings->many(array_keys($this->settingsMeta))->all());
+        $state = $settings->many(array_keys($this->settingsMeta))->all();
+
+        foreach (self::THEME_SIZE_DEFAULTS as $key => $default) {
+            if (blank($state[$key] ?? null)) {
+                $state[$key] = $default;
+            }
+        }
+
+        $this->form->fill($state);
     }
 
     public function form(Form $form): Form
@@ -634,22 +661,22 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->grouped()
                                     ->hiddenButtonLabels()
                                     ->columnSpanFull(),
-                                $this->fontSizeControl('base_font_size', 'متن‌ها', '16px', 'desktop'),
-                                $this->fontSizeControl('button_font_size', 'دکمه‌ها', '1rem', 'desktop'),
-                                $this->fontSizeControl('h1_font_size', 'H1', '2.5rem', 'desktop'),
-                                $this->fontSizeControl('h2_font_size', 'H2', '2rem', 'desktop'),
-                                $this->fontSizeControl('h3_font_size', 'H3', '1.25rem', 'desktop'),
-                                $this->fontSizeControl('h4_font_size', 'H4', '1.125rem', 'desktop'),
-                                $this->fontSizeControl('button_radius', 'گردی دکمه‌ها', '6px', 'desktop'),
-                                $this->fontSizeControl('container_width', 'عرض محتوا', '1180px', 'desktop'),
-                                $this->fontSizeControl('base_font_size_mobile', 'متن‌ها', '15px', 'mobile'),
-                                $this->fontSizeControl('button_font_size_mobile', 'دکمه‌ها', '0.95rem', 'mobile'),
-                                $this->fontSizeControl('h1_font_size_mobile', 'H1', '2rem', 'mobile'),
-                                $this->fontSizeControl('h2_font_size_mobile', 'H2', '1.75rem', 'mobile'),
-                                $this->fontSizeControl('h3_font_size_mobile', 'H3', '1.2rem', 'mobile'),
-                                $this->fontSizeControl('h4_font_size_mobile', 'H4', '1.05rem', 'mobile'),
-                                $this->fontSizeControl('button_radius_mobile', 'گردی دکمه‌ها', '6px', 'mobile'),
-                                $this->fontSizeControl('container_width_mobile', 'عرض محتوا', '100%', 'mobile'),
+                                $this->fontSizeControl('base_font_size', 'متن‌ها', self::THEME_SIZE_DEFAULTS['base_font_size'], 'desktop'),
+                                $this->fontSizeControl('button_font_size', 'دکمه‌ها', self::THEME_SIZE_DEFAULTS['button_font_size'], 'desktop'),
+                                $this->fontSizeControl('h1_font_size', 'H1', self::THEME_SIZE_DEFAULTS['h1_font_size'], 'desktop'),
+                                $this->fontSizeControl('h2_font_size', 'H2', self::THEME_SIZE_DEFAULTS['h2_font_size'], 'desktop'),
+                                $this->fontSizeControl('h3_font_size', 'H3', self::THEME_SIZE_DEFAULTS['h3_font_size'], 'desktop'),
+                                $this->fontSizeControl('h4_font_size', 'H4', self::THEME_SIZE_DEFAULTS['h4_font_size'], 'desktop'),
+                                $this->fontSizeControl('button_radius', 'گردی دکمه‌ها', self::THEME_SIZE_DEFAULTS['button_radius'], 'desktop'),
+                                $this->fontSizeControl('container_width', 'عرض محتوا', self::THEME_SIZE_DEFAULTS['container_width'], 'desktop'),
+                                $this->fontSizeControl('base_font_size_mobile', 'متن‌ها', self::THEME_SIZE_DEFAULTS['base_font_size_mobile'], 'mobile'),
+                                $this->fontSizeControl('button_font_size_mobile', 'دکمه‌ها', self::THEME_SIZE_DEFAULTS['button_font_size_mobile'], 'mobile'),
+                                $this->fontSizeControl('h1_font_size_mobile', 'H1', self::THEME_SIZE_DEFAULTS['h1_font_size_mobile'], 'mobile'),
+                                $this->fontSizeControl('h2_font_size_mobile', 'H2', self::THEME_SIZE_DEFAULTS['h2_font_size_mobile'], 'mobile'),
+                                $this->fontSizeControl('h3_font_size_mobile', 'H3', self::THEME_SIZE_DEFAULTS['h3_font_size_mobile'], 'mobile'),
+                                $this->fontSizeControl('h4_font_size_mobile', 'H4', self::THEME_SIZE_DEFAULTS['h4_font_size_mobile'], 'mobile'),
+                                $this->fontSizeControl('button_radius_mobile', 'گردی دکمه‌ها', self::THEME_SIZE_DEFAULTS['button_radius_mobile'], 'mobile'),
+                                $this->fontSizeControl('container_width_mobile', 'عرض محتوا', self::THEME_SIZE_DEFAULTS['container_width_mobile'], 'mobile'),
                             ])
                             ->columns(2),
                     ])

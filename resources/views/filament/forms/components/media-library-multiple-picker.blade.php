@@ -3,6 +3,12 @@
     $images = collect($images ?? [])->values();
 @endphp
 
+@once
+    <script>
+        window.__mediaLibraryImageItems = @js($images);
+    </script>
+@endonce
+
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
     <x-slot name="label">{{ $getLabel() }}</x-slot>
 
@@ -11,7 +17,7 @@
             open: false,
             search: '',
             selected: $wire.entangle(@js($statePath)),
-            images: @js($images),
+            images: window.__mediaLibraryImageItems || [],
             isSelected(id) { return (this.selected || []).map(String).includes(String(id)) },
             toggle(id) {
                 const value = String(id)

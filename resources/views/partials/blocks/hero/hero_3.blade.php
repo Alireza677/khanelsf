@@ -52,7 +52,9 @@
                     @foreach ($stats as $stat)
                         <div class="hero-template-3__stat">
                             @if (! empty($stat['icon']))
-                                <span class="hero-template-3__stat-icon">{{ $stat['icon'] }}</span>
+                                <span class="hero-template-3__stat-icon">
+                                    @include('partials.blocks._icon', ['icon' => $stat['icon']])
+                                </span>
                             @endif
                             @if (! empty($stat['value']))
                                 <strong>{{ $stat['value'] }}</strong>

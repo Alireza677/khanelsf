@@ -3,6 +3,12 @@
     $videos = collect($videos ?? [])->values();
 @endphp
 
+@once
+    <script>
+        window.__mediaLibraryVideoItems = @js($videos);
+    </script>
+@endonce
+
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
@@ -16,7 +22,7 @@
             open: false,
             search: '',
             selectedUrl: $wire.entangle(@js($statePath)),
-            videos: @js($videos),
+            videos: window.__mediaLibraryVideoItems || [],
             filteredVideos() {
                 const query = this.search.trim().toLowerCase()
 

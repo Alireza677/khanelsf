@@ -36,8 +36,22 @@ class SettingsServiceTest extends TestCase
         $this->assertSame('#111827', $variables['--theme-secondary']);
         $this->assertSame('#1f2937', $variables['--theme-text']);
         $this->assertSame('#f8fafc', $variables['--theme-background']);
-        $this->assertSame('6px', $variables['--theme-button-radius']);
-        $this->assertSame('1180px', $variables['--theme-container-width']);
+        $this->assertSame('16px', $variables['--theme-base-font-size']);
+        $this->assertSame('16px', $variables['--theme-button-font-size']);
+        $this->assertSame('24px', $variables['--theme-h1-font-size']);
+        $this->assertSame('22px', $variables['--theme-h2-font-size']);
+        $this->assertSame('20px', $variables['--theme-h3-font-size']);
+        $this->assertSame('18px', $variables['--theme-h4-font-size']);
+        $this->assertSame('10px', $variables['--theme-button-radius']);
+        $this->assertSame('1200px', $variables['--theme-container-width']);
+        $this->assertSame('15px', $variables['--theme-base-font-size-mobile']);
+        $this->assertSame('15px', $variables['--theme-button-font-size-mobile']);
+        $this->assertSame('22px', $variables['--theme-h1-font-size-mobile']);
+        $this->assertSame('20px', $variables['--theme-h2-font-size-mobile']);
+        $this->assertSame('18px', $variables['--theme-h3-font-size-mobile']);
+        $this->assertSame('16px', $variables['--theme-h4-font-size-mobile']);
+        $this->assertSame('10px', $variables['--theme-button-radius-mobile']);
+        $this->assertSame('343px', $variables['--theme-container-width-mobile']);
         $this->assertArrayHasKey('--theme-font-family', $variables);
     }
 
@@ -49,7 +63,7 @@ class SettingsServiceTest extends TestCase
         $variables = app(SettingsService::class)->themeVariables();
 
         $this->assertSame('#2563eb', $variables['--theme-primary']);
-        $this->assertSame('6px', $variables['--theme-button-radius']);
+        $this->assertSame('10px', $variables['--theme-button-radius']);
     }
 
     public function test_uploaded_custom_font_can_drive_theme_font_family(): void

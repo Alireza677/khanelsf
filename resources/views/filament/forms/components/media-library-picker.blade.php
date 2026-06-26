@@ -4,6 +4,12 @@
     $images = collect($images ?? [])->values();
 @endphp
 
+@once
+    <script>
+        window.__mediaLibraryImageItems = @js($images);
+    </script>
+@endonce
+
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
@@ -17,7 +23,7 @@
             open: false,
             search: '',
             selected: $wire.entangle(@js($statePath)),
-            images: @js($images),
+            images: window.__mediaLibraryImageItems || [],
             get selectedImage() {
                 return this.images.find((image) => String(image.id) === String(this.selected)) || null
             },

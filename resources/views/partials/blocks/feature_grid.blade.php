@@ -80,7 +80,9 @@
                         @if ($itemsMode === 'static') style="{{ \App\Support\BlockImageStyle::imageVariables($item, 'image') }}" @endif
                     >
                 @elseif (! empty($item['icon']))
-                    <div class="block-card__icon">{{ $item['icon'] }}</div>
+                    <div class="block-card__icon">
+                        @include('partials.blocks._icon', ['icon' => $item['icon']])
+                    </div>
                 @endif
 
                 @if (! empty($item['title']))

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\PageResource\Pages;
@@ -18,10 +19,12 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PageResource extends Resource
 {
+    use UsesIconsaxIconPicker;
     use UsesMediaLibraryImages;
     use UsesPersianResourceLabels;
 
@@ -35,7 +38,9 @@ class PageResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form->schema([
+        $startedAt = hrtime(true);
+
+        return tap($form->schema([
             Forms\Components\Tabs::make('ویرایشگر برگه')
                 ->tabs([
                     Forms\Components\Tabs\Tab::make('محتوا')
@@ -95,10 +100,11 @@ class PageResource extends Resource
                                                 ->maxLength(255)
                                                 ->helperText('یک برچسب کوتاه اختیاری بالای عنوان.')
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
-                                            Forms\Components\TextInput::make('hero_1_eyebrow_icon')
-                                                ->label('آیکن برچسب')
-                                                ->maxLength(80)
-                                                ->helperText('متن کوتاه یا نماد اختیاری کنار برچسب بالای عنوان.')
+                                            static::iconsaxIconPicker(
+                                                'hero_1_eyebrow_icon',
+                                                'آیکن برچسب',
+                                                'یک آیکن Iconsax اختیاری کنار برچسب بالای عنوان.'
+                                            )
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                                             Forms\Components\Select::make('hero_1_theme')
                                                 ->label('نمای هیرو ۱')
@@ -261,10 +267,7 @@ class PageResource extends Resource
                                                     Forms\Components\TextInput::make('description')
                                                         ->label('توضیحات')
                                                         ->maxLength(160),
-                                                    Forms\Components\TextInput::make('icon')
-                                                        ->label('آیکن')
-                                                        ->maxLength(80)
-                                                        ->helperText('متن کوتاه یا نماد اختیاری برای آیکن.'),
+                                                    static::iconsaxIconPicker('icon', 'آیکن'),
                                                 ])
                                                 ->defaultItems(0)
                                                 ->helperText('فقط برای هیرو ۳. کارت‌های آماری اختیاری زیر دکمه‌ها.')
@@ -283,10 +286,7 @@ class PageResource extends Resource
                                                         ->label('لینک')
                                                         ->required()
                                                         ->maxLength(255),
-                                                    Forms\Components\TextInput::make('icon')
-                                                        ->label('آیکن')
-                                                        ->maxLength(80)
-                                                        ->helperText('متن کوتاه، نماد یا نام آیکن برای نمایش داخل دکمه.'),
+                                                    static::iconsaxIconPicker('icon', 'آیکن'),
                                                 ])
                                                 ->defaultItems(0)
                                                 ->helperText('برای دکمه‌های کوچک پایین هیرو مثل ایمیل، لینکدین یا گیت‌هاب.')
@@ -426,10 +426,7 @@ class PageResource extends Resource
                                                         ->label('عنوان')
                                                         ->required()
                                                         ->maxLength(255),
-                                                    Forms\Components\TextInput::make('icon')
-                                                        ->label('آیکن')
-                                                        ->maxLength(80)
-                                                        ->helperText('فعلا متن کوتاه یا نام آیکن را وارد کنید.'),
+                                                    static::iconsaxIconPicker('icon', 'آیکن'),
                                                     Forms\Components\ViewField::make('image')
                                                         ->label('تصویر')
                                                         ->view('filament.forms.components.media-library-url-picker')
@@ -846,7 +843,11 @@ class PageResource extends Resource
                         ->columns(2),
                 ])
                 ->columnSpanFull(),
-        ]);
+        ]), function () use ($startedAt): void {
+            static::logPageEditPerf('form build ms', [
+                'ms' => round((hrtime(true) - $startedAt) / 1_000_000, 2),
+            ]);
+        });
     }
 
     public static function table(Table $table): Table
@@ -1150,5 +1151,14 @@ class PageResource extends Resource
                 ->maxLength(255)
                 ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
         ];
+    }
+
+    protected static function logPageEditPerf(string $label, array $context = []): void
+    {
+        if (! request()->routeIs('filament.admin.resources.pages.edit')) {
+            return;
+        }
+
+        Log::info("PERF PageResource edit: {$label}", $context);
     }
 }

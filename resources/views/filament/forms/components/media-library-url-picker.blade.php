@@ -5,6 +5,12 @@
     $isBlockImageField = str_contains($statePath, 'blocks.');
 @endphp
 
+@once
+    <script>
+        window.__mediaLibraryImageItems = @js($images);
+    </script>
+@endonce
+
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
@@ -19,7 +25,7 @@
             search: '',
             selectedUrl: $wire.entangle(@js($statePath)),
             placeholderUrl: @js($placeholderUrl),
-            images: @js($images),
+            images: window.__mediaLibraryImageItems || [],
             previewUrl() {
                 return this.selectedUrl || this.placeholderUrl || ''
             },

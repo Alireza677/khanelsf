@@ -30,7 +30,7 @@ img {
 
 .container {
     margin: 0 auto;
-    max-width: var(--theme-container-width, 1180px);
+    max-width: var(--theme-container-width, 1200px);
     padding: 0 1rem;
 }
 
@@ -81,7 +81,7 @@ img {
     align-items: center;
     background: transparent;
     border: 1px solid #d1d5db;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     color: var(--theme-heading, #111827);
     cursor: pointer;
     display: none;
@@ -190,7 +190,7 @@ img {
 .site-nav li ul {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     box-shadow: 0 18px 40px rgba(15, 23, 42, .12);
     display: none;
     right: 0;
@@ -225,7 +225,7 @@ img {
     align-items: center;
     background: var(--theme-primary, #2563eb);
     border: 0;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     color: #fff;
     cursor: pointer;
     display: inline-flex;
@@ -268,7 +268,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .home-hero {
     background: #eef2ff;
     border: 1px solid #dbe3ff;
-    border-radius: calc(var(--theme-button-radius, 6px) + 2px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 2px);
     display: grid;
     gap: 2rem;
     grid-template-columns: minmax(0, 1.3fr) minmax(260px, .7fr);
@@ -296,7 +296,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .home-hero__image {
     align-self: stretch;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     min-height: 240px;
     object-fit: cover;
     width: 100%;
@@ -317,13 +317,13 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .content-block--muted {
     background: rgba(241, 245, 249, .85);
     border: 1px solid #e5e7eb;
-    border-radius: calc(var(--theme-button-radius, 6px) + 2px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 2px);
     padding: 2rem;
 }
 
 .content-block--dark {
     background: var(--theme-secondary, #111827);
-    border-radius: calc(var(--theme-button-radius, 6px) + 2px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 2px);
     color: #e5e7eb;
     padding: 2rem;
 }
@@ -351,7 +351,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .block-hero {
     background: #eef2ff;
     border: 1px solid #dbe3ff;
-    border-radius: calc(var(--theme-button-radius, 6px) + 2px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 2px);
     display: grid;
     gap: 2rem;
     grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
@@ -375,7 +375,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .block-hero__image {
     align-self: stretch;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     min-height: 260px;
     object-fit: cover;
     width: 100%;
@@ -675,7 +675,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .hero-template-2__inner {
     margin: 0 auto;
-    max-width: var(--theme-container-width, 1180px);
+    max-width: var(--theme-container-width, 1200px);
     width: 100%;
 }
 
@@ -913,7 +913,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .hero-template-3__stats {
     background: rgba(255, 255, 255, .92);
     border: 1px solid #e2e8f0;
-    border-radius: calc(var(--theme-button-radius, 6px) + 8px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 8px);
     box-shadow: 0 18px 48px rgba(15, 23, 42, .08);
     display: grid;
     gap: 0;
@@ -1027,7 +1027,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .block-card {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     box-shadow: 0 12px 28px rgba(15, 23, 42, .05);
     margin: 0;
     padding: 1.25rem;
@@ -1035,7 +1035,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .block-card img {
     aspect-ratio: 16 / 10;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     margin-bottom: 1rem;
     object-fit: cover;
     width: 100%;
@@ -1178,7 +1178,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .block-cta {
     align-items: center;
     background: var(--theme-secondary, #111827);
-    border-radius: calc(var(--theme-button-radius, 6px) + 2px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 2px);
     color: #e5e7eb;
     display: flex;
     gap: 1.5rem;
@@ -1284,7 +1284,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .block-faq {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     padding: 1rem 1.25rem;
 }
 
@@ -1307,7 +1307,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .block-gallery img {
     aspect-ratio: 4 / 3;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     object-fit: cover;
     width: 100%;
 }
@@ -1330,7 +1330,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .gallery-video {
     aspect-ratio: 16 / 9;
     background: #0f172a;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     overflow: hidden;
 }
 
@@ -1344,7 +1344,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     align-items: center;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     display: grid;
     gap: 1rem;
     grid-template-columns: minmax(180px, .45fr) 1fr;
@@ -1353,7 +1353,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .gallery-video-card img {
     aspect-ratio: 16 / 9;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     object-fit: cover;
     width: 100%;
 }
@@ -1379,7 +1379,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 }
 
 .gallery-lightbox img {
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
     max-height: 88vh;
     max-width: min(1100px, 92vw);
@@ -1461,7 +1461,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .post-card {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
     display: flex;
     flex-direction: column;
@@ -1546,7 +1546,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .empty-state {
     background: #fff;
     border: 1px dashed #cbd5e1;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     color: #64748b;
     grid-column: 1 / -1;
     margin: 0;
@@ -1603,7 +1603,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .archive-header__inner {
     margin: 0 auto;
-    max-width: var(--theme-container-width, 1180px);
+    max-width: var(--theme-container-width, 1200px);
     width: 100%;
 }
 
@@ -1735,7 +1735,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     .shop-template__hero-inner {
         @apply mx-auto grid w-full justify-items-start;
         gap: 1.1rem;
-        max-width: var(--theme-container-width, 1180px);
+        max-width: var(--theme-container-width, 1200px);
     }
 
     .shop-template__copy {
@@ -2244,7 +2244,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 }
 
 .project-detail__image {
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     margin: 1.5rem 0;
     max-height: 520px;
     object-fit: cover;
@@ -2261,7 +2261,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .project-meta div {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     padding: 1rem;
 }
 
@@ -2333,7 +2333,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     align-items: end;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
@@ -2355,7 +2355,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     align-items: center;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     display: grid;
     gap: 1rem;
     grid-template-columns: 2fr .8fr 1fr .8fr auto;
@@ -2375,7 +2375,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .cart-summary {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     margin: 1rem 0;
     padding: 1rem;
 }
@@ -2397,7 +2397,7 @@ option {
 input,
 textarea {
     border: 1px solid #cbd5e1;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     box-sizing: border-box;
     padding: .5rem;
     width: 100%;
@@ -2422,7 +2422,7 @@ input[name*="email"] {
 .form-card {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: calc(var(--theme-button-radius, 6px) + 2px);
+    border-radius: calc(var(--theme-button-radius, 10px) + 2px);
     box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
     display: grid;
     gap: 1rem;
@@ -2455,7 +2455,7 @@ input[name*="email"] {
 .form-status {
     background: #ecfdf5;
     border: 1px solid #bbf7d0;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     color: #166534;
     padding: .75rem 1rem;
 }
@@ -2463,7 +2463,7 @@ input[name*="email"] {
 .form-error {
     background: #fef2f2;
     border: 1px solid #fecaca;
-    border-radius: var(--theme-button-radius, 6px);
+    border-radius: var(--theme-button-radius, 10px);
     color: #991b1b;
     padding: .75rem 1rem;
 }
@@ -2539,7 +2539,7 @@ input[name*="email"] {
     .site-nav {
         background: #fff;
         border: 1px solid #e5e7eb;
-        border-radius: var(--theme-button-radius, 6px);
+        border-radius: var(--theme-button-radius, 10px);
         box-shadow: 0 18px 40px rgba(15, 23, 42, .12);
         display: none;
         grid-column: 1 / -1;
@@ -2737,7 +2737,7 @@ input[name*="email"] {
 
     .hero-template-3__media img,
     .hero-template-3--left .hero-template-3__media img {
-        border-radius: var(--theme-button-radius, 6px);
+        border-radius: var(--theme-button-radius, 10px);
     }
 
     .hero-template-3__media::before,
@@ -2853,19 +2853,19 @@ body select {
 }
 
 body h1 {
-    font-size: var(--theme-h1-font-size, 2.5rem) !important;
+    font-size: var(--theme-h1-font-size, 24px) !important;
 }
 
 body h2 {
-    font-size: var(--theme-h2-font-size, 2rem) !important;
+    font-size: var(--theme-h2-font-size, 22px) !important;
 }
 
 body h3 {
-    font-size: var(--theme-h3-font-size, 1.25rem) !important;
+    font-size: var(--theme-h3-font-size, 20px) !important;
 }
 
 body h4 {
-    font-size: var(--theme-h4-font-size, 1.125rem) !important;
+    font-size: var(--theme-h4-font-size, 18px) !important;
 }
 
 body .button,
@@ -2873,16 +2873,16 @@ body .header-cta,
 body button,
 body input[type="button"],
 body input[type="submit"] {
-    font-size: var(--theme-button-font-size, 1rem);
+    font-size: var(--theme-button-font-size, 16px);
 }
 
 @media (max-width: 560px) {
     .container {
-        max-width: var(--theme-container-width-mobile, 100%);
+        max-width: var(--theme-container-width-mobile, 343px);
     }
 
     body {
-        font-size: var(--theme-base-font-size-mobile, var(--theme-base-font-size, 16px));
+        font-size: var(--theme-base-font-size-mobile, 15px);
     }
 
     body p,
@@ -2891,23 +2891,23 @@ body input[type="submit"] {
     body input,
     body textarea,
     body select {
-        font-size: var(--theme-base-font-size-mobile, var(--theme-base-font-size, 16px));
+        font-size: var(--theme-base-font-size-mobile, 15px);
     }
 
     body h1 {
-        font-size: var(--theme-h1-font-size-mobile, var(--theme-h1-font-size, 2.5rem)) !important;
+        font-size: var(--theme-h1-font-size-mobile, 22px) !important;
     }
 
     body h2 {
-        font-size: var(--theme-h2-font-size-mobile, var(--theme-h2-font-size, 2rem)) !important;
+        font-size: var(--theme-h2-font-size-mobile, 20px) !important;
     }
 
     body h3 {
-        font-size: var(--theme-h3-font-size-mobile, var(--theme-h3-font-size, 1.25rem)) !important;
+        font-size: var(--theme-h3-font-size-mobile, 18px) !important;
     }
 
     body h4 {
-        font-size: var(--theme-h4-font-size-mobile, var(--theme-h4-font-size, 1.125rem)) !important;
+        font-size: var(--theme-h4-font-size-mobile, 16px) !important;
     }
 
     body .button,
@@ -2915,7 +2915,7 @@ body input[type="submit"] {
     body button,
     body input[type="button"],
     body input[type="submit"] {
-        border-radius: var(--theme-button-radius-mobile, var(--theme-button-radius, 6px));
-        font-size: var(--theme-button-font-size-mobile, var(--theme-button-font-size, 1rem));
+        border-radius: var(--theme-button-radius-mobile, 10px);
+        font-size: var(--theme-button-font-size-mobile, 15px);
     }
 }

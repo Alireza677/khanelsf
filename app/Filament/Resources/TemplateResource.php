@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\TemplateResource\Pages;
@@ -25,6 +26,7 @@ use Illuminate\Support\Str;
 
 class TemplateResource extends Resource
 {
+    use UsesIconsaxIconPicker;
     use UsesMediaLibraryImages;
     use UsesPersianResourceLabels;
 
@@ -427,9 +429,7 @@ class TemplateResource extends Resource
                         ->default('default')
                         ->live(),
                     Forms\Components\TextInput::make('eyebrow')->maxLength(255),
-                    Forms\Components\TextInput::make('hero_1_eyebrow_icon')
-                        ->label('Eyebrow icon')
-                        ->maxLength(80)
+                    static::iconsaxIconPicker('hero_1_eyebrow_icon', 'Eyebrow icon')
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
                     Forms\Components\Select::make('hero_1_theme')
                         ->label('Hero 1 appearance')
@@ -516,7 +516,7 @@ class TemplateResource extends Resource
                             Forms\Components\TextInput::make('value')->required()->maxLength(80),
                             Forms\Components\TextInput::make('label')->required()->maxLength(120),
                             Forms\Components\TextInput::make('description')->maxLength(160),
-                            Forms\Components\TextInput::make('icon')->maxLength(80),
+                            static::iconsaxIconPicker('icon', 'Icon'),
                         ])
                         ->columns(4)
                         ->columnSpanFull()
@@ -526,7 +526,7 @@ class TemplateResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('label')->required()->maxLength(120),
                             Forms\Components\TextInput::make('url')->required()->maxLength(255),
-                            Forms\Components\TextInput::make('icon')->maxLength(80),
+                            static::iconsaxIconPicker('icon', 'Icon'),
                         ])
                         ->columns(3)
                         ->columnSpanFull()
@@ -557,7 +557,7 @@ class TemplateResource extends Resource
                         ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'Item')
                         ->schema([
                             Forms\Components\TextInput::make('title')->required()->maxLength(255),
-                            Forms\Components\TextInput::make('icon')->maxLength(80),
+                            static::iconsaxIconPicker('icon', 'Icon'),
                             Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
                         ])
                         ->columnSpanFull()

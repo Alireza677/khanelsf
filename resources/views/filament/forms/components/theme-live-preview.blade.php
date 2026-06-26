@@ -34,10 +34,10 @@
             value(value, fallback) {
                 return value && String(value).trim() ? value : fallback
             },
-            size(desktop, mobile, fallback) {
+            size(desktop, mobile, desktopFallback, mobileFallback = desktopFallback) {
                 return this.sizeDevice === 'mobile'
-                    ? this.value(mobile, this.value(desktop, fallback))
-                    : this.value(desktop, fallback)
+                    ? this.value(mobile, mobileFallback)
+                    : this.value(desktop, desktopFallback)
             },
             fontFamily() {
                 if (this.fontFamilyValue === 'serif') {
@@ -63,7 +63,7 @@
 
         <div
             class="space-y-4 p-5 transition-all"
-            x-bind:class="sizeDevice === 'mobile' ? 'mx-auto max-w-[360px]' : 'max-w-none'"
+            x-bind:class="sizeDevice === 'mobile' ? 'mx-auto max-w-[343px]' : 'max-w-none'"
             x-bind:style="{
                 backgroundColor: value(backgroundColor, '#f8fafc'),
                 color: value(textColor, '#1f2937'),
@@ -73,25 +73,25 @@
             <div class="space-y-2">
                 <h1
                     class="m-0 font-black leading-tight"
-                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h1FontSize, h1FontSizeMobile, '2.5rem') }"
+                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h1FontSize, h1FontSizeMobile, '24px', '22px') }"
                 >
                     عنوان اصلی H1
                 </h1>
                 <h2
                     class="m-0 font-extrabold leading-tight"
-                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h2FontSize, h2FontSizeMobile, '2rem') }"
+                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h2FontSize, h2FontSizeMobile, '22px', '20px') }"
                 >
                     عنوان بخش H2
                 </h2>
                 <h3
                     class="m-0 font-bold leading-snug"
-                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h3FontSize, h3FontSizeMobile, '1.25rem') }"
+                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h3FontSize, h3FontSizeMobile, '20px', '18px') }"
                 >
                     زیرعنوان H3
                 </h3>
                 <h4
                     class="m-0 font-bold leading-snug"
-                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h4FontSize, h4FontSizeMobile, '1.125rem') }"
+                    x-bind:style="{ color: value(secondaryColor, '#111827'), fontSize: size(h4FontSize, h4FontSizeMobile, '18px', '16px') }"
                 >
                     تیتر کوچک H4
                 </h4>
@@ -99,7 +99,7 @@
 
             <p
                 class="m-0 leading-8"
-                x-bind:style="{ color: value(textColor, '#1f2937'), fontSize: size(baseFontSize, baseFontSizeMobile, '16px') }"
+                x-bind:style="{ color: value(textColor, '#1f2937'), fontSize: size(baseFontSize, baseFontSizeMobile, '16px', '15px') }"
             >
                 این متن نمونه برای بررسی اندازه متن‌های عمومی، رنگ متن و
                 <a href="#" class="font-bold underline underline-offset-4" x-bind:style="{ color: value(linkColor, '#2563eb') }">رنگ لینک‌های داخل متن</a>
@@ -112,8 +112,8 @@
                     class="inline-flex min-h-11 items-center justify-center px-4 font-bold text-white no-underline"
                     x-bind:style="{
                         backgroundColor: value(primaryColor, '#2563eb'),
-                        borderRadius: size(buttonRadius, buttonRadiusMobile, '6px'),
-                        fontSize: size(buttonFontSize, buttonFontSizeMobile, '1rem'),
+                        borderRadius: size(buttonRadius, buttonRadiusMobile, '10px', '10px'),
+                        fontSize: size(buttonFontSize, buttonFontSizeMobile, '16px', '15px'),
                     }"
                 >
                     دکمه اصلی
