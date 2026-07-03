@@ -109,6 +109,11 @@ class SettingsService
         return (string) ($this->get('default_meta_description') ?: '');
     }
 
+    public function googleSiteVerification(): ?string
+    {
+        return $this->nullableString('google_site_verification');
+    }
+
     public function siteDescription(): ?string
     {
         return $this->nullableString('site_description');

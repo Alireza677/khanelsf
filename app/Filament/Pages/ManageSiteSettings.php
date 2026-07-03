@@ -72,6 +72,7 @@ class ManageSiteSettings extends Page implements HasForms
         'site_title' => ['seo', 'text'],
         'default_meta_description' => ['seo', 'textarea'],
         'default_og_image' => ['seo', 'image'],
+        'google_site_verification' => ['seo', 'text'],
         'robots_disallow' => ['seo', 'text'],
         'robots_txt' => ['seo', 'textarea'],
         'sitemap_enabled' => ['seo', 'boolean'],
@@ -255,6 +256,12 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->visibility('public')
                                     ->image()
                                     ->imageEditor()
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('google_site_verification')
+                                    ->label('کد تأیید Google Search Console')
+                                    ->placeholder('مثلا: abc123xyz...')
+                                    ->helperText('کد content متاتگ google-site-verification را از سرچ کنسول وارد کنید. نیازی به وارد کردن کل تگ meta نیست.')
+                                    ->maxLength(255)
                                     ->columnSpanFull(),
                                 Forms\Components\TextInput::make('robots_disallow')
                                     ->label('مسیر ممنوع برای ربات‌ها')
@@ -769,7 +776,11 @@ class ManageSiteSettings extends Page implements HasForms
 
         try {
             foreach ($this->settingsMeta as $key => [$group, $type]) {
-                $settings->set($key, $this->normalizeValue($state[$key] ?? null), $group, $type);
+                $value = $key === 'google_site_verification'
+                    ? $this->normalizeGoogleSiteVerification($state[$key] ?? null)
+                    : $this->normalizeValue($state[$key] ?? null);
+
+                $settings->set($key, $value, $group, $type);
             }
 
             // TEMP DEBUG - remove after production save issue is fixed.
@@ -863,6 +874,32 @@ class ManageSiteSettings extends Page implements HasForms
     {
         if (is_array($value)) {
             return collect($value)->filter()->first();
+        }
+
+        return $value;
+    }
+
+    public function normalizeGoogleSiteVerification(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if (preg_match('/<meta\b[^>]*>/i', $value, $meta)
+            && preg_match('/\bname\s*=\s*(["\'])google-site-verification\1/i', $meta[0])) {
+            if (preg_match('/\bcontent\s*=\s*(["\'])(.*?)\1/is', $meta[0], $content)) {
+                $value = $content[2];
+            } elseif (preg_match('/\bcontent\s*=\s*([^\s>]+)/i', $meta[0], $content)) {
+                $value = $content[1];
+            }
+        }
+
+        $value = trim(strip_tags(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+
+        if ($value === '' || strlen($value) > 255 || ! preg_match('/^[A-Za-z0-9_-]+$/', $value)) {
+            return null;
         }
 
         return $value;

@@ -7,6 +7,9 @@
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if ($googleSiteVerification = app(\App\Services\SettingsService::class)->googleSiteVerification())
+        <meta name="google-site-verification" content="{{ $googleSiteVerification }}">
+    @endif
     <title>{{ $seo->metaTitle() }}</title>
     @if ($seo->metaDescription())
         <meta name="description" content="{{ $seo->metaDescription() }}">

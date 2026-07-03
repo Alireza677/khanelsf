@@ -32,6 +32,25 @@ class PublicRoutesTest extends TestCase
             ->assertSee('name="robots"', false);
     }
 
+    public function test_homepage_head_contains_escaped_google_site_verification(): void
+    {
+        Page::factory()->published()->create(['slug' => 'home', 'title' => 'Home']);
+        Setting::query()->create([
+            'key' => 'google_site_verification',
+            'value' => 'abc123&amp;quot;',
+            'group' => 'seo',
+            'type' => 'text',
+        ]);
+
+        $response = $this->get('/')->assertOk();
+
+        $response->assertSee('<meta name="google-site-verification" content="abc123&amp;amp;quot;">', false);
+        $this->assertLessThan(
+            strpos($response->getContent(), '</head>'),
+            strpos($response->getContent(), 'name="google-site-verification"'),
+        );
+    }
+
     public function test_featured_module_blocks_do_not_break_when_modules_are_disabled(): void
     {
         Page::factory()->published()->create([

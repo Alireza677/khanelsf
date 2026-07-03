@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ارتباط با سرور برقرار نشد</title>
+
+    <style>
+        :root {
+            --bg: #f7f8fb;
+            --card: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --primary: #0f766e;
+            --primary-light: #ccfbf1;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Tahoma, Arial, sans-serif;
+            background:
+                radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 35%),
+                radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.10), transparent 30%),
+                var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.10);
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 34px 34px 20px;
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .icon {
+            width: 58px;
+            height: 58px;
+            border-radius: 20px;
+            background: #fee2e2;
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .icon svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 28px;
+            line-height: 1.6;
+            letter-spacing: -0.5px;
+        }
+
+        .lead {
+            margin: 0;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 2;
+        }
+
+        .content {
+            padding: 0 34px 34px;
+        }
+
+        .status {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 26px 0;
+        }
+
+        .status-item {
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .status-title {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .status-value {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .ok {
+            color: var(--primary);
+        }
+
+        .error {
+            color: var(--danger);
+        }
+
+        .box {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+
+        .box h2 {
+            font-size: 17px;
+            margin: 0 0 12px;
+        }
+
+        .box p,
+        .box li {
+            font-size: 14px;
+            line-height: 2;
+            color: #374151;
+        }
+
+        .box ul {
+            margin: 0;
+            padding-right: 20px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 14px;
+            padding: 13px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #eef2f7;
+            color: #111827;
+        }
+
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 18px 34px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.8;
+            background: rgba(249, 250, 251, 0.8);
+        }
+
+        .code {
+            direction: ltr;
+            display: inline-block;
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 2px 8px;
+            font-family: Consolas, monospace;
+            color: #374151;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 14px;
+            }
+
+            .header {
+                flex-direction: column;
+                padding: 26px 22px 14px;
+            }
+
+            .content {
+                padding: 0 22px 26px;
+            }
+
+            .status {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 23px;
+            }
+
+            .footer {
+                padding: 16px 22px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <section class="card">
+        <div class="header">
+            <div class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+
+            <div>
+                <h1>ارتباط با سرور برقرار نشد</h1>
+                <p class="lead">
+                    متأسفانه در حال حاضر ارتباط با سرور اصلی سایت کامل برقرار نشده است.
+                    این مشکل معمولاً موقتی است و ممکن است به دلیل اختلال اینترنت، VPN، شلوغی سرور
+                    یا مسیر ارتباطی بین شبکه شما و سرور ایجاد شده باشد.
+                </p>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-title">مرورگر شما</div>
+                    <div class="status-value ok">فعال است</div>
+                </div>
+
+                <div class="status-item">
+                    <div class="status-title">شبکه واسط</div>
+                    <div class="status-value ok">فعال است</div>
+                </div>
+
+                <div class="status-item">
+                    <div class="status-title">سرور سایت</div>
+                    <div class="status-value error">پاسخ نمی‌دهد</div>
+                </div>
+            </div>
+
+            <div class="box">
+                <h2>چه کاری انجام دهم؟</h2>
+                <ul>
+                    <li>چند دقیقه دیگر دوباره صفحه را باز کنید.</li>
+                    <li>اگر از VPN استفاده می‌کنید، آن را خاموش کنید یا سرور VPN را تغییر دهید.</li>
+                    <li>اتصال اینترنت خود را بررسی کنید.</li>
+                    <li>اگر مشکل ادامه داشت، با پشتیبانی سایت تماس بگیرید.</li>
+                </ul>
+            </div>
+
+            <div class="box">
+                <h2>توضیح فنی</h2>
+                <p>
+                    این خطا معمولاً زمانی رخ می‌دهد که مرورگر و شبکه واسط فعال هستند،
+                    اما سرور اصلی سایت در زمان مناسب پاسخ نمی‌دهد.
+                    کد خطا: <span class="code">522 Connection Timed Out</span>
+                </p>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" onclick="window.location.reload()">
+                    تلاش دوباره
+                </button>
+
+                <a class="btn btn-secondary" href="/">
+                    بازگشت به صفحه اصلی
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            اگر مدیر سایت هستید، وضعیت Nginx، PHP-FPM، دیتابیس، منابع سرور، فایروال و اتصال Cloudflare به سرور اصلی را بررسی کنید.
+        </div>
+    </section>
+</main>
+</body>
+</html>
