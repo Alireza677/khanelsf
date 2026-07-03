@@ -31,11 +31,7 @@ class MediaResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->contentGrid(fn (ListMedia $livewire): ?array => $livewire->mediaView === 'grid'
                 ? [
-                    'default' => 1,
-                    'sm' => 2,
-                    'md' => 3,
-                    'lg' => 4,
-                    'xl' => 5,
+                    'default' => 5,
                 ]
                 : null)
             ->columns([

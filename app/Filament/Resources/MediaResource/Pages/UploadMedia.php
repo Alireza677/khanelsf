@@ -12,6 +12,7 @@ use Filament\Resources\Pages\Page;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 class UploadMedia extends Page implements HasForms
@@ -26,6 +27,9 @@ class UploadMedia extends Page implements HasForms
 
     public ?array $data = [];
 
+    /** @var array<int, string> */
+    public array $duplicateFileNames = [];
+
     public function mount(): void
     {
         $this->form->fill();
@@ -39,6 +43,8 @@ class UploadMedia extends Page implements HasForms
                     ->label('فایل‌ها')
                     ->multiple()
                     ->required()
+                    ->live()
+                    ->afterStateUpdated(fn ($state) => $this->detectDuplicateFileNames($state ?? []))
                     ->disk('public')
                     ->visibility('public')
                     ->storeFiles(false)
@@ -89,10 +95,15 @@ class UploadMedia extends Page implements HasForms
             }
 
             $uploadedCount = 0;
+            $usedFileNames = Media::query()
+                ->pluck('file_name')
+                ->mapWithKeys(fn (string $fileName): array => [mb_strtolower($fileName) => true])
+                ->all();
 
             foreach ($files as $file) {
                 if ($file instanceof TemporaryUploadedFile) {
-                    $fileName = $file->getClientOriginalName();
+                    $originalFileName = $file->getClientOriginalName();
+                    $fileName = $this->uniqueFileName($originalFileName, $usedFileNames);
 
                     $user
                         ->addMedia($file->getRealPath())
@@ -107,7 +118,8 @@ class UploadMedia extends Page implements HasForms
                 }
 
                 if (is_string($file) && Storage::disk('public')->exists($file)) {
-                    $fileName = basename($file);
+                    $originalFileName = basename($file);
+                    $fileName = $this->uniqueFileName($originalFileName, $usedFileNames);
 
                     $user
                         ->addMediaFromDisk($file, 'public')
@@ -145,6 +157,67 @@ class UploadMedia extends Page implements HasForms
                 ->danger()
                 ->send();
         }
+    }
+
+    /**
+     * @param  array<int|string, TemporaryUploadedFile|string>  $files
+     */
+    private function detectDuplicateFileNames(array $files): void
+    {
+        $fileNames = collect($files)
+            ->map(function (TemporaryUploadedFile|string $file): string {
+                return $file instanceof TemporaryUploadedFile
+                    ? $file->getClientOriginalName()
+                    : basename($file);
+            })
+            ->filter()
+            ->values();
+
+        $selectedCounts = $fileNames
+            ->map(fn (string $fileName): string => mb_strtolower($fileName))
+            ->countBy();
+
+        $existingFileNames = Media::query()
+            ->whereIn('file_name', $fileNames->all())
+            ->pluck('file_name')
+            ->map(fn (string $fileName): string => mb_strtolower($fileName))
+            ->flip();
+
+        $this->duplicateFileNames = $fileNames
+            ->filter(fn (string $fileName): bool =>
+                $existingFileNames->has(mb_strtolower($fileName)) ||
+                $selectedCounts->get(mb_strtolower($fileName), 0) > 1
+            )
+            ->unique(fn (string $fileName): string => mb_strtolower($fileName))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, bool>  $usedFileNames
+     */
+    private function uniqueFileName(string $fileName, array &$usedFileNames): string
+    {
+        $normalizedFileName = mb_strtolower($fileName);
+
+        if (! isset($usedFileNames[$normalizedFileName])) {
+            $usedFileNames[$normalizedFileName] = true;
+
+            return $fileName;
+        }
+
+        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $name = pathinfo($fileName, PATHINFO_FILENAME);
+        $suffix = 1;
+
+        do {
+            $candidate = $name.'-'.$suffix.($extension !== '' ? '.'.$extension : '');
+            $suffix++;
+        } while (isset($usedFileNames[mb_strtolower($candidate)]));
+
+        $usedFileNames[mb_strtolower($candidate)] = true;
+
+        return $candidate;
     }
 
     protected function getHeaderActions(): array
