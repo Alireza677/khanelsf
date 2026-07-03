@@ -437,6 +437,27 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     color: #475569;
 }
 
+.hero-template-1--animated-dotted-surface {
+    background:
+        radial-gradient(circle at 50% 15%, rgba(30, 64, 175, .24), transparent 42%),
+        linear-gradient(145deg, #020617, #0f172a 58%, #111827);
+    isolation: isolate;
+}
+
+.hero-dotted-surface {
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+}
+
+.hero-dotted-surface canvas {
+    display: block;
+    height: 100% !important;
+    width: 100% !important;
+}
+
 .hero-template-1::before {
     background:
         radial-gradient(circle at 50% 20%, rgba(255, 255, 255, .18), transparent 34%),
@@ -445,6 +466,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     inset: 0;
     pointer-events: none;
     position: absolute;
+    z-index: 1;
 }
 
 .hero-template-1--light-grid::before {
@@ -457,7 +479,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     margin: 0 auto;
     max-width: min(1120px, 100%);
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 .hero-template-1__eyebrow {

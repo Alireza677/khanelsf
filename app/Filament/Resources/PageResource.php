@@ -113,10 +113,39 @@ class PageResource extends Resource
                                                 ->options([
                                                     'image' => 'تصویر تیره',
                                                     'light_grid' => 'روشن شبکه‌ای',
+                                                    'animated_dotted_surface' => 'پس‌زمینه نقطه‌ای متحرک',
                                                 ])
                                                 ->default('image')
+                                                ->live()
                                                 ->helperText('حالت روشن شبکه‌ای برای هیروهایی شبیه نمونه ارسالی است. حالت تصویر تیره با نسخه قبلی سازگار می‌ماند.')
                                                 ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                                            Forms\Components\Section::make('تنظیمات پس‌زمینه متحرک')
+                                                ->schema([
+                                                    Forms\Components\Toggle::make('animated_background_enabled')
+                                                        ->label('فعال‌سازی پس‌زمینه متحرک')
+                                                        ->default(true),
+                                                    Forms\Components\Toggle::make('animated_background_interactive')
+                                                        ->label('واکنش به حرکت موس')
+                                                        ->default(true),
+                                                    Forms\Components\Select::make('animated_background_density')
+                                                        ->label('تراکم نقاط')
+                                                        ->options(['low' => 'سبک', 'medium' => 'متوسط', 'high' => 'زیاد'])
+                                                        ->default('medium'),
+                                                    Forms\Components\Select::make('animated_background_speed')
+                                                        ->label('سرعت حرکت')
+                                                        ->options(['slow' => 'آرام', 'normal' => 'معمولی', 'fast' => 'سریع'])
+                                                        ->default('slow'),
+                                                    Forms\Components\TextInput::make('animated_background_opacity')
+                                                        ->label('شفافیت نقاط')
+                                                        ->numeric()
+                                                        ->minValue(0.1)
+                                                        ->maxValue(1)
+                                                        ->step(0.05)
+                                                        ->default(0.45),
+                                                ])
+                                                ->columns(2)
+                                                ->columnSpanFull()
+                                                ->visible(fn (Get $get): bool => $get('template') === 'hero_1' && $get('hero_1_theme') === 'animated_dotted_surface'),
                                             Forms\Components\TextInput::make('hero_1_title_second_line')
                                                 ->label('خط دوم عنوان')
                                                 ->maxLength(255)

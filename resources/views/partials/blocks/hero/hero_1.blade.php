@@ -1,5 +1,20 @@
 @php
-    $theme = ($data['hero_1_theme'] ?? 'image') === 'light_grid' ? 'light-grid' : 'image';
+    $requestedTheme = $data['hero_1_theme'] ?? 'image';
+    $theme = match ($requestedTheme) {
+        'light_grid' => 'light-grid',
+        'animated_dotted_surface' => 'animated-dotted-surface',
+        default => 'image',
+    };
+    $animatedBackgroundEnabled = $theme === 'animated-dotted-surface'
+        && filter_var($data['animated_background_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN);
+    $animatedBackgroundInteractive = filter_var($data['animated_background_interactive'] ?? true, FILTER_VALIDATE_BOOLEAN);
+    $animatedBackgroundDensity = in_array($data['animated_background_density'] ?? null, ['low', 'medium', 'high'], true)
+        ? $data['animated_background_density']
+        : 'medium';
+    $animatedBackgroundSpeed = in_array($data['animated_background_speed'] ?? null, ['slow', 'normal', 'fast'], true)
+        ? $data['animated_background_speed']
+        : 'slow';
+    $animatedBackgroundOpacity = max(0.1, min(1, (float) ($data['animated_background_opacity'] ?? 0.45)));
     $overlayOpacity = (int) ($data['overlay_opacity'] ?? 45);
     $overlayOpacity = max(0, min(90, $overlayOpacity));
     $overlayStart = number_format($overlayOpacity / 100, 2, '.', '');
@@ -44,6 +59,19 @@
     ])
     @if ($sectionStyle) style="{!! $sectionStyle !!}" @endif
 >
+    @if ($animatedBackgroundEnabled)
+        <div
+            class="hero-dotted-surface"
+            data-hero-dotted-surface
+            data-theme="dark"
+            data-density="{{ $animatedBackgroundDensity }}"
+            data-speed="{{ $animatedBackgroundSpeed }}"
+            data-opacity="{{ $animatedBackgroundOpacity }}"
+            data-interactive="{{ $animatedBackgroundInteractive ? 'true' : 'false' }}"
+            aria-hidden="true"
+        ></div>
+    @endif
+
     <div class="hero-template-1__inner">
         @if (! empty($data['eyebrow']))
             <p class="hero-template-1__eyebrow">

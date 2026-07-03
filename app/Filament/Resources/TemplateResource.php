@@ -438,9 +438,34 @@ class TemplateResource extends Resource
                         ->options([
                             'image' => 'Dark image',
                             'light_grid' => 'Light grid',
+                            'animated_dotted_surface' => 'Animated dotted surface',
                         ])
                         ->default('image')
+                        ->live()
                         ->visible(fn (Get $get): bool => $get('template') === 'hero_1'),
+                    Forms\Components\Section::make('Animated background settings')
+                        ->schema([
+                            Forms\Components\Toggle::make('animated_background_enabled')->label('Enable animated background')->default(true),
+                            Forms\Components\Toggle::make('animated_background_interactive')->label('React to pointer movement')->default(true),
+                            Forms\Components\Select::make('animated_background_density')
+                                ->label('Dot density')
+                                ->options(['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'])
+                                ->default('medium'),
+                            Forms\Components\Select::make('animated_background_speed')
+                                ->label('Animation speed')
+                                ->options(['slow' => 'Slow', 'normal' => 'Normal', 'fast' => 'Fast'])
+                                ->default('slow'),
+                            Forms\Components\TextInput::make('animated_background_opacity')
+                                ->label('Dot opacity')
+                                ->numeric()
+                                ->minValue(0.1)
+                                ->maxValue(1)
+                                ->step(0.05)
+                                ->default(0.45),
+                        ])
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => $get('template') === 'hero_1' && $get('hero_1_theme') === 'animated_dotted_surface'),
                     Forms\Components\TextInput::make('title')->required()->maxLength(255),
                     static::headingTagField(),
                     Forms\Components\TextInput::make('hero_1_title_second_line')

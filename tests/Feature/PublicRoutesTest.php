@@ -131,6 +131,50 @@ class PublicRoutesTest extends TestCase
             ->assertSee('block-hero', false);
     }
 
+    public function test_animated_dotted_surface_is_scoped_to_enabled_hero_blocks(): void
+    {
+        Page::factory()->published()->create([
+            'slug' => 'home',
+            'title' => 'Home',
+            'blocks' => [
+                ['type' => 'hero', 'data' => [
+                    'template' => 'hero_1',
+                    'hero_1_theme' => 'animated_dotted_surface',
+                    'title' => 'Animated hero',
+                    'animated_background_density' => 'high',
+                    'animated_background_speed' => 'normal',
+                ]],
+                ['type' => 'hero', 'data' => [
+                    'template' => 'hero_1',
+                    'hero_1_theme' => 'image',
+                    'title' => 'Static hero',
+                ]],
+                ['type' => 'hero', 'data' => [
+                    'template' => 'hero_1',
+                    'hero_1_theme' => 'animated_dotted_surface',
+                    'title' => 'Second animated hero',
+                    'animated_background_density' => 'low',
+                ]],
+                ['type' => 'hero', 'data' => [
+                    'template' => 'hero_1',
+                    'hero_1_theme' => 'animated_dotted_surface',
+                    'title' => 'Disabled animated hero',
+                    'animated_background_enabled' => false,
+                ]],
+            ],
+        ]);
+
+        $response = $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('hero-template-1--animated-dotted-surface', false)
+            ->assertSee('data-hero-dotted-surface', false)
+            ->assertSee('data-density="high"', false)
+            ->assertSee('data-speed="normal"', false)
+            ->assertSee('data-interactive="true"', false);
+
+        $this->assertSame(2, substr_count($response->getContent(), 'data-hero-dotted-surface'));
+    }
+
     public function test_hero_two_selector_template_renders(): void
     {
         Page::factory()->published()->create([

@@ -1,5 +1,9 @@
 import './bootstrap';
 
+if (document.querySelector('[data-hero-dotted-surface]')) {
+    import('./components/hero-dotted-surface');
+}
+
 const initMobileHeader = () => {
     document.querySelectorAll('[data-site-header]').forEach((header) => {
         if (header.dataset.mobileHeaderInitialized === 'true') {
