@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\MediaResource\Pages;
+use App\Filament\Resources\MediaResource\Pages\ListMedia;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,36 +29,56 @@ class MediaResource extends Resource
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            ->contentGrid(fn (ListMedia $livewire): ?array => $livewire->mediaView === 'grid'
+                ? [
+                    'default' => 1,
+                    'sm' => 2,
+                    'md' => 3,
+                    'lg' => 4,
+                    'xl' => 5,
+                ]
+                : null)
             ->columns([
+                Tables\Columns\ViewColumn::make('grid_preview')
+                    ->label('رسانه')
+                    ->view('filament.tables.columns.media-grid-card')
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'grid'),
                 Tables\Columns\ViewColumn::make('preview')
                     ->label('پیش‌نمایش')
-                    ->view('filament.tables.columns.media-preview'),
+                    ->view('filament.tables.columns.media-preview')
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('file_name')
                     ->label('فایل')
                     ->searchable()
                     ->sortable()
-                    ->copyable(),
+                    ->copyable()
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('mime_type')
                     ->label('نوع فایل')
                     ->badge()
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('size')
                     ->label('حجم')
                     ->formatStateUsing(fn (?int $state): string => static::formatSize($state ?? 0))
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('disk')
                     ->label('دیسک')
                     ->badge()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('collection_name')
                     ->label('مجموعه')
                     ->badge()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('زمان بارگذاری')
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
             ])
             ->filters([
                 Tables\Filters\Filter::make('images')
@@ -118,7 +139,7 @@ class MediaResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListMedia::route('/'),
+            'index' => ListMedia::route('/'),
             'upload' => Pages\UploadMedia::route('/upload'),
             'view' => Pages\ViewMedia::route('/{record}'),
         ];

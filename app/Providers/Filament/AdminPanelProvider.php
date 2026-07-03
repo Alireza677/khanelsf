@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\MediaResource\Pages\ListMedia;
 use App\Services\SettingsService;
 use Filament\Forms\Components\Component as FormComponent;
 use Filament\Http\Middleware\Authenticate;
@@ -14,6 +15,7 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Filters\BaseFilter;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -43,6 +45,15 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.theme')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn (): string => view('filament.view-website-button')->render(),
+            )
+            ->renderHook(
+                TablesRenderHook::TOOLBAR_TOGGLE_COLUMN_TRIGGER_AFTER,
+                fn (): string => view('filament.media.view-switcher')->render(),
+                scopes: ListMedia::class,
             )
             ->colors([
                 'primary' => Color::Blue,
