@@ -143,6 +143,8 @@ class PublicRoutesTest extends TestCase
                     'title' => 'Animated hero',
                     'animated_background_density' => 'high',
                     'animated_background_speed' => 'normal',
+                    'animated_background_color' => '#123456',
+                    'animated_dots_color' => '#abcdef',
                 ]],
                 ['type' => 'hero', 'data' => [
                     'template' => 'hero_1',
@@ -170,9 +172,37 @@ class PublicRoutesTest extends TestCase
             ->assertSee('data-hero-dotted-surface', false)
             ->assertSee('data-density="high"', false)
             ->assertSee('data-speed="normal"', false)
+            ->assertSee('data-bg-color="#123456"', false)
+            ->assertSee('data-dots-color="#abcdef"', false)
+            ->assertSee('--hero-animated-background-color: #123456', false)
             ->assertSee('data-interactive="true"', false);
 
         $this->assertSame(2, substr_count($response->getContent(), 'data-hero-dotted-surface'));
+    }
+
+    public function test_animated_paths_background_renders_without_a_three_canvas(): void
+    {
+        Page::factory()->published()->create([
+            'slug' => 'home',
+            'title' => 'Home',
+            'blocks' => [[
+                'type' => 'hero',
+                'data' => [
+                    'template' => 'hero_1',
+                    'hero_1_theme' => 'animated_paths',
+                    'title' => 'Paths hero',
+                ],
+            ]],
+        ]);
+
+        $response = $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('hero-template-1--animated-paths', false)
+            ->assertSee('hero-animated-paths', false)
+            ->assertSee('pathLength="1"', false)
+            ->assertDontSee('data-hero-dotted-surface', false);
+
+        $this->assertSame(72, substr_count($response->getContent(), 'pathLength="1"'));
     }
 
     public function test_hero_two_selector_template_renders(): void

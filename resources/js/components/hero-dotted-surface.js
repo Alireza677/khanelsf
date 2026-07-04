@@ -3,12 +3,15 @@ import * as THREE from 'three';
 const instances = new WeakMap();
 const densityColumns = { low: 34, medium: 50, high: 68 };
 const speedFactors = { slow: 0.35, normal: 0.65, fast: 1 };
+const hexColorPattern = /^#[0-9a-f]{6}$/i;
 
 const clampNumber = (value, minimum, maximum, fallback) => {
     const parsed = Number.parseFloat(value);
 
     return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
 };
+
+const safeColor = (value, fallback) => hexColorPattern.test(value || '') ? value : fallback;
 
 const createDottedSurface = (element) => {
     if (instances.has(element) || ! element.parentElement) {
@@ -23,6 +26,8 @@ const createDottedSurface = (element) => {
     const rows = Math.max(14, Math.round(columns * 0.58));
     const speed = speedFactors[element.dataset.speed] || speedFactors.slow;
     const opacity = clampNumber(element.dataset.opacity, 0.1, 1, 0.45);
+    const backgroundColor = safeColor(element.dataset.bgColor, '#08132a');
+    const dotsColor = safeColor(element.dataset.dotsColor, '#dbe7ff');
     const interactive = element.dataset.interactive === 'true' && ! isMobile && ! reducedMotion;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
@@ -31,7 +36,7 @@ const createDottedSurface = (element) => {
     const positions = new Float32Array(columns * rows * 3);
     const basePositions = new Float32Array(columns * rows * 3);
     const material = new THREE.PointsMaterial({
-        color: element.dataset.theme === 'light' ? 0x334155 : 0xe2e8f0,
+        color: new THREE.Color(dotsColor),
         opacity,
         size: isMobile ? 0.035 : 0.045,
         sizeAttenuation: true,
@@ -42,8 +47,8 @@ const createDottedSurface = (element) => {
     for (let row = 0; row < rows; row += 1) {
         for (let column = 0; column < columns; column += 1) {
             const offset = (row * columns + column) * 3;
-            const x = (column / (columns - 1) - 0.5) * 12;
-            const z = (row / (rows - 1) - 0.5) * 7;
+            const x = column / (columns - 1) - 0.5;
+            const z = (row / (rows - 1) - 0.5) * 10;
             positions[offset] = basePositions[offset] = x;
             positions[offset + 1] = basePositions[offset + 1] = 0;
             positions[offset + 2] = basePositions[offset + 2] = z;
@@ -52,11 +57,12 @@ const createDottedSurface = (element) => {
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const points = new THREE.Points(geometry, material);
-    points.rotation.x = -0.16;
+    points.position.set(0, -2.55, -0.8);
+    points.rotation.x = -0.08;
     scene.add(points);
-    camera.position.set(0, 4.2, 7.8);
-    camera.lookAt(0, 0, 0);
-    renderer.setClearColor(0x000000, 0);
+    camera.position.set(0, 3.15, 8.4);
+    camera.lookAt(0, -1.55, -1.2);
+    renderer.setClearColor(new THREE.Color(backgroundColor), 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.domElement.setAttribute('aria-hidden', 'true');
     element.appendChild(renderer.domElement);
@@ -80,6 +86,18 @@ const createDottedSurface = (element) => {
         renderer.setSize(width, height, false);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
+
+        const fieldWidth = Math.max(18, 15 * camera.aspect);
+
+        for (let row = 0; row < rows; row += 1) {
+            for (let column = 0; column < columns; column += 1) {
+                const offset = (row * columns + column) * 3;
+                const x = (column / (columns - 1) - 0.5) * fieldWidth;
+                positions[offset] = basePositions[offset] = x;
+            }
+        }
+
+        geometry.attributes.position.needsUpdate = true;
     };
 
     const render = (now) => {
@@ -103,7 +121,7 @@ const createDottedSurface = (element) => {
 
         geometry.attributes.position.needsUpdate = true;
         camera.position.x = pointerX * 0.45;
-        camera.lookAt(pointerX * 0.12, pointerY * 0.08, 0);
+        camera.lookAt(pointerX * 0.12, -1.55 + pointerY * 0.08, -1.2);
         renderer.render(scene, camera);
         frameId = window.requestAnimationFrame(render);
     };

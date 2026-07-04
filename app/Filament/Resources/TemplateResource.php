@@ -439,6 +439,7 @@ class TemplateResource extends Resource
                             'image' => 'Dark image',
                             'light_grid' => 'Light grid',
                             'animated_dotted_surface' => 'Animated dotted surface',
+                            'animated_paths' => 'Animated paths',
                         ])
                         ->default('image')
                         ->live()
@@ -462,6 +463,12 @@ class TemplateResource extends Resource
                                 ->maxValue(1)
                                 ->step(0.05)
                                 ->default(0.45),
+                            Forms\Components\ColorPicker::make('animated_background_color')
+                                ->label('Animation background color')
+                                ->default('#08132a'),
+                            Forms\Components\ColorPicker::make('animated_dots_color')
+                                ->label('Dot color')
+                                ->default('#dbe7ff'),
                         ])
                         ->columns(2)
                         ->columnSpanFull()

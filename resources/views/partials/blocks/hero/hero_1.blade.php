@@ -3,6 +3,7 @@
     $theme = match ($requestedTheme) {
         'light_grid' => 'light-grid',
         'animated_dotted_surface' => 'animated-dotted-surface',
+        'animated_paths' => 'animated-paths',
         default => 'image',
     };
     $animatedBackgroundEnabled = $theme === 'animated-dotted-surface'
@@ -15,6 +16,12 @@
         ? $data['animated_background_speed']
         : 'slow';
     $animatedBackgroundOpacity = max(0.1, min(1, (float) ($data['animated_background_opacity'] ?? 0.45)));
+    $animatedBackgroundColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($data['animated_background_color'] ?? ''))
+        ? $data['animated_background_color']
+        : '#08132a';
+    $animatedDotsColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($data['animated_dots_color'] ?? ''))
+        ? $data['animated_dots_color']
+        : '#dbe7ff';
     $overlayOpacity = (int) ($data['overlay_opacity'] ?? 45);
     $overlayOpacity = max(0, min(90, $overlayOpacity));
     $overlayStart = number_format($overlayOpacity / 100, 2, '.', '');
@@ -30,9 +37,12 @@
     $mobileHeight = is_numeric($mobileHeight) ? max(0, (int) $mobileHeight) : null;
     $desktopHeightVariable = $desktopHeight ? "--hero-template-1-height: {$desktopHeight}px;" : null;
     $mobileHeightVariable = $mobileHeight ? "--hero-template-1-mobile-height: {$mobileHeight}px;" : null;
+    $animatedBackgroundColorVariable = $theme === 'animated-dotted-surface'
+        ? "--hero-animated-background-color: {$animatedBackgroundColor};"
+        : null;
     $heightClass = $desktopHeight ? 'hero-template-1--fixed-height' : null;
     $mobileHeightClass = $mobileHeight ? 'hero-template-1--mobile-fixed-height' : null;
-    $sectionStyle = collect([$backgroundImage, $backgroundVariables, $desktopHeightVariable, $mobileHeightVariable])
+    $sectionStyle = collect([$backgroundImage, $backgroundVariables, $desktopHeightVariable, $mobileHeightVariable, $animatedBackgroundColorVariable])
         ->filter()
         ->map(fn (string $style): string => trim($style, ' ;'))
         ->implode('; ');
@@ -59,6 +69,41 @@
     ])
     @if ($sectionStyle) style="{!! $sectionStyle !!}" @endif
 >
+    @if ($theme === 'animated-paths')
+        <div class="hero-animated-paths" aria-hidden="true">
+            @foreach ([1, -1] as $position)
+                <svg class="hero-animated-paths__svg" viewBox="0 0 696 316" fill="none" preserveAspectRatio="xMidYMid slice">
+                    @for ($index = 0; $index < 36; $index++)
+                        @php
+                            $path = sprintf(
+                                'M-%s -%sC-%s -%s -%s %s %s %sC%s %s %s %s %s %s',
+                                380 - $index * 5 * $position,
+                                189 + $index * 6,
+                                380 - $index * 5 * $position,
+                                189 + $index * 6,
+                                312 - $index * 5 * $position,
+                                216 - $index * 6,
+                                152 - $index * 5 * $position,
+                                343 - $index * 6,
+                                616 - $index * 5 * $position,
+                                470 - $index * 6,
+                                684 - $index * 5 * $position,
+                                875 - $index * 6,
+                                684 - $index * 5 * $position,
+                                875 - $index * 6,
+                            );
+                        @endphp
+                        <path
+                            d="{{ $path }}"
+                            pathLength="1"
+                            style="--path-index: {{ $index }}; --path-duration: {{ 20 + ($index % 11) }}s;"
+                        />
+                    @endfor
+                </svg>
+            @endforeach
+        </div>
+    @endif
+
     @if ($animatedBackgroundEnabled)
         <div
             class="hero-dotted-surface"
@@ -67,6 +112,8 @@
             data-density="{{ $animatedBackgroundDensity }}"
             data-speed="{{ $animatedBackgroundSpeed }}"
             data-opacity="{{ $animatedBackgroundOpacity }}"
+            data-bg-color="{{ $animatedBackgroundColor }}"
+            data-dots-color="{{ $animatedDotsColor }}"
             data-interactive="{{ $animatedBackgroundInteractive ? 'true' : 'false' }}"
             aria-hidden="true"
         ></div>

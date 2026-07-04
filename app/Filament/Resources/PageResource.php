@@ -114,6 +114,7 @@ class PageResource extends Resource
                                                     'image' => 'تصویر تیره',
                                                     'light_grid' => 'روشن شبکه‌ای',
                                                     'animated_dotted_surface' => 'پس‌زمینه نقطه‌ای متحرک',
+                                                    'animated_paths' => 'مسیرهای متحرک',
                                                 ])
                                                 ->default('image')
                                                 ->live()
@@ -142,6 +143,12 @@ class PageResource extends Resource
                                                         ->maxValue(1)
                                                         ->step(0.05)
                                                         ->default(0.45),
+                                                    Forms\Components\ColorPicker::make('animated_background_color')
+                                                        ->label('رنگ پس‌زمینه انیمیشن')
+                                                        ->default('#08132a'),
+                                                    Forms\Components\ColorPicker::make('animated_dots_color')
+                                                        ->label('رنگ نقطه‌ها')
+                                                        ->default('#dbe7ff'),
                                                 ])
                                                 ->columns(2)
                                                 ->columnSpanFull()

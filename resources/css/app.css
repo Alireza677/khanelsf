@@ -440,8 +440,108 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .hero-template-1--animated-dotted-surface {
     background:
         radial-gradient(circle at 50% 15%, rgba(30, 64, 175, .24), transparent 42%),
-        linear-gradient(145deg, #020617, #0f172a 58%, #111827);
+        linear-gradient(180deg, rgba(2, 6, 23, .16), rgba(2, 6, 23, .42)),
+        var(--hero-animated-background-color, #08132a);
     isolation: isolate;
+}
+
+.hero-template-1--animated-paths {
+    background:
+        radial-gradient(circle at 50% 18%, rgba(59, 130, 246, .2), transparent 40%),
+        linear-gradient(145deg, #f8fafc, #eef2ff 56%, #f8fafc);
+    color: #334155;
+    isolation: isolate;
+}
+
+.hero-animated-paths {
+    color: #0f172a;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+}
+
+.hero-animated-paths__svg {
+    height: 100%;
+    inset: 0;
+    overflow: visible;
+    position: absolute;
+    width: 100%;
+}
+
+.hero-animated-paths path {
+    animation: hero-path-drift var(--path-duration) linear infinite;
+    animation-delay: calc(var(--path-index) * -0.37s);
+    fill: none;
+    opacity: calc(.1 + var(--path-index) * .018);
+    stroke: currentColor;
+    stroke-dasharray: .32 .68;
+    stroke-dashoffset: 0;
+    stroke-width: calc(.5px + var(--path-index) * .03px);
+}
+
+@keyframes hero-path-drift {
+    0% {
+        opacity: .25;
+        stroke-dashoffset: 0;
+    }
+
+    50% {
+        opacity: .62;
+    }
+
+    100% {
+        opacity: .25;
+        stroke-dashoffset: -1;
+    }
+}
+
+.hero-template-1--animated-paths::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, .7));
+}
+
+.hero-template-1--animated-paths .block-title {
+    color: #0f172a;
+}
+
+.hero-template-1--animated-paths .hero-template-1__description {
+    color: #475569;
+}
+
+.hero-template-1--animated-paths .hero-template-1__eyebrow {
+    background: rgba(255, 255, 255, .72);
+    border-color: rgba(15, 23, 42, .12);
+    color: #334155;
+}
+
+.hero-template-1--animated-paths .button {
+    background: #0f172a;
+    color: #fff;
+}
+
+.hero-template-1--animated-paths .hero-template-1__secondary {
+    background: rgba(255, 255, 255, .72);
+    border-color: rgba(15, 23, 42, .16);
+    color: #0f172a;
+}
+
+.hero-template-1--animated-paths .hero-template-1__social {
+    background: rgba(255, 255, 255, .72);
+    border-color: rgba(15, 23, 42, .16);
+    color: #334155;
+}
+
+.hero-template-1--animated-paths .hero-template-1__scroll {
+    color: #64748b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-animated-paths path {
+        animation: none;
+        opacity: .28;
+        stroke-dasharray: none;
+    }
 }
 
 .hero-dotted-surface {
