@@ -182,26 +182,52 @@ class PublicRoutesTest extends TestCase
 
     public function test_animated_paths_background_renders_without_a_three_canvas(): void
     {
-        Page::factory()->published()->create([
+        $page = Page::factory()->published()->create([
             'slug' => 'home',
             'title' => 'Home',
-            'blocks' => [[
-                'type' => 'hero',
-                'data' => [
-                    'template' => 'hero_1',
-                    'hero_1_theme' => 'animated_paths',
-                    'title' => 'Paths hero',
+            'blocks' => [
+                [
+                    'type' => 'hero',
+                    'data' => [
+                        'template' => 'hero_1',
+                        'hero_1_theme' => 'animated_paths',
+                        'title' => 'Paths hero',
+                        'paths_background_color' => '#123456',
+                        'paths_color' => '#abcdef',
+                        'paths_opacity' => 0.6,
+                        'paths_speed' => 'fast',
+                        'paths_density' => 'medium',
+                        'paths_line_width' => 1.4,
+                        'paths_animation_enabled' => true,
+                    ],
                 ],
-            ]],
+                [
+                    'type' => 'hero',
+                    'data' => [
+                        'template' => 'hero_1',
+                        'hero_1_theme' => 'light_grid',
+                        'title' => 'Grid hero',
+                    ],
+                ],
+            ],
         ]);
+
+        $this->assertSame('animated_paths', $page->fresh()->blocks[0]['data']['hero_1_theme']);
 
         $response = $this->get(route('home'))
             ->assertOk()
             ->assertSee('hero-template-1--animated-paths', false)
-            ->assertSee('hero-animated-paths', false)
+            ->assertSee('data-hero-animated-paths', false)
+            ->assertSee('--hero-paths-background: #123456', false)
+            ->assertSee('--hero-paths-color: #abcdef', false)
+            ->assertSee('stroke="#abcdef"', false)
+            ->assertSee('data-speed="fast"', false)
+            ->assertSee('data-density="medium"', false)
+            ->assertSee('data-animation-enabled="true"', false)
             ->assertSee('pathLength="1"', false)
             ->assertDontSee('data-hero-dotted-surface', false);
 
+        $this->assertSame(1, substr_count($response->getContent(), 'data-hero-animated-paths'));
         $this->assertSame(72, substr_count($response->getContent(), 'pathLength="1"'));
     }
 

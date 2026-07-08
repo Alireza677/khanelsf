@@ -448,13 +448,14 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .hero-template-1--animated-paths {
     background:
         radial-gradient(circle at 50% 18%, rgba(59, 130, 246, .2), transparent 40%),
-        linear-gradient(145deg, #f8fafc, #eef2ff 56%, #f8fafc);
-    color: #334155;
+        linear-gradient(180deg, rgba(2, 6, 23, .08), rgba(2, 6, 23, .34)),
+        var(--hero-paths-background, #0b1220);
+    color: #fff;
     isolation: isolate;
 }
 
 .hero-animated-paths {
-    color: #0f172a;
+    color: var(--hero-paths-color, #fff);
     inset: 0;
     overflow: hidden;
     pointer-events: none;
@@ -474,11 +475,15 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     animation: hero-path-drift var(--path-duration) linear infinite;
     animation-delay: calc(var(--path-index) * -0.37s);
     fill: none;
-    opacity: calc(.1 + var(--path-index) * .018);
+    opacity: 1;
     stroke: currentColor;
     stroke-dasharray: .32 .68;
     stroke-dashoffset: 0;
-    stroke-width: calc(.5px + var(--path-index) * .03px);
+}
+
+.hero-animated-paths.is-animation-disabled path {
+    animation: none;
+    stroke-dasharray: none;
 }
 
 @keyframes hero-path-drift {
@@ -498,42 +503,43 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 }
 
 .hero-template-1--animated-paths::before {
-    background: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, .7));
+    background: linear-gradient(180deg, rgba(2, 6, 23, .06), rgba(2, 6, 23, .28));
 }
 
 .hero-template-1--animated-paths .block-title {
-    color: #0f172a;
+    color: #fff;
 }
 
 .hero-template-1--animated-paths .hero-template-1__description {
-    color: #475569;
+    color: rgba(255, 255, 255, .82);
 }
 
 .hero-template-1--animated-paths .hero-template-1__eyebrow {
     background: rgba(255, 255, 255, .72);
     border-color: rgba(15, 23, 42, .12);
-    color: #334155;
+    color: #fff;
 }
 
 .hero-template-1--animated-paths .button {
-    background: #0f172a;
+    background: #fff;
+    color: #0b1220;
     color: #fff;
 }
 
 .hero-template-1--animated-paths .hero-template-1__secondary {
-    background: rgba(255, 255, 255, .72);
-    border-color: rgba(15, 23, 42, .16);
-    color: #0f172a;
+    background: rgba(15, 23, 42, .42);
+    border-color: rgba(255, 255, 255, .3);
+    color: #fff;
 }
 
 .hero-template-1--animated-paths .hero-template-1__social {
-    background: rgba(255, 255, 255, .72);
-    border-color: rgba(15, 23, 42, .16);
-    color: #334155;
+    background: rgba(15, 23, 42, .42);
+    border-color: rgba(255, 255, 255, .3);
+    color: #fff;
 }
 
 .hero-template-1--animated-paths .hero-template-1__scroll {
-    color: #64748b;
+    color: rgba(255, 255, 255, .7);
 }
 
 @media (prefers-reduced-motion: reduce) {

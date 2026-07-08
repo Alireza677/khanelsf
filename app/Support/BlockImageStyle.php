@@ -32,6 +32,26 @@ class BlockImageStyle
         ]);
     }
 
+    public static function normalizedImageVariables(array $settings): string
+    {
+        return self::variables([
+            '--block-image-width' => self::normalizedLength($settings['desktop']['width'] ?? []),
+            '--block-image-height' => self::normalizedLength($settings['desktop']['height'] ?? []),
+            '--block-image-fit' => self::fit($settings['desktop']['fit'] ?? null),
+            '--block-image-mobile-width' => self::normalizedLength($settings['mobile']['width'] ?? []),
+            '--block-image-mobile-height' => self::normalizedLength($settings['mobile']['height'] ?? []),
+            '--block-image-mobile-fit' => self::fit($settings['mobile']['fit'] ?? null),
+        ]);
+    }
+
+    public static function normalizedBackgroundVariables(array $settings): string
+    {
+        return self::variables([
+            '--block-background-size' => self::normalizedBackgroundSize($settings['desktop'] ?? []),
+            '--block-background-mobile-size' => self::normalizedBackgroundSize($settings['mobile'] ?? []),
+        ]);
+    }
+
     private static function variables(array $variables): string
     {
         return collect($variables)
@@ -65,6 +85,28 @@ class BlockImageStyle
     private static function fit(?string $fit): ?string
     {
         return self::FITS[$fit ?: 'normal'] ?? null;
+    }
+
+    private static function normalizedLength(array $length): ?string
+    {
+        return self::length([
+            'length_value' => $length['value'] ?? null,
+            'length_unit' => $length['unit'] ?? null,
+        ], 'length');
+    }
+
+    private static function normalizedBackgroundSize(array $settings): ?string
+    {
+        $fit = $settings['fit'] ?? null;
+
+        if (in_array($fit, ['cover', 'contain'], true)) {
+            return $fit;
+        }
+
+        $width = self::normalizedLength($settings['width'] ?? []);
+        $height = self::normalizedLength($settings['height'] ?? []);
+
+        return $width || $height ? ($width ?: 'auto').' '.($height ?: 'auto') : null;
     }
 
     private static function backgroundSize(array $data, string $prefix): ?string

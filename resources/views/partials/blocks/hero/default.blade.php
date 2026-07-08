@@ -1,6 +1,11 @@
 @php
-    $background = in_array($data['section_background'] ?? 'default', ['muted', 'dark'], true) ? $data['section_background'] : 'default';
-    $alignment = ($data['alignment'] ?? 'left') === 'center' ? 'center' : 'left';
+    $content = $hero['content'];
+    $settings = $hero['settings'];
+    $media = $content['media'];
+    $primaryCta = $content['primary_cta'];
+    $secondaryCta = $content['secondary_cta'];
+    $background = in_array($settings['color_mode'], ['muted', 'dark'], true) ? $settings['color_mode'] : 'default';
+    $alignment = $settings['alignment'] === 'center' ? 'center' : 'left';
 @endphp
 
 @include('partials.blocks._image_control_styles')
@@ -12,37 +17,37 @@
     "content-block--align-{$alignment}",
 ])>
     <div class="block-hero__content">
-        @if (! empty($data['subtitle']))
-            <p class="block-eyebrow">{{ $data['subtitle'] }}</p>
+        @if (! empty($content['lead']))
+            <p class="block-eyebrow">{{ $content['lead'] }}</p>
         @endif
 
-        @if (! empty($data['title']))
-            @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
+        @if (! empty($content['title']))
+            @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
         @endif
 
-        @if (! empty($data['description']))
-            <p>{{ $data['description'] }}</p>
+        @if (! empty($content['description']))
+            <p>{{ $content['description'] }}</p>
         @endif
 
-        @if ((! empty($data['primary_button_label']) && ! empty($data['primary_button_url'])) || (! empty($data['secondary_button_label']) && ! empty($data['secondary_button_url'])))
+        @if ((! empty($primaryCta['label']) && ! empty($primaryCta['url'])) || (! empty($secondaryCta['label']) && ! empty($secondaryCta['url'])))
             <div class="block-actions">
-                @if (! empty($data['primary_button_label']) && ! empty($data['primary_button_url']))
-                    <a class="button" href="{{ $data['primary_button_url'] }}">{{ $data['primary_button_label'] }}</a>
+                @if (! empty($primaryCta['label']) && ! empty($primaryCta['url']))
+                    <a class="button" href="{{ $primaryCta['url'] }}">{{ $primaryCta['label'] }}</a>
                 @endif
 
-                @if (! empty($data['secondary_button_label']) && ! empty($data['secondary_button_url']))
-                    <a class="button button-secondary" href="{{ $data['secondary_button_url'] }}">{{ $data['secondary_button_label'] }}</a>
+                @if (! empty($secondaryCta['label']) && ! empty($secondaryCta['url']))
+                    <a class="button button-secondary" href="{{ $secondaryCta['url'] }}">{{ $secondaryCta['label'] }}</a>
                 @endif
             </div>
         @endif
     </div>
 
-    @if (! empty($data['image']))
+    @if (! empty($media['url']))
         <img
             class="block-hero__image block-configured-image"
-            src="{{ $data['image'] }}"
-            alt="{{ $data['title'] ?? '' }}"
-            style="{{ \App\Support\BlockImageStyle::imageVariables($data, 'image') }}"
+            src="{{ $media['url'] }}"
+            alt="{{ $content['title'] ?? '' }}"
+            style="{{ \App\Support\BlockImageStyle::normalizedImageVariables($settings['media']) }}"
         >
     @endif
 </section>

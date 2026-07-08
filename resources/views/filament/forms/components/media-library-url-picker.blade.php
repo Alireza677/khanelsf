@@ -3,6 +3,9 @@
     $images = collect($images ?? [])->values();
     $placeholderUrl = app(\App\Services\SettingsService::class)->imagePlaceholderUrl();
     $isBlockImageField = str_contains($statePath, 'blocks.');
+    $sourceIdPath = filled($sourceIdField ?? null)
+        ? str($statePath)->beforeLast('.')->append('.'.$sourceIdField)->toString()
+        : null;
 @endphp
 
 @once
@@ -24,6 +27,7 @@
             open: false,
             search: '',
             selectedUrl: $wire.entangle(@js($statePath)),
+            selectedSourceId: @if ($sourceIdPath) $wire.entangle(@js($sourceIdPath)) @else null @endif,
             placeholderUrl: @js($placeholderUrl),
             images: window.__mediaLibraryImageItems || [],
             previewUrl() {
@@ -38,14 +42,23 @@
 
                 return this.images.filter((image) => String(image.name || '').toLowerCase().includes(query))
             },
-            choose(url) {
-                this.selectedUrl = url
+            choose(image) {
+                this.selectedUrl = image.url
+                this.selectedSourceId = image.id
                 this.open = false
             },
             clear() {
                 this.selectedUrl = null
+                this.selectedSourceId = null
+            },
+            syncSourceId() {
+                if (@js((bool) $sourceIdPath)) {
+                    this.selectedSourceId = this.images.find((image) => image.url === this.selectedUrl)?.id || null
+                }
             },
         }"
+        x-init="syncSourceId()"
+        x-effect="selectedUrl; syncSourceId()"
         x-on:keydown.escape.window="open = false"
         class="space-y-3"
     >
@@ -167,7 +180,7 @@
                         <template x-for="image in filteredImages()" x-bind:key="image.id">
                             <button
                                 type="button"
-                                x-on:click="choose(image.url)"
+                                x-on:click="choose(image)"
                                 style="min-width: 0; width: 100%; overflow: hidden"
                                 class="overflow-hidden rounded-lg border bg-white text-left shadow-sm transition hover:border-primary-500 hover:ring-2 hover:ring-primary-500/30 dark:bg-gray-950"
                                 x-bind:class="selectedUrl === image.url ? 'border-primary-600 ring-2 ring-primary-500/40' : 'border-gray-200 dark:border-gray-800'"

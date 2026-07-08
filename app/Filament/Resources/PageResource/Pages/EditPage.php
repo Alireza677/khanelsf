@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\PageResource\Pages;
 
+use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
+use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
 use App\Filament\Resources\PageResource;
-use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
@@ -12,7 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class EditPage extends EditRecord
 {
-    use LogsFilamentEditDebug;
+    use LogsHeroV2SaveFailures;
+    use ManagesBlockEditorIdentity;
 
     protected static string $resource = PageResource::class;
 
@@ -84,12 +86,12 @@ class EditPage extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('preview')
+            Action::make('preview')
                 ->label('پیش‌نمایش')
                 ->icon('heroicon-o-eye')
                 ->url(fn (): string => route('admin.preview.pages.show', $this->record))
                 ->openUrlInNewTab(),
-            Actions\Action::make('viewPublic')
+            Action::make('viewPublic')
                 ->label('مشاهده برگه')
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->url(fn (): string => PageResource::publicUrl($this->record))

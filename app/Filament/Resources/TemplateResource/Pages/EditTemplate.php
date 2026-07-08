@@ -2,15 +2,17 @@
 
 namespace App\Filament\Resources\TemplateResource\Pages;
 
+use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
+use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
 use App\Filament\Resources\TemplateResource;
-use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Pages\EditRecord;
 
 class EditTemplate extends EditRecord
 {
-    use LogsFilamentEditDebug;
+    use LogsHeroV2SaveFailures;
+    use ManagesBlockEditorIdentity;
 
     protected static string $resource = TemplateResource::class;
 
