@@ -1,0 +1,334 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
+use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
+use App\Filament\Resources\ServiceResource\Pages;
+use App\Models\Service;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+
+class ServiceResource extends Resource
+{
+    use UsesMediaLibraryImages;
+    use UsesPersianResourceLabels;
+
+    protected static ?string $model = Service::class;
+
+    protected static ?string $navigationGroup = 'محتوا';
+
+    protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
+
+    protected static ?int $navigationSort = 2;
+
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Tabs::make('ویرایشگر خدمت')
+                ->tabs([
+                    Forms\Components\Tabs\Tab::make('اطلاعات اصلی')
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->label('نام خدمت')
+                                ->required()
+                                ->maxLength(255)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set, ?string $state) => blank($get('slug'))
+                                    ? $set('slug', Str::slug($state ?? ''))
+                                    : null),
+                            Forms\Components\TextInput::make('slug')
+                                ->label('نامک')
+                                ->required()
+                                ->maxLength(255)
+                                ->unique(ignoreRecord: true),
+                            Forms\Components\Textarea::make('excerpt')
+                                ->label('خلاصه کوتاه')
+                                ->rows(3)
+                                ->helperText('خلاصه‌ای کوتاه برای کارت خدمت و استفاده به‌عنوان متن جایگزین سئو.')
+                                ->columnSpanFull(),
+                            Forms\Components\RichEditor::make('overview')
+                                ->label('معرفی کامل')
+                                ->columnSpanFull(),
+                            Forms\Components\TextInput::make('icon')
+                                ->label('آیکن')
+                                ->maxLength(255)
+                                ->helperText('شناسه متنی آیکن را وارد کنید؛ فایل رسانه‌ای در این فیلد ذخیره نمی‌شود.'),
+                            Forms\Components\TextInput::make('sort_order')
+                                ->label('ترتیب نمایش')
+                                ->required()
+                                ->numeric()
+                                ->minValue(0)
+                                ->default(0),
+                        ])
+                        ->columns(2),
+                    Forms\Components\Tabs\Tab::make('مزایا')
+                        ->schema([
+                            Forms\Components\Repeater::make('benefits')
+                                ->label('مزایای خدمت')
+                                ->schema([
+                                    Forms\Components\TextInput::make('title')
+                                        ->label('عنوان')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('icon')
+                                        ->label('آیکن')
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('description')
+                                        ->label('توضیحات')
+                                        ->rows(3)
+                                        ->columnSpanFull(),
+                                ])
+                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'مزیت')
+                                ->reorderable()
+                                ->cloneable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('فرآیند اجرا')
+                        ->schema([
+                            Forms\Components\Repeater::make('process')
+                                ->label('مراحل اجرا')
+                                ->schema([
+                                    Forms\Components\TextInput::make('step')
+                                        ->label('شماره مرحله')
+                                        ->numeric()
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->helperText('این شماره هنگام ذخیره براساس ترتیب مراحل تولید می‌شود.'),
+                                    Forms\Components\TextInput::make('title')
+                                        ->label('عنوان')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('description')
+                                        ->label('توضیحات')
+                                        ->rows(3)
+                                        ->columnSpanFull(),
+                                ])
+                                ->itemLabel(fn (array $state): string => filled($state['step'] ?? null)
+                                    ? 'مرحله '.$state['step'].': '.($state['title'] ?? 'بدون عنوان')
+                                    : ($state['title'] ?? 'مرحله جدید'))
+                                ->reorderable()
+                                ->cloneable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('اقلام تحویلی')
+                        ->schema([
+                            Forms\Components\Repeater::make('deliverables')
+                                ->label('اقلام تحویلی')
+                                ->schema([
+                                    Forms\Components\TextInput::make('title')
+                                        ->label('عنوان')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('description')
+                                        ->label('توضیحات')
+                                        ->rows(3)
+                                        ->columnSpanFull(),
+                                ])
+                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'قلم تحویلی')
+                                ->reorderable()
+                                ->cloneable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('رسانه')
+                        ->schema([
+                            Forms\Components\ViewField::make('featured_media_id')
+                                ->label('تصویر شاخص')
+                                ->view('filament.forms.components.media-library-picker')
+                                ->viewData(fn (): array => [
+                                    'images' => static::mediaLibraryImageItems(),
+                                ])
+                                ->dehydrated(false)
+                                ->afterStateHydrated(function (Set $set, ?Service $record): void {
+                                    $set(
+                                        'featured_media_id',
+                                        $record?->featuredImage()?->getCustomProperty('source_media_id')
+                                            ?: ($record?->featuredImage() ? '__keep_existing__' : null),
+                                    );
+                                })
+                                ->helperText('یک تصویر موجود را از کتابخانه رسانه انتخاب کنید.'),
+                            Forms\Components\ViewField::make('gallery_media_ids')
+                                ->label('گالری خدمت')
+                                ->view('filament.forms.components.media-library-multiple-picker')
+                                ->viewData(fn (?Service $record): array => [
+                                    'images' => $record
+                                        ? static::mediaLibraryImageItemsWithCollection($record, 'gallery')
+                                        : static::mediaLibraryImageItems(),
+                                ])
+                                ->dehydrated(false)
+                                ->afterStateHydrated(function (Set $set, ?Service $record): void {
+                                    $set('gallery_media_ids', $record
+                                        ? static::mediaLibraryCollectionState($record, 'gallery')
+                                        : []);
+                                })
+                                ->helperText('تصاویر گالری را از کتابخانه رسانه انتخاب و مرتب کنید.')
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('پروژه‌های مرتبط')
+                        ->schema([
+                            Forms\Components\Select::make('projects')
+                                ->label('پروژه‌ها')
+                                ->relationship('projects', 'title')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->optionsLimit(50)
+                                ->helperText('فقط Relation ساختاریافته مدیریت می‌شود؛ خدمات قدیمی JSON پروژه تغییری نمی‌کنند.')
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('سئو')
+                        ->schema([
+                            Forms\Components\TextInput::make('seo_title')
+                                ->label('عنوان سئو')
+                                ->maxLength(70)
+                                ->helperText('حداکثر ۷۰ نویسه پیشنهاد می‌شود؛ در صورت خالی بودن نام خدمت قابل استفاده است.'),
+                            Forms\Components\Textarea::make('seo_description')
+                                ->label('توضیحات سئو')
+                                ->maxLength(160)
+                                ->helperText('حداکثر ۱۶۰ نویسه پیشنهاد می‌شود؛ در صورت خالی بودن خلاصه خدمت قابل استفاده است.')
+                                ->rows(3)
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2),
+                    Forms\Components\Tabs\Tab::make('انتشار')
+                        ->schema([
+                            Forms\Components\Select::make('status')
+                                ->label('وضعیت')
+                                ->required()
+                                ->options(static::statusOptions())
+                                ->default(Service::STATUS_DRAFT),
+                            Forms\Components\DateTimePicker::make('published_at')
+                                ->label('زمان انتشار')
+                                ->seconds(false)
+                                ->disabled(fn (Get $get): bool => $get('status') !== Service::STATUS_PUBLISHED)
+                                ->helperText('برای انتشار فوری خالی بگذارید؛ تاریخ آینده انتشار زمان‌بندی‌شده ایجاد می‌کند.'),
+                        ])
+                        ->columns(2),
+                ])
+                ->columnSpanFull(),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->defaultSort('sort_order')
+            ->columns([
+                Tables\Columns\SpatieMediaLibraryImageColumn::make('featured_image')
+                    ->collection('featured_image')
+                    ->conversion('thumb')
+                    ->label('تصویر'),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('نام خدمت')
+                    ->searchable(['name', 'slug'])
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->formatStateUsing(fn (string $state): string => static::statusOptions()[$state] ?? $state)
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        Service::STATUS_PUBLISHED, Service::STATUS_ACTIVE => 'success',
+                        Service::STATUS_DRAFT => 'gray',
+                        Service::STATUS_ARCHIVED => 'warning',
+                        Service::STATUS_INACTIVE => 'danger',
+                        default => 'gray',
+                    })
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('projects_count')
+                    ->label('پروژه‌ها')
+                    ->counts('projects')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('sort_order')
+                    ->label('ترتیب')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('published_at')
+                    ->label('زمان انتشار')
+                    ->dateTime()
+                    ->placeholder('—')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('آخرین ویرایش')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('وضعیت')
+                    ->options(static::statusOptions()),
+                Tables\Filters\SelectFilter::make('publication_state')
+                    ->label('وضعیت انتشار')
+                    ->options([
+                        'public' => 'قابل نمایش',
+                        'scheduled' => 'زمان‌بندی‌شده',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? null) {
+                            'public' => $query->published(),
+                            'scheduled' => $query
+                                ->where('status', Service::STATUS_PUBLISHED)
+                                ->where('published_at', '>', now()),
+                            default => $query,
+                        };
+                    }),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make()->label('ویرایش'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->modalHeading('حذف خدمت')
+                    ->modalDescription('آیا از حذف این خدمت اطمینان دارید؟ این عملیات قابل بازگشت نیست.')
+                    ->modalSubmitActionLabel('بله، حذف شود')
+                    ->successNotificationTitle('خدمت حذف شد.'),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('حذف خدمات انتخاب‌شده')
+                        ->modalHeading('حذف خدمات انتخاب‌شده')
+                        ->modalDescription('آیا از حذف خدمات انتخاب‌شده اطمینان دارید؟ این عملیات قابل بازگشت نیست.')
+                        ->modalSubmitActionLabel('بله، حذف شوند')
+                        ->successNotificationTitle('خدمات انتخاب‌شده حذف شدند.'),
+                ]),
+            ])
+            ->emptyStateHeading('هنوز خدمتی ثبت نشده است')
+            ->emptyStateDescription('برای معرفی خدمات کسب‌وکار، نخستین خدمت را ایجاد کنید.')
+            ->emptyStateIcon('heroicon-o-wrench-screwdriver');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListServices::route('/'),
+            'create' => Pages\CreateService::route('/create'),
+            'edit' => Pages\EditService::route('/{record}/edit'),
+        ];
+    }
+
+    public static function statusOptions(): array
+    {
+        return [
+            Service::STATUS_DRAFT => 'پیش‌نویس',
+            Service::STATUS_PUBLISHED => 'منتشرشده',
+            Service::STATUS_ARCHIVED => 'بایگانی‌شده',
+            Service::STATUS_ACTIVE => 'فعال قدیمی',
+            Service::STATUS_INACTIVE => 'غیرفعال قدیمی',
+        ];
+    }
+}

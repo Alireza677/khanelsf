@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\CMS\Blocks\BlockEditorHydrator;
 use App\CMS\Blocks\BlockIdentityManager;
+use App\CMS\Blocks\CTA\CTADataNormalizer;
 use App\CMS\Blocks\Hero\HeroDataNormalizer;
 use App\CMS\Blocks\Hero\HeroMediaResolver;
 use Illuminate\Support\Facades\DB;
@@ -110,6 +111,10 @@ class BlockEditorHydratorTest extends TestCase
             }
         };
 
-        return new BlockEditorHydrator($identities, new HeroDataNormalizer($resolver));
+        return new BlockEditorHydrator(
+            $identities,
+            new HeroDataNormalizer($resolver),
+            app(CTADataNormalizer::class),
+        );
     }
 }

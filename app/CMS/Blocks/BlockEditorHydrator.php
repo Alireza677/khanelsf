@@ -2,6 +2,8 @@
 
 namespace App\CMS\Blocks;
 
+use App\CMS\Blocks\Contracts\BlockNormalizer;
+use App\CMS\Blocks\CTA\CTADataNormalizer;
 use App\CMS\Blocks\Hero\HeroDataNormalizer;
 
 final class BlockEditorHydrator
@@ -9,6 +11,8 @@ final class BlockEditorHydrator
     public function __construct(
         private readonly BlockIdentityManager $identities,
         private readonly HeroDataNormalizer $heroes,
+        private readonly CTADataNormalizer $ctas,
+        private readonly ?BlockRegistry $registry = null,
     ) {}
 
     /**
@@ -16,7 +20,10 @@ final class BlockEditorHydrator
      */
     public function hydrate(array $blocks): array
     {
-        return $this->identities->ensureUniqueBlockIds($blocks);
+        return $this->identities->ensureUniqueBlockIds($this->normalizeBlocks($blocks, [
+            ...($this->registry?->normalizers() ?? []),
+            'cta' => $this->ctas,
+        ]));
     }
 
     /**
@@ -24,22 +31,34 @@ final class BlockEditorHydrator
      */
     public function hydrateV2(array $blocks): array
     {
+        return $this->identities->ensureUniqueBlockIds($this->normalizeBlocks($blocks, [
+            ...($this->registry?->normalizers() ?? []),
+            'hero' => $this->heroes,
+            'cta' => $this->ctas,
+        ]));
+    }
+
+    /** @param array<string, BlockNormalizer> $normalizers */
+    private function normalizeBlocks(array $blocks, array $normalizers): array
+    {
         foreach ($blocks as $key => $block) {
-            if (! is_array($block) || ($block['type'] ?? null) !== 'hero') {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $normalizer = $normalizers[$block['type'] ?? ''] ?? null;
+
+            if ($normalizer === null) {
                 continue;
             }
 
             $data = is_array($block['data'] ?? null) ? $block['data'] : [];
-            $normalized = $this->heroes->normalize($data);
-            $blocks[$key]['data'] = array_intersect_key($normalized, array_flip([
-                'block_id',
-                'schema_version',
-                'template',
-                'content',
-                'settings',
-            ]));
+            $blocks[$key]['data'] = array_intersect_key(
+                $normalizer->normalize($data),
+                array_flip(['block_id', 'schema_version', 'template', 'content', 'settings']),
+            );
         }
 
-        return $this->identities->ensureUniqueBlockIds($blocks);
+        return $blocks;
     }
 }

@@ -4,6 +4,7 @@ namespace App\CMS\Blocks\Hero;
 
 use App\CMS\Blocks\Support\AbstractBlock;
 use App\CMS\Blocks\Support\BlockTemplate;
+use App\CMS\Blocks\Support\HeadingLevel;
 use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use Filament\Forms;
@@ -34,6 +35,11 @@ final class HeroBlock extends AbstractBlock
         return 'heroicon-o-rectangle-stack';
     }
 
+    public function version(): int
+    {
+        return HeroDataNormalizer::SCHEMA_VERSION;
+    }
+
     public function templates(): array
     {
         return [
@@ -47,6 +53,13 @@ final class HeroBlock extends AbstractBlock
     public function defaultTemplate(): string
     {
         return 'default';
+    }
+
+    public function renderView(array $data): string
+    {
+        // The legacy-compatible root view normalizes the payload before it
+        // delegates to the selected Hero BlockTemplate view.
+        return 'partials.blocks.hero';
     }
 
     public function capabilities(): array
@@ -242,7 +255,7 @@ final class HeroBlock extends AbstractBlock
     {
         return [
             Forms\Components\TextInput::make('title')->label($this->text($context, 'عنوان', 'Title'))->required()->maxLength(255),
-            Forms\Components\Select::make('heading_tag')->label($this->text($context, 'تگ عنوان', 'Heading tag'))->options(['h1' => 'H1', 'h2' => 'H2'])->default('h2')->native(false),
+            HeadingLevel::field('heading_tag', $this->text($context, 'تگ عنوان', 'Heading tag')),
             Forms\Components\TextInput::make('subtitle')->label($this->text($context, 'زیرعنوان', 'Subtitle'))->maxLength(255),
             Forms\Components\Textarea::make('description')->label($this->text($context, 'توضیحات', 'Description'))->rows($context === self::CONTEXT_PAGE ? 4 : 3)->columnSpanFull(),
             Forms\Components\TextInput::make('primary_button_label')->label($this->text($context, 'متن دکمه اصلی', 'Primary button label'))->maxLength(255),

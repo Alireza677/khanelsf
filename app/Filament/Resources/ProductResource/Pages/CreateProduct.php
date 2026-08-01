@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\ProductResource\Pages;
 
-use App\Filament\Resources\ProductResource;
 use App\Filament\Resources\Concerns\LogsFilamentCreateDebug;
+use App\Filament\Resources\ProductResource;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateProduct extends CreateRecord
@@ -22,6 +22,10 @@ class CreateProduct extends CreateRecord
             $this->record,
             'gallery',
             data_get($this->form->getRawState(), 'gallery_media_ids', []),
+        );
+        ProductResource::syncRelatedProducts(
+            $this->record,
+            data_get($this->form->getRawState(), 'related_products', []),
         );
     }
 

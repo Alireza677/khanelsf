@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Gallery;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Services\ModuleService;
+use App\Services\ProjectTemplateContextBuilder;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use App\Services\TemplateService;
@@ -92,52 +92,27 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function show(string $slug, SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates): View
-    {
+    public function show(
+        string $slug,
+        SeoService $seoService,
+        SettingsService $settings,
+        ModuleService $modules,
+        TemplateService $templates,
+        ProjectTemplateContextBuilder $contextBuilder,
+    ): View {
         $this->abortIfProjectsDisabled($modules);
 
         $project = Project::query()
-            ->with('category')
             ->where('slug', $slug)
             ->published()
             ->firstOrFail();
 
-        $relatedProjects = Project::query()
-            ->with('category')
-            ->published()
-            ->whereKeyNot($project->getKey())
-            ->when($project->project_category_id, fn ($query) => $query->where('project_category_id', $project->project_category_id))
-            ->orderBy('sort_order')
-            ->latest('published_at')
-            ->take(3)
-            ->get();
-
-        $projectGalleries = $modules->galleriesEnabled()
-            ? Gallery::query()
-                ->with('category')
-                ->published()
-                ->withPublicCategory()
-                ->where('project_id', $project->id)
-                ->orderBy('sort_order')
-                ->latest('published_at')
-                ->take(6)
-                ->get()
-            : collect();
-
         $template = $templates->findTemplateFor('project_single', $project);
+        $context = $contextBuilder->build($project, $template, $modules->galleriesEnabled());
 
         return $templates->viewOrFallback($template, 'projects.show', [
-            'project' => $project,
-            'relatedProjects' => $relatedProjects,
-            'projectGalleries' => $projectGalleries,
+            ...$context,
             'seo' => $seoService->forProject($project),
-            'templateContext' => [
-                'kind' => 'single',
-                'type' => 'project',
-                'model' => $project,
-                'related' => $relatedProjects,
-                'projectGalleries' => $projectGalleries,
-            ],
         ]);
     }
 

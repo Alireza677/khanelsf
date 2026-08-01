@@ -15,7 +15,7 @@ final class BlockEditorSaveManager
     public function prepare(array $blocks, bool $useHeroV2): array
     {
         if (! $useHeroV2) {
-            return $this->identities->ensureUniqueBlockIds($blocks);
+            return $this->hydrator->hydrate($blocks);
         }
 
         $blocks = $this->hydrator->hydrateV2($blocks);

@@ -11,12 +11,14 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Models\Service;
 use Illuminate\Support\Collection;
 
 class SitemapService
 {
     public function __construct(
         private readonly SettingsService $settings,
+        private readonly ServiceQueryService $services,
     ) {}
 
     public function urls(): Collection
@@ -57,6 +59,8 @@ class SitemapService
         if (filter_var($this->settings->get('shop_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
             $this->add($urls, route('shop.index'));
         }
+
+        $this->add($urls, route('services.index'));
 
         Page::query()
             ->published()
@@ -163,6 +167,15 @@ class SitemapService
                     ($product->updated_at ?: $product->published_at)?->toAtomString(),
                 ));
         }
+
+        $this->services->archiveQuery()
+            ->latest('updated_at')
+            ->get()
+            ->each(fn (Service $service) => $this->add(
+                $urls,
+                route('services.show', $service->slug),
+                ($service->updated_at ?: $service->published_at)?->toAtomString(),
+            ));
 
         return $urls->values();
     }

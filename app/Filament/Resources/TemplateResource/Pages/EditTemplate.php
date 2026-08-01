@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TemplateResource\Pages;
 
 use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
 use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
+use App\Filament\Resources\Concerns\ValidatesTemplatePublication;
 use App\Filament\Resources\TemplateResource;
 use Filament\Actions;
 use Filament\Forms;
@@ -12,9 +13,19 @@ use Filament\Resources\Pages\EditRecord;
 class EditTemplate extends EditRecord
 {
     use LogsHeroV2SaveFailures;
-    use ManagesBlockEditorIdentity;
+    use ManagesBlockEditorIdentity {
+        mutateFormDataBeforeSave as prepareBlockDataBeforeSave;
+    }
+    use ValidatesTemplatePublication;
 
     protected static string $resource = TemplateResource::class;
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return $this->validateTemplatePublication(
+            $this->prepareBlockDataBeforeSave($data),
+        );
+    }
 
     protected function getHeaderActions(): array
     {

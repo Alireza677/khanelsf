@@ -12,8 +12,15 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Models\Service;
 use App\Models\Template;
+use App\Services\ModuleService;
+use App\Services\ProductTemplateContextBuilder;
+use App\Services\ProductTemplateRuntime;
+use App\Services\ProjectTemplateContextBuilder;
 use App\Services\SeoService;
+use App\Services\ServiceTemplateRuntime;
+use App\Services\TemplateService;
 use App\Support\SeoData;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
@@ -45,14 +52,20 @@ class PreviewController extends Controller
         ]);
     }
 
-    public function project(Project $project, SeoService $seoService): View
-    {
+    public function project(
+        Project $project,
+        SeoService $seoService,
+        ModuleService $modules,
+        TemplateService $templates,
+        ProjectTemplateContextBuilder $contextBuilder,
+    ): View {
         $this->authorizePreview();
 
-        return view('projects.show', [
-            'project' => $project->load('category'),
-            'relatedProjects' => collect(),
-            'projectGalleries' => collect(),
+        $template = $templates->findTemplateFor('project_single', $project);
+        $context = $contextBuilder->build($project, $template, $modules->galleriesEnabled());
+
+        return $templates->viewOrFallback($template, 'projects.show', [
+            ...$context,
             'seo' => $this->noindex($seoService->forProject($project)),
             'isPreview' => true,
         ]);
@@ -70,25 +83,71 @@ class PreviewController extends Controller
         ]);
     }
 
-    public function product(Product $product, SeoService $seoService): View
-    {
+    public function product(
+        Product $product,
+        ProductTemplateRuntime $runtime,
+    ): View {
         $this->authorizePreview();
 
-        return view('shop.show', [
-            'product' => $product->load('category'),
-            'relatedProducts' => collect(),
-            'seo' => $this->noindex($seoService->forProduct($product)),
-            'isPreview' => true,
-        ]);
+        return $runtime->render($product, preview: true);
     }
 
-    public function template(Template $template, Request $request, SeoService $seoService): View
-    {
+    public function template(
+        Template $template,
+        Request $request,
+        SeoService $seoService,
+        ModuleService $modules,
+        ProjectTemplateContextBuilder $contextBuilder,
+        ProductTemplateContextBuilder $productContextBuilder,
+        ProductTemplateRuntime $productRuntime,
+        ServiceTemplateRuntime $serviceRuntime,
+    ): View {
         $this->authorizePreview();
+
+        if ($template->type === 'service_single') {
+            $contextId = (int) $request->query('context_id');
+            $service = $contextId > 0 ? Service::query()->find($contextId) : null;
+
+            if ($service instanceof Service) {
+                return $serviceRuntime->render($service, preview: true, template: $template);
+            }
+
+            return view('templates.preview-missing-context', [
+                'message' => 'برای پیش‌نمایش این Template ابتدا یک خدمت را انتخاب کنید.',
+                'seo' => new SeoData(
+                    title: 'Service Template Preview',
+                    description: 'Admin-only template preview.',
+                    canonicalUrl: null,
+                    robots: 'noindex, nofollow',
+                    ogTitle: 'Service Template Preview',
+                ),
+                'isPreview' => true,
+            ]);
+        }
+
+        if ($template->type === 'product_single') {
+            $product = $this->findContextModel(Product::class, (int) $request->query('context_id'));
+
+            if ($product instanceof Product) {
+                return $productRuntime->render($product, preview: true, template: $template);
+            }
+        }
+
+        $templateContext = $this->templateContext(
+            $template,
+            (int) $request->query('context_id'),
+            $modules->galleriesEnabled(),
+            $contextBuilder,
+            $productContextBuilder,
+        );
+
+        if ($template->type === 'product_single') {
+            $templateContext['isPreview'] = true;
+        }
 
         return view('templates.render', [
             'template' => $template,
-            'templateContext' => $this->templateContext($template, (int) $request->query('context_id')),
+            'templateContext' => $templateContext,
             'seo' => $this->noindex($seoService->make([
                 'title' => 'Template Preview: '.$template->title,
                 'description' => 'Admin-only template preview.',
@@ -118,20 +177,28 @@ class PreviewController extends Controller
         );
     }
 
-    private function templateContext(Template $template, int $contextId = 0): array
-    {
+    private function templateContext(
+        Template $template,
+        int $contextId,
+        bool $galleriesEnabled,
+        ProjectTemplateContextBuilder $contextBuilder,
+        ProductTemplateContextBuilder $productContextBuilder,
+    ): array {
         return match ($template->type) {
             'post_single' => $this->singleContext(
                 'post',
                 $this->findContextModel(Post::class, $contextId, ['category']),
             ),
-            'project_single' => $this->singleContext(
-                'project',
-                $this->findContextModel(Project::class, $contextId, ['category']),
+            'project_single' => $this->projectSingleContext(
+                $this->findContextModel(Project::class, $contextId),
+                $template,
+                $galleriesEnabled,
+                $contextBuilder,
             ),
-            'product_single' => $this->singleContext(
-                'product',
-                $this->findContextModel(Product::class, $contextId, ['category']),
+            'product_single' => $this->productSingleContext(
+                $this->findContextModel(Product::class, $contextId),
+                $template,
+                $productContextBuilder,
             ),
             'gallery_single' => $this->singleContext(
                 'gallery',
@@ -186,6 +253,42 @@ class PreviewController extends Controller
             'type' => $type,
             'model' => $model,
             'related' => collect(),
+        ];
+    }
+
+    private function projectSingleContext(
+        ?Project $project,
+        Template $template,
+        bool $galleriesEnabled,
+        ProjectTemplateContextBuilder $contextBuilder,
+    ): array {
+        if (! $project) {
+            return $this->singleContext('project', null);
+        }
+
+        return $contextBuilder->build($project, $template, $galleriesEnabled)['templateContext'];
+    }
+
+    private function productSingleContext(
+        ?Product $product,
+        Template $template,
+        ProductTemplateContextBuilder $contextBuilder,
+    ): array {
+        if (! $product) {
+            return $this->singleContext('product', null);
+        }
+
+        $context = $contextBuilder->build(
+            $product,
+            $contextBuilder->relatedLimit($template),
+        );
+
+        return [
+            'kind' => 'single',
+            'type' => 'product',
+            'model' => $product,
+            'related' => $context['relatedProducts'],
+            ...$context,
         ];
     }
 

@@ -52,8 +52,8 @@ class OrderResource extends Resource
                             Order::PAYMENT_STATUS_FAILED => 'Failed',
                         ]),
                     Forms\Components\TextInput::make('payment_method')->maxLength(255),
-                    Forms\Components\TextInput::make('subtotal')->disabled()->prefix('$'),
-                    Forms\Components\TextInput::make('total')->disabled()->prefix('$'),
+                    Forms\Components\TextInput::make('subtotal')->disabled()->prefix('IRT')->suffix('تومان'),
+                    Forms\Components\TextInput::make('total')->disabled()->prefix('IRT')->suffix('تومان'),
                 ])
                 ->columns(2),
             Forms\Components\Section::make('Customer')
@@ -73,9 +73,9 @@ class OrderResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('product_title')->label('Item')->disabled(),
                             Forms\Components\TextInput::make('product_sku')->label('SKU')->disabled(),
-                            Forms\Components\TextInput::make('unit_price')->disabled()->prefix('$'),
+                            Forms\Components\TextInput::make('unit_price')->disabled()->prefix('IRT')->suffix('تومان'),
                             Forms\Components\TextInput::make('quantity')->disabled(),
-                            Forms\Components\TextInput::make('total')->disabled()->prefix('$'),
+                            Forms\Components\TextInput::make('total')->disabled()->prefix('IRT')->suffix('تومان'),
                         ])
                         ->columns(5)
                         ->deletable(false)
@@ -131,7 +131,9 @@ class OrderResource extends Resource
                         default => 'warning',
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('total')->money('USD')->sortable(),
+                Tables\Columns\TextColumn::make('total')
+                    ->formatStateUsing(fn (mixed $state): string => number_format((float) $state).' تومان')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([

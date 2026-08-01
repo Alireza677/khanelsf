@@ -3,7 +3,13 @@
 namespace Tests\Feature;
 
 use App\CMS\Blocks\BlockRegistry;
+use App\CMS\Blocks\Contracts\BlockNormalizer;
+use App\CMS\Blocks\CTA\CTABlock;
+use App\CMS\Blocks\CTA\CTADataNormalizer;
+use App\CMS\Blocks\FeatureGrid\FeatureGridBlock;
+use App\CMS\Blocks\FeatureGrid\FeatureGridDataNormalizer;
 use App\CMS\Blocks\Hero\HeroBlock;
+use App\CMS\Blocks\Hero\HeroDataNormalizer;
 use App\Filament\Resources\PageResource\Pages\EditPage;
 use App\Filament\Resources\TemplateResource;
 use App\Models\Page;
@@ -27,9 +33,45 @@ class BlockFoundationTest extends TestCase
         $hero = $registry->find('hero');
 
         $this->assertInstanceOf(HeroBlock::class, $hero);
-        $this->assertSame(['hero'], $registry->keys());
+        $this->assertSame([
+            'hero',
+            'cta',
+            'form',
+            'feature_grid',
+            'site_header',
+            'project_header',
+            'project_overview',
+            'project_metrics',
+            'project_services',
+            'project_gallery',
+            'project_story',
+            'related_projects',
+            'product_header',
+            'product_overview',
+            'product_specifications',
+            'product_gallery',
+            'product_documents',
+            'product_related',
+            'service_header',
+            'service_overview',
+            'service_benefits',
+            'service_process',
+            'service_deliverables',
+            'service_projects',
+            'service_gallery',
+            'related_services',
+        ], $registry->keys());
+        $cta = $registry->find('cta');
+        $this->assertInstanceOf(CTABlock::class, $cta);
+        $this->assertSame(2, $cta->version());
+        $featureGrid = $registry->find('feature_grid');
+        $this->assertInstanceOf(FeatureGridBlock::class, $featureGrid);
+        $this->assertSame(1, $featureGrid->version());
+        $this->assertInstanceOf(BlockNormalizer::class, app(HeroDataNormalizer::class));
+        $this->assertInstanceOf(BlockNormalizer::class, app(CTADataNormalizer::class));
+        $this->assertInstanceOf(BlockNormalizer::class, app(FeatureGridDataNormalizer::class));
         $this->assertSame('hero', $hero->key());
-        $this->assertSame(1, $hero->version());
+        $this->assertSame(2, $hero->version());
         $this->assertSame('default', $hero->defaultTemplate());
         $this->assertSame(
             ['default', 'hero_1', 'hero_2', 'hero_3'],

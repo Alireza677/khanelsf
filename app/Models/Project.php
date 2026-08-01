@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use App\CMS\Navigation\Contracts\ResolvesNavigationUrl;
 use App\Models\Concerns\HasFeaturedImage;
+use App\Services\ProjectServiceResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class Project extends Model implements HasMedia
+class Project extends Model implements HasMedia, ResolvesNavigationUrl
 {
     use HasFactory;
     use HasFeaturedImage;
@@ -28,7 +33,15 @@ class Project extends Model implements HasMedia
         'content',
         'client_name',
         'location',
+        'industry',
+        'project_type',
         'project_date',
+        'project_started_at',
+        'project_completed_at',
+        'challenge',
+        'solution',
+        'results_summary',
+        'client_quote',
         'services',
         'attributes',
         'external_url',
@@ -47,6 +60,8 @@ class Project extends Model implements HasMedia
     {
         return [
             'project_date' => 'date',
+            'project_started_at' => 'date',
+            'project_completed_at' => 'date',
             'services' => 'array',
             'attributes' => 'array',
             'published_at' => 'datetime',
@@ -54,6 +69,13 @@ class Project extends Model implements HasMedia
             'robots_index' => 'boolean',
             'robots_follow' => 'boolean',
         ];
+    }
+
+    public function resolveNavigationUrl(): ?string
+    {
+        return filled($this->slug)
+            ? route('projects.show', $this->slug, absolute: false)
+            : null;
     }
 
     public function scopePublished(Builder $query): Builder
@@ -72,9 +94,48 @@ class Project extends Model implements HasMedia
         return $query->where('is_featured', true);
     }
 
+    public function hasCaseStudyData(): bool
+    {
+        return collect([
+            $this->project_started_at,
+            $this->project_completed_at,
+            $this->industry,
+            $this->project_type,
+            $this->challenge,
+            $this->solution,
+            $this->results_summary,
+            $this->client_quote,
+        ])->contains(fn (mixed $value): bool => filled($value));
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProjectCategory::class, 'project_category_id');
+    }
+
+    public function relatedServices(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class)
+            ->withTimestamps()
+            ->orderBy('services.sort_order')
+            ->orderBy('services.name');
+    }
+
+    public function serviceNames(): Collection
+    {
+        return app(ProjectServiceResolver::class)->names($this);
+    }
+
+    public function serviceItems(): Collection
+    {
+        return app(ProjectServiceResolver::class)->items($this);
+    }
+
+    public function metrics(): HasMany
+    {
+        return $this->hasMany(ProjectMetric::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function registerMediaCollections(): void

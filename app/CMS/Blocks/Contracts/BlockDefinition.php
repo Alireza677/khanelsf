@@ -28,4 +28,6 @@ interface BlockDefinition
     public function filamentSchema(string $context): array;
 
     public function filamentBlock(string $context): Block;
+
+    public function renderView(array $data): string;
 }

@@ -47,7 +47,7 @@
                         <p class="shop-template__eyebrow">{{ $data['eyebrow'] }}</p>
                     @endif
 
-                    <h1>{{ $heading }}</h1>
+                    @include('partials.blocks._heading', ['title' => $heading, 'tag' => $data['heading_tag'] ?? 'h1'])
 
                     @if ($description)
                         <p>{{ $description }}</p>
@@ -114,7 +114,7 @@
                 <div class="shop-template__section-heading shop-template__section-heading--center">
                     @php
                         $requestedCategoryHeadingTag = $data['category_heading_tag'] ?? 'h2';
-                        $categoryHeadingTag = in_array($requestedCategoryHeadingTag, ['h1', 'h2'], true) ? $requestedCategoryHeadingTag : 'h2';
+                        $categoryHeadingTag = \App\CMS\Blocks\Support\HeadingLevel::normalize($requestedCategoryHeadingTag);
                     @endphp
                     <{{ $categoryHeadingTag }} id="shop-template-categories-title" class="block-title">{{ $data['category_section_title'] ?? 'خرید بر اساس دسته‌بندی' }}</{{ $categoryHeadingTag }}>
                     <span class="shop-template__heading-rule" aria-hidden="true"></span>

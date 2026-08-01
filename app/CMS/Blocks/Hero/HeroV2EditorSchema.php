@@ -3,6 +3,7 @@
 namespace App\CMS\Blocks\Hero;
 
 use App\CMS\Blocks\Support\BlockTemplate;
+use App\CMS\Blocks\Support\HeadingLevel;
 use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use Filament\Forms;
@@ -49,7 +50,7 @@ final class HeroV2EditorSchema
             Forms\Components\TextInput::make('content.title_secondary')->label($page ? 'خط دوم عنوان' : 'Title second line')->maxLength(255)->visible(fn (Get $get): bool => $templateIs($get, 'hero_1')),
             Forms\Components\TextInput::make('content.lead')->label($page ? 'زیرعنوان' : 'Lead')->maxLength(255),
             Forms\Components\Textarea::make('content.description')->label($page ? 'توضیحات' : 'Description')->rows($page ? 4 : 3)->columnSpanFull(),
-            Forms\Components\Select::make('settings.heading_tag')->label($page ? 'تگ عنوان' : 'Heading tag')->options(['h1' => 'H1', 'h2' => 'H2'])->default('h2')->native(false),
+            HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
             Forms\Components\Select::make('settings.alignment')->label($page ? 'چیدمان' : 'Alignment')->options(['left' => $page ? 'چپ' : 'Left', 'right' => $page ? 'راست' : 'Right', 'center' => $page ? 'وسط' : 'Center', 'start' => 'Start', 'end' => 'End'])->default('left'),
             Forms\Components\Select::make('settings.color_mode')->label($page ? 'حالت رنگ' : 'Color mode')->options(['default' => $page ? 'پیش‌فرض' : 'Default', 'muted' => $page ? 'ملایم' : 'Muted', 'dark' => $page ? 'تیره' : 'Dark'])->default('default'),
 

@@ -109,14 +109,30 @@
                         return
                     }
 
-                    const close = function () {
+                    const close = function (restoreFocus = false) {
+                        const wasOpen = header.classList.contains('is-nav-open')
+
                         header.classList.remove('is-nav-open')
                         toggle.setAttribute('aria-expanded', 'false')
+                        toggle.setAttribute('aria-label', 'باز کردن منوی اصلی')
+
+                        if (wasOpen && header.classList.contains('industrial-header')) {
+                            document.body.classList.remove('industrial-mobile-menu-open')
+                        }
+
+                        if (restoreFocus) {
+                            toggle.focus()
+                        }
                     }
 
                     const open = function () {
                         header.classList.add('is-nav-open')
                         toggle.setAttribute('aria-expanded', 'true')
+                        toggle.setAttribute('aria-label', 'بستن منوی اصلی')
+
+                        if (header.classList.contains('industrial-header')) {
+                            document.body.classList.add('industrial-mobile-menu-open')
+                        }
                     }
 
                     toggle.addEventListener('click', function () {
@@ -140,8 +156,8 @@
                     })
 
                     document.addEventListener('keydown', function (event) {
-                        if (event.key === 'Escape') {
-                            close()
+                        if (event.key === 'Escape' && header.classList.contains('is-nav-open')) {
+                            close(true)
                         }
                     })
 
@@ -150,6 +166,152 @@
                             close()
                         }
                     })
+                })
+            }
+
+            const initIndustrialStickyHeader = function () {
+                document.querySelectorAll('.industrial-header:not(.industrial-header--static)').forEach(function (header) {
+                    if (
+                        header.dataset.stickyActionsInitialized === 'true'
+                        || ! header.querySelector('.industrial-header__top-actions')
+                    ) {
+                        return
+                    }
+
+                    header.dataset.stickyActionsInitialized = 'true'
+
+                    let lastScrollY = Math.max(window.scrollY, 0)
+                    let scrollFrame
+
+                    const update = function () {
+                        const currentScrollY = Math.max(window.scrollY, 0)
+
+                        if (currentScrollY <= 16 || currentScrollY < lastScrollY) {
+                            header.classList.remove('is-top-actions-hidden')
+                        } else if (currentScrollY > lastScrollY) {
+                            header.classList.add('is-top-actions-hidden')
+                        }
+
+                        lastScrollY = currentScrollY
+                        scrollFrame = undefined
+                    }
+
+                    window.addEventListener('scroll', function () {
+                        if (scrollFrame !== undefined) {
+                            return
+                        }
+
+                        scrollFrame = requestAnimationFrame(update)
+                    }, { passive: true })
+                })
+            }
+
+            const initDesktopNavigationOverflow = function () {
+                document.querySelectorAll('[data-desktop-navigation]').forEach(function (navigation) {
+                    if (navigation.dataset.desktopOverflowInitialized === 'true') {
+                        return
+                    }
+
+                    const more = navigation.querySelector(':scope > [data-navigation-more]')
+                    const moreTrigger = more?.querySelector('[data-navigation-more-trigger]')
+                    const moreItems = more?.querySelector('[data-navigation-more-items]')
+
+                    if (! more || ! moreTrigger || ! moreItems) {
+                        return
+                    }
+
+                    navigation.dataset.desktopOverflowInitialized = 'true'
+
+                    const closeMore = function (restoreFocus = false) {
+                        more.classList.remove('is-open')
+                        moreTrigger.setAttribute('aria-expanded', 'false')
+
+                        if (restoreFocus) {
+                            moreTrigger.focus()
+                        }
+                    }
+
+                    const restoreItems = function () {
+                        Array.from(moreItems.children).forEach(function (item) {
+                            navigation.insertBefore(item, more)
+                        })
+
+                        more.hidden = true
+                        closeMore()
+                    }
+
+                    const fitItems = function () {
+                        restoreItems()
+
+                        if (window.innerWidth <= 900) {
+                            return
+                        }
+
+                        const candidates = function () {
+                            return Array.from(navigation.children).filter(function (item) {
+                                return item !== more
+                            })
+                        }
+
+                        while (navigation.scrollWidth > navigation.clientWidth && candidates().length > 0) {
+                            more.hidden = false
+                            moreItems.prepend(candidates().at(-1))
+                        }
+
+                        if (moreItems.children.length === 0) {
+                            more.hidden = true
+                        }
+                    }
+
+                    let fitFrame
+                    const scheduleFit = function () {
+                        cancelAnimationFrame(fitFrame)
+                        fitFrame = requestAnimationFrame(fitItems)
+                    }
+
+                    moreTrigger.addEventListener('click', function (event) {
+                        event.stopPropagation()
+                        const willOpen = ! more.classList.contains('is-open')
+
+                        closeMore()
+
+                        if (willOpen) {
+                            more.classList.add('is-open')
+                            moreTrigger.setAttribute('aria-expanded', 'true')
+                        }
+                    })
+
+                    document.addEventListener('click', function (event) {
+                        if (! more.contains(event.target)) {
+                            closeMore()
+                        }
+                    })
+
+                    document.addEventListener('keydown', function (event) {
+                        if (event.key === 'Escape' && more.classList.contains('is-open')) {
+                            closeMore(true)
+                        }
+                    })
+
+                    window.addEventListener('resize', scheduleFit)
+                    document.fonts?.ready.then(scheduleFit)
+                    scheduleFit()
+                })
+            }
+
+            const initActionPlaceholders = function () {
+                if (window.__actionPlaceholdersInitialized) {
+                    return
+                }
+
+                window.__actionPlaceholdersInitialized = true
+
+                document.addEventListener('click', function (event) {
+                    const placeholder = event.target.closest('a[data-action-placeholder][href="#"]')
+
+                    if (placeholder) {
+                        event.preventDefault()
+                    }
                 })
             }
 
@@ -291,6 +453,9 @@
 
             const initPublicInteractions = function () {
                 initMobileHeader()
+                initIndustrialStickyHeader()
+                initDesktopNavigationOverflow()
+                initActionPlaceholders()
                 initHeroTemplateSelectors()
                 initHeroTemplateVideos()
                 initStatsCounters()
@@ -312,16 +477,15 @@
         </div>
     @endif
 
-    @php
-        $templateService = app(\App\Services\TemplateService::class);
-        $siteHeaderTemplate = $templateService->findTemplateFor('site_header');
-        $siteFooterTemplate = $templateService->findTemplateFor('site_footer');
-    @endphp
-
     @if ($siteHeaderTemplate?->hasBlocks())
         @include('partials.page-blocks', [
             'blocks' => $siteHeaderTemplate->blocks,
-            'context' => ['kind' => 'site', 'type' => 'site_header'],
+            'context' => [
+                'kind' => 'site',
+                'type' => 'site_header',
+                'preview' => ! empty($isPreview),
+                'page_url' => request()->getRequestUri(),
+            ],
         ])
     @else
         @include('partials.header')
@@ -341,5 +505,7 @@
     @else
         @include('partials.footer')
     @endif
+
+    @include('partials.action-form-modal-script')
 </body>
 </html>

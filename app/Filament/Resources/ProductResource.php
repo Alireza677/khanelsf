@@ -72,15 +72,19 @@ class ProductResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->minValue(0)
-                                ->prefix('$')
+                                ->prefix('IRT')
+                                ->suffix('تومان')
                                 ->default(0),
                             Forms\Components\TextInput::make('sale_price')
                                 ->numeric()
                                 ->minValue(0)
-                                ->prefix('$')
-                                ->helperText('اختیاری است؛ اگر محصول تخفیف ندارد خالی بگذارید.'),
+                                ->lt('price')
+                                ->prefix('IRT')
+                                ->suffix('تومان')
+                                ->helperText('اختیاری است و باید از قیمت اصلی کمتر باشد.'),
                             Forms\Components\TextInput::make('sku')
                                 ->label('شناسه محصول')
+                                ->unique(ignoreRecord: true)
                                 ->maxLength(255),
                             Forms\Components\Toggle::make('has_stock')
                                 ->label('قابل خرید')
@@ -94,6 +98,123 @@ class ProductResource extends Resource
                                 ->default('in_stock'),
                         ])
                         ->columns(2),
+                    Forms\Components\Tabs\Tab::make('مشخصات')
+                        ->schema([
+                            Forms\Components\Repeater::make('specifications')
+                                ->label('مشخصات ساختاریافته')
+                                ->relationship('specifications')
+                                ->schema([
+                                    Forms\Components\TextInput::make('group_name')
+                                        ->label('گروه')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('key')
+                                        ->label('کلید')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('label')
+                                        ->label('عنوان')
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('value')
+                                        ->label('مقدار')
+                                        ->rows(2),
+                                    Forms\Components\TextInput::make('unit')
+                                        ->label('واحد')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('sort_order')
+                                        ->label('ترتیب نمایش')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->default(0),
+                                ])
+                                ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? 'مشخصه')
+                                ->orderColumn('sort_order')
+                                ->reorderable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('اسناد')
+                        ->schema([
+                            Forms\Components\Repeater::make('documents')
+                                ->label('فایل‌ها و اسناد محصول')
+                                ->relationship('documents')
+                                ->schema([
+                                    Forms\Components\TextInput::make('title')
+                                        ->label('عنوان فایل')
+                                        ->maxLength(255),
+                                    Forms\Components\FileUpload::make('file_path')
+                                        ->label('فایل')
+                                        ->disk('public')
+                                        ->directory('product-documents')
+                                        ->preserveFilenames()
+                                        ->downloadable()
+                                        ->openable(),
+                                    Forms\Components\TextInput::make('external_url')
+                                        ->label('نشانی خارجی فایل')
+                                        ->url()
+                                        ->maxLength(255)
+                                        ->helperText('در صورت استفاده از فایل خارجی، نشانی کامل را وارد کنید.'),
+                                    Forms\Components\TextInput::make('mime_type')
+                                        ->label('نوع فایل')
+                                        ->placeholder('application/pdf')
+                                        ->maxLength(255),
+                                    Forms\Components\Hidden::make('disk')
+                                        ->default('public'),
+                                    Forms\Components\TextInput::make('sort_order')
+                                        ->label('ترتیب نمایش')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->default(0),
+                                ])
+                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? $state['file_path'] ?? 'سند')
+                                ->orderColumn('sort_order')
+                                ->reorderable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('محصولات مرتبط')
+                        ->schema([
+                            Forms\Components\Repeater::make('related_products')
+                                ->label('محصولات مرتبط')
+                                ->schema([
+                                    Forms\Components\Select::make('product_id')
+                                        ->label('محصول')
+                                        ->required()
+                                        ->options(fn (?Product $record): array => Product::query()
+                                            ->when($record, fn ($query) => $query->whereKeyNot($record->getKey()))
+                                            ->orderBy('title')
+                                            ->pluck('title', 'id')
+                                            ->all())
+                                        ->searchable()
+                                        ->preload()
+                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
+                                    Forms\Components\TextInput::make('sort_order')
+                                        ->label('ترتیب نمایش')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->default(0),
+                                ])
+                                ->dehydrated(false)
+                                ->afterStateHydrated(function (Set $set, ?Product $record): void {
+                                    $set('related_products', $record
+                                        ? $record->relatedProducts()
+                                            ->get()
+                                            ->map(fn (Product $related): array => [
+                                                'product_id' => $related->getKey(),
+                                                'sort_order' => (int) $related->pivot->sort_order,
+                                            ])
+                                            ->all()
+                                        : []);
+                                })
+                                ->orderColumn('sort_order')
+                                ->reorderable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
                     Forms\Components\Tabs\Tab::make('تصاویر')
                         ->schema([
                             Forms\Components\ViewField::make('featured_media_id')
@@ -193,8 +314,17 @@ class ProductResource extends Resource
                     ->label('تصویر'),
                 Tables\Columns\TextColumn::make('title')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('category.name')->label('دسته‌بندی')->sortable()->toggleable(),
-                Tables\Columns\TextColumn::make('price')->money('USD')->sortable(),
-                Tables\Columns\TextColumn::make('sale_price')->money('USD')->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('price')
+                    ->label('قیمت')
+                    ->formatStateUsing(fn (mixed $state): string => number_format((float) $state).' تومان')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('sale_price')
+                    ->label('قیمت فروش')
+                    ->formatStateUsing(fn (mixed $state): string => filled($state)
+                        ? number_format((float) $state).' تومان'
+                        : '—')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('stock_status')->badge()->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')->boolean()->label('ویژه')->sortable(),
@@ -248,5 +378,45 @@ class ProductResource extends Resource
     {
         return $product->status === 'published'
             && (blank($product->published_at) || $product->published_at->lte(now()));
+    }
+
+    public static function syncRelatedProducts(Product $product, ?array $selection): void
+    {
+        $selectedIds = collect($selection ?? [])
+            ->filter(fn (mixed $item): bool => is_array($item) && filled($item['product_id'] ?? null))
+            ->pluck('product_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->reject(fn (int $id): bool => $id < 1 || $id === (int) $product->getKey())
+            ->unique()
+            ->values();
+
+        $existingIds = Product::query()
+            ->whereKey($selectedIds->all())
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $syncData = collect($selection ?? [])
+            ->filter(fn (mixed $item): bool => is_array($item))
+            ->reduce(function (array $syncData, array $item) use ($existingIds, $product): array {
+                $relatedProductId = (int) ($item['product_id'] ?? 0);
+
+                if (
+                    $relatedProductId < 1
+                    || $relatedProductId === (int) $product->getKey()
+                    || ! in_array($relatedProductId, $existingIds, true)
+                    || array_key_exists($relatedProductId, $syncData)
+                ) {
+                    return $syncData;
+                }
+
+                $syncData[$relatedProductId] = [
+                    'sort_order' => max(0, (int) ($item['sort_order'] ?? 0)),
+                ];
+
+                return $syncData;
+            }, []);
+
+        $product->relatedProducts()->sync($syncData);
     }
 }

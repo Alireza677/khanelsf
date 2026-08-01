@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PublicRoutesTest extends TestCase
@@ -30,6 +31,25 @@ class PublicRoutesTest extends TestCase
             ->assertSee('Home')
             ->assertSee('rel="canonical"', false)
             ->assertSee('name="robots"', false);
+    }
+
+    public function test_frontend_layout_includes_the_canonical_custom_font_styles(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('settings/fonts/site.woff2', 'font-data');
+        Page::factory()->published()->create(['slug' => 'home', 'title' => 'Home']);
+
+        $this->setting('font_family', 'custom', 'theme', 'select');
+        $this->setting('custom_font_name', 'Site Font', 'theme', 'text');
+        $this->setting('custom_font_file', 'settings/fonts/site.woff2', 'theme', 'file');
+
+        $response = $this->get('/')->assertOk();
+
+        $response->assertSee('data-site-font', false);
+        $response->assertSee('@font-face', false);
+        $response->assertSee('--site-font-family:"Site Font"', false);
+        $response->assertSee('/storage/settings/fonts/site.woff2', false);
+        $this->assertSame(1, substr_count($response->getContent(), '@font-face'));
     }
 
     public function test_homepage_head_contains_escaped_google_site_verification(): void
@@ -453,9 +473,9 @@ class PublicRoutesTest extends TestCase
             ->assertSee('Latest Dynamic Project')
             ->assertSee('Latest project excerpt.')
             ->assertSee('View Project')
-            ->assertSee(route('projects.show', $latestProject->slug), false)
+            ->assertSee($latestProject->resolveNavigationUrl(), false)
             ->assertDontSee('Older Dynamic Project')
-            ->assertDontSee(route('projects.show', $olderProject->slug), false);
+            ->assertDontSee($olderProject->resolveNavigationUrl(), false);
     }
 
     public function test_hero_three_split_stats_template_renders(): void

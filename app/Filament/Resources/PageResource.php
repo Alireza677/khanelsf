@@ -4,13 +4,14 @@ namespace App\Filament\Resources;
 
 use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Hero\HeroBlock;
+use App\CMS\Blocks\Support\HeadingLevel;
+use App\Filament\Forms\Components\BlockBuilder;
 use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\PageResource\Pages;
 use App\Models\GalleryCategory;
 use App\Models\Page;
-use App\Models\Post;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
@@ -77,147 +78,14 @@ class PageResource extends Resource
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('بلوک‌ها')
                         ->schema([
-                            Forms\Components\Builder::make('blocks')
+                            BlockBuilder::make('blocks')
                                 ->label('بلوک‌های برگه')
                                 ->cloneable()
                                 ->blocks([
                                     app(BlockRegistry::class)->find('hero')->filamentBlock(HeroBlock::CONTEXT_PAGE),
-                                    Forms\Components\Builder\Block::make('cta')
-                                        ->label('دعوت به اقدام')
-                                        ->icon('heroicon-o-megaphone')
-                                        ->schema(static::ctaFields())
-                                        ->columns(2),
-                                    Forms\Components\Builder\Block::make('feature_grid')
-                                        ->label('شبکه ویژگی‌ها')
-                                        ->icon('heroicon-o-squares-2x2')
-                                        ->schema([
-                                            ...static::blockStyleFields(eyebrow: true),
-                                            Forms\Components\TextInput::make('section_title')
-                                                ->label('عنوان بخش')
-                                                ->required()
-                                                ->maxLength(255),
-                                            static::headingTagField(),
-                                            Forms\Components\Textarea::make('section_description')
-                                                ->label('توضیحات بخش')
-                                                ->rows(3)
-                                                ->columnSpanFull(),
-                                            Forms\Components\Select::make('items_mode')
-                                                ->label('نوع آیتم‌ها')
-                                                ->options([
-                                                    'static' => 'ثابت',
-                                                    'dynamic' => 'داینامیک',
-                                                ])
-                                                ->default('static')
-                                                ->live()
-                                                ->required(),
-                                            Forms\Components\Select::make('dynamic_source')
-                                                ->label('منبع داینامیک')
-                                                ->options([
-                                                    'posts' => 'آخرین نوشته‌ها',
-                                                    'projects' => 'آخرین پروژه‌ها',
-                                                ])
-                                                ->default('posts')
-                                                ->live()
-                                                ->afterStateUpdated(fn (Set $set) => $set('dynamic_button_overrides', []))
-                                                ->required()
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\TextInput::make('dynamic_rows')
-                                                ->label('تعداد ردیف')
-                                                ->numeric()
-                                                ->minValue(1)
-                                                ->maxValue(6)
-                                                ->default(1)
-                                                ->required()
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\TextInput::make('dynamic_columns')
-                                                ->label('تعداد ستون درخواستی')
-                                                ->numeric()
-                                                ->minValue(1)
-                                                ->maxValue(12)
-                                                ->default(3)
-                                                ->required()
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\TextInput::make('dynamic_grid_width')
-                                                ->label('عرض شبکه')
-                                                ->numeric()
-                                                ->minValue(240)
-                                                ->maxValue(2400)
-                                                ->default(1180)
-                                                ->suffix('px')
-                                                ->required()
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\TextInput::make('dynamic_item_width')
-                                                ->label('حداقل عرض هر آیتم')
-                                                ->numeric()
-                                                ->minValue(120)
-                                                ->maxValue(800)
-                                                ->default(280)
-                                                ->suffix('px')
-                                                ->required()
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\TextInput::make('dynamic_button_label')
-                                                ->label('متن پیش‌فرض دکمه')
-                                                ->default('مشاهده بیشتر')
-                                                ->maxLength(255)
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\Repeater::make('dynamic_button_overrides')
-                                                ->label('متن دکمه اختصاصی')
-                                                ->cloneable()
-                                                ->schema([
-                                                    Forms\Components\Select::make('record_id')
-                                                        ->label('نوشته / پروژه')
-                                                        ->options(fn (Get $get): array => $get('../../dynamic_source') === 'projects'
-                                                            ? Project::query()->published()->latest('published_at')->pluck('title', 'id')->all()
-                                                            : Post::query()->published()->latest('published_at')->pluck('title', 'id')->all())
-                                                        ->searchable()
-                                                        ->required(),
-                                                    Forms\Components\TextInput::make('button_label')
-                                                        ->label('متن دکمه')
-                                                        ->required()
-                                                        ->maxLength(255),
-                                                ])
-                                                ->defaultItems(0)
-                                                ->columns(2)
-                                                ->columnSpanFull()
-                                                ->collapsible()
-                                                ->visible(fn (Get $get): bool => $get('items_mode') === 'dynamic'),
-                                            Forms\Components\Repeater::make('items')
-                                                ->label('آیتم‌ها')
-                                                ->cloneable()
-                                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'آیتم')
-                                                ->schema([
-                                                    Forms\Components\TextInput::make('title')
-                                                        ->label('عنوان')
-                                                        ->required()
-                                                        ->maxLength(255),
-                                                    static::iconsaxIconPicker('icon', 'آیکن'),
-                                                    static::iconsaxIconSizeInput(),
-                                                    Forms\Components\ViewField::make('image')
-                                                        ->label('تصویر')
-                                                        ->view('filament.forms.components.media-library-url-picker')
-                                                        ->viewData(fn (): array => [
-                                                            'images' => static::mediaLibraryImageItems(),
-                                                        ])
-                                                        ->helperText('تصویر اختیاری برای این ویژگی.'),
-                                                    ...static::imageSettingsFields('image'),
-                                                    Forms\Components\Textarea::make('description')
-                                                        ->label('توضیحات')
-                                                        ->rows(3)
-                                                        ->columnSpanFull(),
-                                                    Forms\Components\TextInput::make('button_label')
-                                                        ->label('متن دکمه')
-                                                        ->maxLength(255),
-                                                    Forms\Components\TextInput::make('button_url')
-                                                        ->label('لینک دکمه')
-                                                        ->maxLength(255),
-                                                ])
-                                                ->columns(3)
-                                                ->columnSpanFull()
-                                                ->collapsible()
-                                                ->collapsed()
-                                                ->reorderable()
-                                                ->visible(fn (Get $get): bool => ($get('items_mode') ?? 'static') === 'static'),
-                                        ]),
+                                    app(BlockRegistry::class)->find('cta')->filamentBlock(HeroBlock::CONTEXT_PAGE),
+                                    app(BlockRegistry::class)->find('form')->filamentBlock(HeroBlock::CONTEXT_PAGE),
+                                    app(BlockRegistry::class)->find('feature_grid')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     Forms\Components\Builder\Block::make('stats_section')
                                         ->label('بخش آمار')
                                         ->icon('heroicon-o-chart-bar')
@@ -845,97 +713,7 @@ class PageResource extends Resource
 
     protected static function headingTagField(string $label = 'تگ عنوان'): Forms\Components\Select
     {
-        return Forms\Components\Select::make('heading_tag')
-            ->label($label)
-            ->options([
-                'h1' => 'H1',
-                'h2' => 'H2',
-            ])
-            ->default('h2')
-            ->native(false);
-    }
-
-    protected static function ctaFields(): array
-    {
-        return [
-            Forms\Components\Select::make('cta_template')
-                ->label('قالب دعوت به اقدام')
-                ->options([
-                    'classic' => 'قالب ساده',
-                    'image' => 'قالب تصویری',
-                ])
-                ->default('classic')
-                ->live()
-                ->required(),
-            Forms\Components\TextInput::make('content_width')
-                ->label('عرض بخش متن')
-                ->numeric()
-                ->minValue(240)
-                ->maxValue(1400)
-                ->default(580)
-                ->suffix('px')
-                ->helperText('عرض محتوای متنی در قالب تصویری.')
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
-            Forms\Components\Select::make('section_background')
-                ->label('پس‌زمینه بخش')
-                ->options([
-                    'default' => 'پیش‌فرض',
-                    'muted' => 'ملایم',
-                    'dark' => 'تیره',
-                ])
-                ->default('default')
-                ->visible(fn (Get $get): bool => ($get('cta_template') ?? 'classic') === 'classic'),
-            Forms\Components\Select::make('alignment')
-                ->label('چیدمان')
-                ->options([
-                    'left' => 'چپ',
-                    'center' => 'وسط',
-                ])
-                ->default('center')
-                ->visible(fn (Get $get): bool => ($get('cta_template') ?? 'classic') === 'classic'),
-            Forms\Components\TextInput::make('eyebrow')
-                ->label('برچسب بالای عنوان')
-                ->maxLength(255)
-                ->helperText('یک برچسب کوتاه اختیاری بالای عنوان بخش.')
-                ->visible(fn (Get $get): bool => ($get('cta_template') ?? 'classic') === 'classic'),
-            Forms\Components\ViewField::make('background_image')
-                ->label('تصویر پس‌زمینه')
-                ->view('filament.forms.components.media-library-url-picker')
-                ->viewData(fn (): array => [
-                    'images' => static::mediaLibraryImageItems(),
-                ])
-                ->helperText('فقط برای قالب تصویری دعوت به اقدام.')
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image')
-                ->columnSpanFull(),
-            ...static::imageSettingsFields(
-                'background_image',
-                'تنظیمات تصویر پس‌زمینه',
-                fn (Get $get): bool => $get('cta_template') === 'image',
-            ),
-            Forms\Components\TextInput::make('title')
-                ->label('عنوان')
-                ->required()
-                ->maxLength(255),
-            static::headingTagField(),
-            Forms\Components\Textarea::make('description')
-                ->label('توضیحات')
-                ->rows(3)
-                ->columnSpanFull(),
-            Forms\Components\TextInput::make('button_label')
-                ->label('متن دکمه اصلی')
-                ->maxLength(255),
-            Forms\Components\TextInput::make('button_url')
-                ->label('لینک دکمه اصلی')
-                ->maxLength(255),
-            Forms\Components\TextInput::make('secondary_button_label')
-                ->label('متن دکمه دوم')
-                ->maxLength(255)
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
-            Forms\Components\TextInput::make('secondary_button_url')
-                ->label('لینک دکمه دوم')
-                ->maxLength(255)
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
-        ];
+        return HeadingLevel::field('heading_tag', $label);
     }
 
     protected static function logPageEditPerf(string $label, array $context = []): void

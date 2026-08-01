@@ -60,7 +60,7 @@
                 @endif
 
                 @if ($heading)
-                    <h1>{{ $heading }}</h1>
+                    @include('partials.blocks._heading', ['title' => $heading, 'tag' => $data['heading_tag'] ?? 'h1'])
                 @endif
 
                 @if ($description)

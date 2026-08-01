@@ -10,10 +10,16 @@ class ListProjects extends ListRecords
 {
     protected static string $resource = ProjectResource::class;
 
+    public function getTitle(): string
+    {
+        return 'پروژه‌ها';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('ایجاد پروژه'),
         ];
     }
 }

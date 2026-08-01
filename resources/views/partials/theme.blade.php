@@ -1,25 +1,16 @@
 @php
     $settings = app(\App\Services\SettingsService::class);
     $themeVariables = $settings->themeVariables();
-    $customFontUrl = $settings->customFontUrl();
-    $customFontName = $settings->customFontName();
-    $customFontFormat = $settings->customFontFormat();
 @endphp
 
-<style>
-    @if ($customFontUrl)
-        @font-face {
-            font-family: "{{ addslashes($customFontName) }}";
-            src: url("{{ $customFontUrl }}") format("{{ $customFontFormat }}");
-            font-display: swap;
-            font-style: normal;
-            font-weight: 400;
-        }
-    @endif
+@include('partials.site-font-styles')
 
+<style>
     :root {
         @foreach ($themeVariables as $name => $value)
+            @if ($name !== '--theme-font-family')
             {{ $name }}: {!! $value !!};
+            @endif
         @endforeach
     }
 </style>

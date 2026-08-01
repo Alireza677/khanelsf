@@ -152,6 +152,16 @@ class SettingsService
         return $this->nullableString('header_cta_url', route('contact.create', absolute: false));
     }
 
+    public function headerMenuId(): ?int
+    {
+        return $this->positiveInteger('header_menu_id');
+    }
+
+    public function headerTemplateId(): ?int
+    {
+        return $this->positiveInteger('header_template_id');
+    }
+
     public function contactEmail(): ?string
     {
         return $this->nullableString('contact_email');
@@ -170,6 +180,11 @@ class SettingsService
     public function footerText(): ?string
     {
         return $this->nullableString('footer_text') ?: $this->siteDescription();
+    }
+
+    public function footerMenuId(): ?int
+    {
+        return $this->positiveInteger('footer_menu_id');
     }
 
     public function socialLinks(): array
@@ -255,34 +270,24 @@ class SettingsService
         return $variables;
     }
 
+    public function adminDashboardBackgroundLight(): string
+    {
+        return $this->color('admin_dashboard_background_light', '#f0f0f0');
+    }
+
     public function customFontUrl(): ?string
     {
-        if ((string) $this->get('font_family', 'system') !== 'custom') {
-            return null;
-        }
-
-        return $this->assetUrl($this->get('custom_font_file'));
+        return app(SiteFontStyleResolver::class)->resolve()['url'];
     }
 
-    public function customFontName(): string
+    public function customFontName(): ?string
     {
-        $name = trim((string) $this->get('custom_font_name', 'Client Custom Font'));
-        $name = preg_replace('/[^\pL\pN\s_-]/u', '', $name) ?: 'Client Custom Font';
-
-        return Str::limit($name, 80, '');
+        return app(SiteFontStyleResolver::class)->resolve()['name'];
     }
 
-    public function customFontFormat(): string
+    public function customFontFormat(): ?string
     {
-        $path = strtolower((string) $this->get('custom_font_file', ''));
-
-        return match (pathinfo($path, PATHINFO_EXTENSION)) {
-            'woff2' => 'woff2',
-            'woff' => 'woff',
-            'ttf' => 'truetype',
-            'otf' => 'opentype',
-            default => 'woff2',
-        };
+        return app(SiteFontStyleResolver::class)->resolve()['format'];
     }
 
     private function nullableString(string $key, ?string $fallback = null): ?string
@@ -290,6 +295,13 @@ class SettingsService
         $value = $this->get($key, $fallback);
 
         return filled($value) ? (string) $value : null;
+    }
+
+    private function positiveInteger(string $key): ?int
+    {
+        $value = $this->get($key);
+
+        return filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
     }
 
     public function assetUrl(mixed $value): ?string
@@ -327,14 +339,6 @@ class SettingsService
 
     private function fontFamily(): string
     {
-        if ((string) $this->get('font_family', 'system') === 'custom' && filled($this->customFontUrl())) {
-            return '"'.$this->customFontName().'", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-        }
-
-        return match ((string) $this->get('font_family', 'system')) {
-            'serif' => 'Georgia, Cambria, "Times New Roman", Times, serif',
-            'mono' => '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-            default => 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        };
+        return app(SiteFontStyleResolver::class)->resolve()['family'];
     }
 }

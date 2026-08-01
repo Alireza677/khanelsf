@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PageResource\Pages;
 
 use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
 use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
+use App\Filament\Resources\Concerns\WarnsAboutMultiplePageHeadings;
 use App\Filament\Resources\PageResource;
 use Filament\Actions;
 use Filament\Actions\Action;
@@ -15,6 +16,7 @@ class EditPage extends EditRecord
 {
     use LogsHeroV2SaveFailures;
     use ManagesBlockEditorIdentity;
+    use WarnsAboutMultiplePageHeadings;
 
     protected static string $resource = PageResource::class;
 

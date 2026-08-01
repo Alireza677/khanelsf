@@ -4,6 +4,7 @@ namespace App\CMS\Blocks\Support;
 
 use App\CMS\Blocks\Contracts\BlockDefinition;
 use Filament\Forms\Components\Builder\Block;
+use LogicException;
 
 abstract class AbstractBlock implements BlockDefinition
 {
@@ -33,5 +34,22 @@ abstract class AbstractBlock implements BlockDefinition
         }
 
         return $block;
+    }
+
+    public function renderView(array $data): string
+    {
+        $templates = $this->templates();
+        $templateKey = is_string($data['template'] ?? null)
+            ? $data['template']
+            : $this->defaultTemplate();
+        $template = $templates[$templateKey]
+            ?? $templates[$this->defaultTemplate()]
+            ?? collect($templates)->first();
+
+        if (! $template instanceof BlockTemplate) {
+            throw new LogicException("Block [{$this->key()}] has no runtime template.");
+        }
+
+        return $template->view;
     }
 }

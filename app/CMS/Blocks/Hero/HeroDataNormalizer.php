@@ -2,7 +2,10 @@
 
 namespace App\CMS\Blocks\Hero;
 
-final class HeroDataNormalizer
+use App\CMS\Blocks\Contracts\BlockNormalizer;
+use App\CMS\Blocks\Support\HeadingLevel;
+
+final class HeroDataNormalizer implements BlockNormalizer
 {
     public const SCHEMA_VERSION = 2;
 
@@ -68,7 +71,7 @@ final class HeroDataNormalizer
                 'scroll_label' => $this->valueOrNull($data, 'hero_1_scroll_label'),
             ],
             'settings' => [
-                'heading_tag' => $this->enum($data['heading_tag'] ?? null, ['h1', 'h2'], 'h2'),
+                'heading_tag' => HeadingLevel::normalize($data['heading_tag'] ?? null),
                 'alignment' => $this->alignment($data, $template),
                 'height' => $this->height($data, $template),
                 'color_mode' => $this->stringOrDefault($data['section_background'] ?? null, 'default'),
@@ -90,6 +93,9 @@ final class HeroDataNormalizer
         $normalized = array_replace_recursive($this->emptyContract(), $data);
         $normalized['schema_version'] = self::SCHEMA_VERSION;
         $normalized['block_id'] = $this->stringOrNull($normalized['block_id']);
+        $normalized['settings']['heading_tag'] = HeadingLevel::normalize(
+            $normalized['settings']['heading_tag'] ?? null,
+        );
 
         return $normalized;
     }

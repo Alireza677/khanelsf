@@ -199,6 +199,7 @@ Avoid creating normal pages with these slugs or paths unless you intentionally w
 - `blog/search`: blog search
 - `blog/category/{slug}`: blog category archive
 - `contact`: contact page at `/contact`
+- `forms/{slug}`: published reusable lead forms
 - `projects`: projects index at `/projects`
 - `projects/category/{slug}`: project category archive
 - `galleries`: galleries index at `/galleries`

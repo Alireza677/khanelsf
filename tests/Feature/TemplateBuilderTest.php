@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Setting;
 use App\Models\Template;
+use App\Services\TemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -335,6 +336,48 @@ class TemplateBuilderTest extends TestCase
         $this->get(route('projects.show', $project->slug))
             ->assertOk()
             ->assertSee('Project Category Template');
+    }
+
+    public function test_non_default_all_template_cannot_override_the_default_template(): void
+    {
+        $project = Project::factory()->published()->create();
+        $default = $this->publishedTemplate('project_single', $this->htmlBlock('Default Project Template'), [
+            'is_default' => true,
+            'priority' => 1,
+        ]);
+        $this->publishedTemplate('project_single', $this->htmlBlock('Non-default All Template'), [
+            'is_default' => false,
+            'priority' => 100,
+        ]);
+
+        $matched = app(TemplateService::class)->findTemplateFor('project_single', $project);
+
+        $this->assertTrue($default->is($matched));
+    }
+
+    public function test_specific_and_category_templates_do_not_need_default_flag_to_outrank_default(): void
+    {
+        $category = ProjectCategory::factory()->create();
+        $project = Project::factory()->published()->create(['project_category_id' => $category->id]);
+        $this->publishedTemplate('project_single', $this->htmlBlock('Default Project Template'));
+        $categoryTemplate = $this->publishedTemplate('project_single', $this->htmlBlock('Category Project Template'), [
+            'conditions' => ['type' => 'category', 'category_id' => $category->id],
+            'is_default' => false,
+        ]);
+
+        $this->assertTrue(
+            $categoryTemplate->is(app(TemplateService::class)->findTemplateFor('project_single', $project)),
+        );
+
+        $specificTemplate = $this->publishedTemplate('project_single', $this->htmlBlock('Specific Project Template'), [
+            'conditions' => ['type' => 'specific_item', 'item_id' => $project->id],
+            'is_default' => false,
+            'priority' => 0,
+        ]);
+
+        $this->assertTrue(
+            $specificTemplate->is(app(TemplateService::class)->findTemplateFor('project_single', $project)),
+        );
     }
 
     public function test_specific_post_template_applies_only_to_that_post(): void

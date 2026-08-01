@@ -3,6 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
+use App\Models\Menu;
+use App\Models\Template;
 use App\Services\ModuleCleanupService;
 use App\Services\ModuleRedirectSuggestionService;
 use App\Services\SettingsService;
@@ -68,7 +70,10 @@ class ManageSiteSettings extends Page implements HasForms
         'social_x_url' => ['social', 'text'],
         'header_cta_label' => ['header', 'text'],
         'header_cta_url' => ['header', 'text'],
+        'header_menu_id' => ['header', 'select'],
+        'header_template_id' => ['header', 'select'],
         'footer_text' => ['footer', 'textarea'],
+        'footer_menu_id' => ['footer', 'select'],
         'site_title' => ['seo', 'text'],
         'default_meta_description' => ['seo', 'textarea'],
         'default_og_image' => ['seo', 'image'],
@@ -110,6 +115,7 @@ class ManageSiteSettings extends Page implements HasForms
         'text_color' => ['theme', 'color'],
         'link_color' => ['theme', 'color'],
         'background_color' => ['theme', 'color'],
+        'admin_dashboard_background_light' => ['theme', 'color'],
         'font_family' => ['theme', 'select'],
         'custom_font_name' => ['theme', 'text'],
         'custom_font_file' => ['theme', 'file'],
@@ -139,6 +145,14 @@ class ManageSiteSettings extends Page implements HasForms
             if (blank($state[$key] ?? null)) {
                 $state[$key] = $default;
             }
+        }
+
+        if (blank($state['admin_dashboard_background_light'] ?? null)) {
+            $state['admin_dashboard_background_light'] = '#f0f0f0';
+        }
+
+        if (($state['font_family'] ?? 'system') !== 'custom') {
+            $state['font_family'] = 'system';
         }
 
         $this->form->fill($state);
@@ -220,6 +234,21 @@ class ManageSiteSettings extends Page implements HasForms
                             ->columns(2),
                         Forms\Components\Tabs\Tab::make('هدر')
                             ->schema([
+                                Forms\Components\Select::make('header_template_id')
+                                    ->label('قالب هدر')
+                                    ->options(fn (): array => Template::query()
+                                        ->published()
+                                        ->where('type', 'site_header')
+                                        ->orderBy('title')
+                                        ->pluck('title', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->placeholder('هدر فعلی سایت')
+                                    ->helperText('فقط قالب‌های منتشرشده سازگار نمایش داده می‌شوند. اگر قالب در دسترس نباشد، هدر فعلی سایت نمایش داده می‌شود.')
+                                    ->rules(['nullable', 'integer', 'exists:templates,id']),
+                                $this->menuSelect('header_menu_id', 'منوی هدر'),
                                 Forms\Components\TextInput::make('header_cta_label')
                                     ->label('متن دکمه هدر')
                                     ->placeholder('مثلا تماس با ما')
@@ -232,12 +261,15 @@ class ManageSiteSettings extends Page implements HasForms
                             ->columns(2),
                         Forms\Components\Tabs\Tab::make('فوتر')
                             ->schema([
+                                $this->menuSelect('footer_menu_id', 'منوی فوتر'),
                                 Forms\Components\Textarea::make('footer_text')
                                     ->label('متن فوتر')
                                     ->placeholder('متن کوتاهی که در فوتر نمایش داده می‌شود')
                                     ->rows(4)
-                                    ->helperText('این متن به‌صورت اختیاری در فوتر سایت نمایش داده می‌شود.'),
-                            ]),
+                                    ->helperText('این متن به‌صورت اختیاری در فوتر سایت نمایش داده می‌شود.')
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2),
                         Forms\Components\Tabs\Tab::make('سئو')
                             ->schema([
                                 Forms\Components\TextInput::make('site_title')
@@ -607,15 +639,18 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->label('رنگ پس‌زمینه')
                                     ->default('#f8fafc')
                                     ->live(),
+                                Forms\Components\ColorPicker::make('admin_dashboard_background_light')
+                                    ->label('پس‌زمینه داشبورد مدیریت (حالت روز)')
+                                    ->helperText('فقط پس‌زمینه پنل مدیریت را در حالت روشن تغییر می‌دهد و روی سایت یا حالت تاریک اثری ندارد.')
+                                    ->default('#f0f0f0'),
                                 Forms\Components\Select::make('font_family')
                                     ->label('خانواده فونت')
                                     ->options([
-                                        'system' => 'فونت پیش‌فرض سیستم',
-                                        'serif' => 'سریف',
-                                        'mono' => 'تک‌فاصله',
+                                        'system' => 'فونت پیش‌فرض فارسی CMS',
                                         'custom' => 'فونت سفارشی آپلودشده',
                                     ])
                                     ->default('system')
+                                    ->helperText('اگر فونت سفارشی معتبر در دسترس نباشد، فونت فارسی داخلی CMS استفاده می‌شود.')
                                     ->live(),
                                 Forms\Components\TextInput::make('custom_font_name')
                                     ->label('نام فونت سفارشی')
@@ -727,6 +762,25 @@ class ManageSiteSettings extends Page implements HasForms
                     ->columnSpan(1),
             ])
             ->visible(fn (Forms\Get $get): bool => ($get('theme_size_device') ?? 'desktop') === $device);
+    }
+
+    private function menuSelect(string $field, string $label): Forms\Components\Select
+    {
+        return Forms\Components\Select::make($field)
+            ->label($label)
+            ->options(fn (): array => Menu::query()
+                ->orderBy('title')
+                ->get(['id', 'title', 'status'])
+                ->mapWithKeys(fn (Menu $menu): array => [
+                    $menu->getKey() => $menu->title.($menu->status === 'active' ? '' : ' — غیرفعال'),
+                ])
+                ->all())
+            ->searchable()
+            ->preload()
+            ->native(false)
+            ->placeholder('انتخاب منو')
+            ->helperText('آیتم‌ها و ترتیب این منو از Menu Builder مدیریت می‌شود.')
+            ->rules(['nullable', 'integer', 'exists:menus,id']);
     }
 
     private function cssUnitOptions(): array

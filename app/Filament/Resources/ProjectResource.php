@@ -14,6 +14,7 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class ProjectResource extends Resource
@@ -23,7 +24,9 @@ class ProjectResource extends Resource
 
     protected static ?string $model = Project::class;
 
-    protected static ?string $navigationGroup = 'Projects';
+    protected static ?string $navigationGroup = 'پروژه‌ها';
+
+    protected static ?string $navigationLabel = 'پروژه‌ها';
 
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
 
@@ -37,11 +40,12 @@ class ProjectResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Tabs::make('Project editor')
+            Forms\Components\Tabs::make('ویرایشگر پروژه')
                 ->tabs([
-                    Forms\Components\Tabs\Tab::make('Content')
+                    Forms\Components\Tabs\Tab::make('محتوا')
                         ->schema([
                             Forms\Components\TextInput::make('title')
+                                ->label('عنوان پروژه')
                                 ->required()
                                 ->maxLength(255)
                                 ->live(onBlur: true)
@@ -49,46 +53,53 @@ class ProjectResource extends Resource
                                     ? $set('slug', Str::slug($state ?? ''))
                                     : null),
                             Forms\Components\TextInput::make('slug')
+                                ->label('نامک')
                                 ->required()
                                 ->maxLength(255)
                                 ->unique(ignoreRecord: true),
                             Forms\Components\Select::make('project_category_id')
-                                ->label('Category')
+                                ->label('دسته‌بندی پروژه')
                                 ->relationship('category', 'name')
                                 ->searchable()
                                 ->preload(),
                             Forms\Components\Textarea::make('excerpt')
+                                ->label('خلاصه پروژه')
                                 ->rows(3)
-                                ->helperText('Short summary used on project cards and as an SEO fallback.')
+                                ->helperText('خلاصه‌ای کوتاه برای نمایش در کارت پروژه و استفاده به‌عنوان متن جایگزین سئو.')
                                 ->columnSpanFull(),
                             Forms\Components\RichEditor::make('content')
+                                ->label('محتوای پروژه')
                                 ->columnSpanFull(),
                         ])
                         ->columns(2),
-                    Forms\Components\Tabs\Tab::make('Details')
+                    Forms\Components\Tabs\Tab::make('جزئیات تکمیلی')
                         ->schema([
-                            Forms\Components\TextInput::make('client_name')
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('location')
-                                ->maxLength(255),
-                            Forms\Components\DatePicker::make('project_date'),
+                            Forms\Components\DatePicker::make('project_date')
+                                ->label('تاریخ پروژه'),
                             Forms\Components\TextInput::make('external_url')
+                                ->label('نشانی وب پروژه')
                                 ->url()
                                 ->maxLength(255),
                             Forms\Components\Repeater::make('services')
+                                ->label('خدمات قدیمی')
                                 ->schema([
                                     Forms\Components\TextInput::make('name')
+                                        ->label('عنوان خدمت')
                                         ->required()
                                         ->maxLength(255),
                                 ])
+                                ->helperText('این اطلاعات قدیمی همچنان پشتیبانی می‌شود. برای اتصال خدمات ساختاریافته از زبانه «مطالعه موردی» استفاده کنید.')
                                 ->columnSpanFull()
                                 ->reorderable(),
                             Forms\Components\Repeater::make('attributes')
+                                ->label('ویژگی‌های تکمیلی')
                                 ->schema([
                                     Forms\Components\TextInput::make('label')
+                                        ->label('عنوان ویژگی')
                                         ->required()
                                         ->maxLength(255),
                                     Forms\Components\TextInput::make('value')
+                                        ->label('مقدار')
                                         ->required()
                                         ->maxLength(255),
                                 ])
@@ -97,10 +108,102 @@ class ProjectResource extends Resource
                                 ->reorderable(),
                         ])
                         ->columns(2),
-                    Forms\Components\Tabs\Tab::make('Images')
+                    Forms\Components\Tabs\Tab::make('مطالعه موردی')
+                        ->schema([
+                            Forms\Components\TextInput::make('client_name')
+                                ->label('کارفرما')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('location')
+                                ->label('موقعیت پروژه')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('industry')
+                                ->label('حوزه فعالیت')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('project_type')
+                                ->label('نوع پروژه')
+                                ->maxLength(255),
+                            Forms\Components\Select::make('relatedServices')
+                                ->label('خدمات مرتبط')
+                                ->relationship(
+                                    name: 'relatedServices',
+                                    titleAttribute: 'name',
+                                    modifyQueryUsing: fn (Builder $query, ?Project $record): Builder => static::serviceOptionsQuery($query, $record),
+                                )
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->optionsLimit(50)
+                                ->helperText('خدمات ساختاریافته مرتبط با این پروژه را انتخاب کنید. خدمات قدیمی در زبانه «جزئیات تکمیلی» همچنان در دسترس هستند.')
+                                ->columnSpanFull(),
+                            Forms\Components\DatePicker::make('project_started_at')
+                                ->label('تاریخ شروع پروژه'),
+                            Forms\Components\DatePicker::make('project_completed_at')
+                                ->label('تاریخ پایان پروژه'),
+                            Forms\Components\Textarea::make('challenge')
+                                ->label('چالش پروژه')
+                                ->rows(6)
+                                ->columnSpanFull(),
+                            Forms\Components\Textarea::make('solution')
+                                ->label('راهکار اجراشده')
+                                ->rows(6)
+                                ->columnSpanFull(),
+                            Forms\Components\Textarea::make('results_summary')
+                                ->label('خلاصه نتایج')
+                                ->rows(6)
+                                ->columnSpanFull(),
+                            Forms\Components\Textarea::make('client_quote')
+                                ->label('نظر کارفرما')
+                                ->rows(4)
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2),
+                    Forms\Components\Tabs\Tab::make('شاخص‌ها و دستاوردها')
+                        ->schema([
+                            Forms\Components\Repeater::make('metrics')
+                                ->label('شاخص‌های پروژه')
+                                ->relationship('metrics')
+                                ->schema([
+                                    Forms\Components\TextInput::make('label')
+                                        ->label('عنوان شاخص')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('value')
+                                        ->label('مقدار')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('prefix')
+                                        ->label('پیشوند')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('suffix')
+                                        ->label('پسوند')
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('description')
+                                        ->label('توضیحات')
+                                        ->rows(3)
+                                        ->columnSpanFull(),
+                                    Forms\Components\TextInput::make('icon')
+                                        ->label('آیکن')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('sort_order')
+                                        ->label('ترتیب نمایش')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->default(0)
+                                        ->helperText('با جابه‌جایی شاخص‌ها، این مقدار به‌صورت خودکار به‌روزرسانی می‌شود.'),
+                                ])
+                                ->itemLabel(fn (array $state): ?string => $state['label'] ?? 'شاخص')
+                                ->orderColumn('sort_order')
+                                ->reorderable()
+                                ->cloneable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('تصاویر')
                         ->schema([
                             Forms\Components\ViewField::make('featured_media_id')
-                                ->label('Featured image')
+                                ->label('تصویر شاخص')
                                 ->view('filament.forms.components.media-library-picker')
                                 ->viewData(fn (): array => [
                                     'images' => static::mediaLibraryImageItems(),
@@ -113,61 +216,65 @@ class ProjectResource extends Resource
                                             ?: ($record?->featuredImage() ? '__keep_existing__' : null),
                                     );
                                 })
-                                ->helperText('Choose an existing image from Media Library. Upload new images from Media > Upload Media first.'),
+                                ->helperText('یک تصویر از کتابخانه رسانه انتخاب کنید. برای افزودن تصویر جدید، ابتدا از بخش «رسانه ← بارگذاری رسانه» استفاده کنید.'),
                             Forms\Components\SpatieMediaLibraryFileUpload::make('gallery')
                                 ->collection('gallery')
-                                ->label('Project gallery')
+                                ->label('گالری تصاویر پروژه')
                                 ->multiple()
                                 ->image()
                                 ->imageEditor()
                                 ->reorderable()
-                                ->helperText('Upload gallery images for the public project detail page.')
+                                ->helperText('تصاویر گالری صفحه جزئیات پروژه را بارگذاری و مرتب کنید.')
                                 ->columnSpanFull(),
                         ]),
-                    Forms\Components\Tabs\Tab::make('SEO')
+                    Forms\Components\Tabs\Tab::make('سئو')
                         ->schema([
                             Forms\Components\TextInput::make('seo_title')
-                                ->label('SEO title')
+                                ->label('عنوان سئو')
                                 ->maxLength(70)
-                                ->helperText('Recommended: up to 70 characters. Falls back to the project title when empty.'),
+                                ->helperText('حداکثر ۷۰ نویسه پیشنهاد می‌شود. در صورت خالی بودن، عنوان پروژه استفاده خواهد شد.'),
                             Forms\Components\Textarea::make('seo_description')
+                                ->label('توضیحات سئو')
                                 ->maxLength(160)
-                                ->helperText('Recommended: up to 160 characters. Falls back to excerpt, content, or site defaults.')
+                                ->helperText('حداکثر ۱۶۰ نویسه پیشنهاد می‌شود. در صورت خالی بودن، خلاصه پروژه، محتوا یا تنظیمات پیش‌فرض سایت استفاده خواهد شد.')
                                 ->rows(3)
                                 ->columnSpanFull(),
                             Forms\Components\ViewField::make('seo_image')
-                                ->label('Social image URL')
+                                ->label('تصویر اشتراک‌گذاری')
                                 ->view('filament.forms.components.media-library-url-picker')
                                 ->viewData(fn (): array => [
                                     'images' => static::mediaLibraryImageItems(),
                                 ])
-                                ->helperText('Falls back to the featured image when empty.')
+                                ->helperText('در صورت انتخاب نکردن تصویر، تصویر شاخص پروژه استفاده خواهد شد.')
                                 ->columnSpanFull(),
                             Forms\Components\Toggle::make('robots_index')
-                                ->label('Allow search engines to index this project')
+                                ->label('اجازه فهرست‌شدن پروژه در موتورهای جست‌وجو')
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
-                                ->label('Allow search engines to follow links')
+                                ->label('اجازه دنبال‌کردن پیوندها توسط موتورهای جست‌وجو')
                                 ->default(true),
                         ])
                         ->columns(2),
-                    Forms\Components\Tabs\Tab::make('Publishing')
+                    Forms\Components\Tabs\Tab::make('انتشار')
                         ->schema([
                             Forms\Components\Select::make('status')
+                                ->label('وضعیت انتشار')
                                 ->required()
                                 ->options([
-                                    'draft' => 'Draft',
-                                    'published' => 'Published',
-                                    'archived' => 'Archived',
+                                    'draft' => 'پیش‌نویس',
+                                    'published' => 'منتشرشده',
+                                    'archived' => 'بایگانی‌شده',
                                 ])
                                 ->default('draft'),
                             Forms\Components\DateTimePicker::make('published_at')
+                                ->label('زمان انتشار')
                                 ->seconds(false)
-                                ->helperText('Leave empty to publish immediately when status is Published. Public view actions are shown only for published records.'),
+                                ->helperText('برای انتشار فوری پس از انتخاب وضعیت «منتشرشده»، این فیلد را خالی بگذارید. امکان مشاهده در سایت فقط برای پروژه‌های منتشرشده نمایش داده می‌شود.'),
                             Forms\Components\Toggle::make('is_featured')
-                                ->label('Featured project')
+                                ->label('پروژه شاخص')
                                 ->default(false),
                             Forms\Components\TextInput::make('sort_order')
+                                ->label('ترتیب نمایش')
                                 ->required()
                                 ->numeric()
                                 ->minValue(0)
@@ -187,61 +294,90 @@ class ProjectResource extends Resource
                 Tables\Columns\SpatieMediaLibraryImageColumn::make('featured_image')
                     ->collection('featured_image')
                     ->conversion('thumb')
-                    ->label('Image'),
+                    ->label('تصویر'),
                 Tables\Columns\TextColumn::make('title')
+                    ->label('عنوان پروژه')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('category.name')
-                    ->label('Category')
+                    ->label('دسته‌بندی')
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'draft' => 'پیش‌نویس',
+                        'published' => 'منتشرشده',
+                        'archived' => 'بایگانی‌شده',
+                        default => $state,
+                    })
                     ->badge()
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')
                     ->boolean()
-                    ->label('Featured')
+                    ->label('شاخص')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('published_at')
+                    ->label('زمان انتشار')
                     ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
+                    ->label('آخرین ویرایش')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('وضعیت انتشار')
                     ->options([
-                        'draft' => 'Draft',
-                        'published' => 'Published',
-                        'archived' => 'Archived',
+                        'draft' => 'پیش‌نویس',
+                        'published' => 'منتشرشده',
+                        'archived' => 'بایگانی‌شده',
                     ]),
                 Tables\Filters\SelectFilter::make('category')
+                    ->label('دسته‌بندی پروژه')
                     ->relationship('category', 'name'),
                 Tables\Filters\TernaryFilter::make('is_featured')
-                    ->label('Featured'),
+                    ->label('پروژه شاخص')
+                    ->placeholder('همه پروژه‌ها')
+                    ->trueLabel('فقط پروژه‌های شاخص')
+                    ->falseLabel('فقط پروژه‌های عادی'),
             ])
             ->actions([
                 Tables\Actions\Action::make('preview')
-                    ->label('Preview')
+                    ->label('پیش‌نمایش')
                     ->icon('heroicon-o-eye')
                     ->url(fn (Project $record): string => route('admin.preview.projects.show', $record))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('viewPublic')
-                    ->label('View')
+                    ->label('مشاهده در سایت')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->url(fn (Project $record): string => static::publicUrl($record))
                     ->openUrlInNewTab()
                     ->visible(fn (Project $record): bool => static::isPubliclyVisible($record)),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('ویرایش'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->modalHeading('حذف پروژه')
+                    ->modalDescription('آیا از حذف این پروژه اطمینان دارید؟ این عملیات قابل بازگشت نیست.')
+                    ->modalSubmitActionLabel('بله، حذف شود')
+                    ->successNotificationTitle('پروژه حذف شد.'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('حذف پروژه‌های انتخاب‌شده')
+                        ->modalHeading('حذف پروژه‌های انتخاب‌شده')
+                        ->modalDescription('آیا از حذف پروژه‌های انتخاب‌شده اطمینان دارید؟ این عملیات قابل بازگشت نیست.')
+                        ->modalSubmitActionLabel('بله، حذف شوند')
+                        ->successNotificationTitle('پروژه‌های انتخاب‌شده حذف شدند.'),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('هنوز پروژه‌ای ثبت نشده است')
+            ->emptyStateDescription('برای نمایش نمونه‌کارها و مطالعه‌های موردی، نخستین پروژه را ایجاد کنید.')
+            ->emptyStateIcon('heroicon-o-briefcase');
     }
 
     public static function getPages(): array
@@ -262,5 +398,20 @@ class ProjectResource extends Resource
     {
         return $project->status === 'published'
             && (blank($project->published_at) || $project->published_at->lte(now()));
+    }
+
+    public static function serviceOptionsQuery(Builder $query, ?Project $project): Builder
+    {
+        $selectedIds = $project?->exists
+            ? $project->relatedServices()->pluck('services.id')->all()
+            : [];
+
+        return $query->where(function (Builder $query) use ($selectedIds): void {
+            $query->published();
+
+            if ($selectedIds !== []) {
+                $query->orWhereIn('services.id', $selectedIds);
+            }
+        });
     }
 }

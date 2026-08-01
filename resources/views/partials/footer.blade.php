@@ -1,13 +1,11 @@
 @php
     $settings = app(\App\Services\SettingsService::class);
-    $menus = app(\App\Services\MenuService::class);
 
     $siteName = $settings->siteName();
     $contactEmail = $settings->contactEmail();
     $contactPhone = $settings->contactPhone();
     $contactAddress = $settings->contactAddress();
     $footerText = $settings->footerText();
-    $footerMenu = $menus->footer();
     $socialLinks = $settings->socialLinks();
 @endphp
 
@@ -38,24 +36,7 @@
                 @endif
             </section>
 
-            @if ($footerMenu?->rootItems?->isNotEmpty())
-                <nav aria-label="Footer navigation">
-                    <h3>Links</h3>
-                    <ul class="footer-menu">
-                        @foreach ($footerMenu->rootItems as $item)
-                            <li>
-                                <a
-                                    href="{{ $item->url ?: '#' }}"
-                                    target="{{ $item->target }}"
-                                    @if ($item->target === '_blank') rel="noopener noreferrer" @endif
-                                >
-                                    {{ $item->title }}
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </nav>
-            @endif
+            <x-navigation placement="footer" variant="footer" />
 
             @if ($socialLinks)
                 <nav aria-label="Social links">

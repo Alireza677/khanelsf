@@ -6,9 +6,11 @@ use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Admin\OrderPrintController;
 use App\Http\Controllers\Admin\PreviewController;
 use App\Http\Controllers\Admin\RedirectExportController;
+use App\Http\Controllers\CalculatorSubmissionReportController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\FormController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ZarinpalCallbackController;
@@ -38,10 +41,24 @@ Route::post('/contact', [ContactController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('contact.store');
 
+Route::post('/forms/{slug}/context', [FormController::class, 'capture'])->name('forms.context');
+Route::post('/forms/{slug}/modal', [FormController::class, 'modal'])->name('forms.modal');
+Route::get('/forms/{slug}', [FormController::class, 'show'])->name('forms.show');
+Route::post('/forms/{slug}/submit', [FormController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('forms.submit');
+Route::get('/forms/submissions/{submission}/calculator-report', CalculatorSubmissionReportController::class)
+    ->middleware('signed')
+    ->name('forms.submissions.calculator-report');
+
 // Reserved public project URLs; keep these before the catch-all page route.
 Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
 Route::get('/projects/category/{slug}', [ProjectController::class, 'category'])->name('projects.category');
 Route::get('/projects/{slug}', [ProjectController::class, 'show'])->name('projects.show');
+
+// Reserved public service URLs; keep these before the catch-all page route.
+Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
+Route::get('/services/{slug}', [ServiceController::class, 'show'])->name('services.show');
 
 // Reserved public gallery URLs; keep these before the catch-all page route.
 Route::get('/galleries', [GalleryController::class, 'index'])->name('galleries.index');

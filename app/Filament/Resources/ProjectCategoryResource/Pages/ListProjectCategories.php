@@ -10,10 +10,16 @@ class ListProjectCategories extends ListRecords
 {
     protected static string $resource = ProjectCategoryResource::class;
 
+    public function getTitle(): string
+    {
+        return 'دسته‌های پروژه';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('ایجاد دسته‌بندی پروژه'),
         ];
     }
 }

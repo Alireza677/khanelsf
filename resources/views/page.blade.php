@@ -2,7 +2,10 @@
 
 @section('content')
     @if ($page?->hasBlocks())
-        @include('partials.page-blocks', ['blocks' => $page->blocks])
+        @include('partials.page-blocks', [
+            'blocks' => $page->blocks,
+            'context' => ['page_id' => $page->getKey(), 'page_url' => request()->getRequestUri()],
+        ])
     @else
         <article>
             <h1>{{ $page?->title ?? config('app.name') }}</h1>

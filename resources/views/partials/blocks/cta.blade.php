@@ -1,15 +1,40 @@
 @php
-    $template = $data['cta_template'] ?? 'classic';
-    $requestedBackground = $data['section_background'] ?? 'dark';
-    $background = in_array($requestedBackground, ['muted', 'dark'], true) ? $requestedBackground : 'default';
-    $alignment = ($data['alignment'] ?? 'left') === 'center' ? 'center' : 'left';
-    $backgroundImage = $data['background_image'] ?? null;
-    $backgroundVariables = \App\Support\BlockImageStyle::backgroundVariables($data, 'background_image');
+    $cta = app(\App\CMS\Blocks\CTA\CTADataNormalizer::class)->normalize($data);
+    $template = $cta['template'];
+    $content = $cta['content'];
+    $settings = $cta['settings'];
+    $primaryCta = $content['primary_cta'];
+    $secondaryCta = $content['secondary_cta'];
+    $actionContext = [
+        'page_id' => $context['page_id'] ?? null,
+        'page_url' => $context['page_url'] ?? request()->getRequestUri(),
+        'block_id' => $cta['block_id'],
+    ];
+    $resolutionContext = new \App\CMS\Actions\Data\ResolutionContext(
+        (! empty($isPreview) || ! empty($context['preview']))
+            ? \App\CMS\Actions\Enums\ResolutionMode::Preview
+            : \App\CMS\Actions\Enums\ResolutionMode::Production,
+    );
+    $actionResolver = app(\App\CMS\Actions\Contracts\ActionResolver::class);
+    $actionPresentation = app(\App\CMS\Actions\Presentation\ActionPresentation::class);
+    $present = fn (array $button): ?array => $actionPresentation->present(
+        $actionResolver->resolve(
+            \App\CMS\Actions\Data\ActionDestination::fromArray(
+                is_array($button['action'] ?? null) ? $button['action'] : [],
+            ),
+            $resolutionContext,
+        ),
+        $actionContext,
+    );
+    $primaryPresentation = $present($primaryCta);
+    $secondaryPresentation = $present($secondaryCta);
+    $backgroundImage = $content['media']['url'];
+    $backgroundVariables = \App\Support\BlockImageStyle::normalizedBackgroundVariables($settings['media']);
     $imageStyle = filled($backgroundImage)
         ? "background-image: linear-gradient(90deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.58) 42%, rgba(255,255,255,.98) 74%), url('".e($backgroundImage)."');"
         : null;
-    $contentWidth = filled($data['content_width'] ?? null)
-        ? max(240, min(1400, (int) $data['content_width']))
+    $contentWidth = filled($settings['content_width'])
+        ? max(240, min(1400, (int) $settings['content_width']))
         : null;
 @endphp
 
@@ -21,23 +46,26 @@
         @if ($imageStyle || $backgroundVariables) style="{!! trim($imageStyle.' '.$backgroundVariables, ' ;') !!}" @endif
     >
         <div class="block-cta-image__content" @if ($contentWidth) style="max-width: {{ $contentWidth }}px" @endif>
-            @if (! empty($data['title']))
-                @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
+            @if (! empty($content['title']))
+                @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
             @endif
 
-            @if (! empty($data['description']))
-                <p>{{ $data['description'] }}</p>
+            @if (! empty($content['description']))
+                <p>{{ $content['description'] }}</p>
             @endif
 
-            @if ((! empty($data['button_label']) && ! empty($data['button_url'])) || (! empty($data['secondary_button_label']) && ! empty($data['secondary_button_url'])))
+            @if (! empty($primaryCta['label']) || ! empty($secondaryCta['label']))
                 <div class="block-cta-image__actions">
-                    @if (! empty($data['button_label']) && ! empty($data['button_url']))
-                        <a class="button block-cta-image__primary" href="{{ $data['button_url'] }}">{{ $data['button_label'] }}</a>
-                    @endif
-
-                    @if (! empty($data['secondary_button_label']) && ! empty($data['secondary_button_url']))
-                        <a class="button block-cta-image__secondary" href="{{ $data['secondary_button_url'] }}">{{ $data['secondary_button_label'] }}</a>
-                    @endif
+                    @include('partials.actions.render', [
+                        'label' => $primaryCta['label'],
+                        'class' => 'button block-cta-image__primary',
+                        'presentation' => $primaryPresentation,
+                    ])
+                    @include('partials.actions.render', [
+                        'label' => $secondaryCta['label'],
+                        'class' => 'button block-cta-image__secondary',
+                        'presentation' => $secondaryPresentation,
+                    ])
                 </div>
             @endif
         </div>
@@ -46,25 +74,27 @@
     <section @class([
         'content-block',
         'block-cta',
-        "content-block--{$background}" => $background !== 'default' && $background !== 'dark',
-        "content-block--align-{$alignment}",
+        "content-block--{$settings['background']}" => $settings['background'] !== 'default' && $settings['background'] !== 'dark',
+        "content-block--align-{$settings['alignment']}",
     ])>
         <div>
-            @if (! empty($data['eyebrow']))
-                <p class="block-eyebrow">{{ $data['eyebrow'] }}</p>
+            @if (! empty($content['eyebrow']))
+                <p class="block-eyebrow">{{ $content['eyebrow'] }}</p>
             @endif
 
-            @if (! empty($data['title']))
-                @include('partials.blocks._heading', ['title' => $data['title'], 'tag' => $data['heading_tag'] ?? 'h2'])
+            @if (! empty($content['title']))
+                @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
             @endif
 
-            @if (! empty($data['description']))
-                <p>{{ $data['description'] }}</p>
+            @if (! empty($content['description']))
+                <p>{{ $content['description'] }}</p>
             @endif
         </div>
 
-        @if (! empty($data['button_label']) && ! empty($data['button_url']))
-            <a class="button" href="{{ $data['button_url'] }}">{{ $data['button_label'] }}</a>
-        @endif
+        @include('partials.actions.render', [
+            'label' => $primaryCta['label'],
+            'class' => 'button',
+            'presentation' => $primaryPresentation,
+        ])
     </section>
 @endif

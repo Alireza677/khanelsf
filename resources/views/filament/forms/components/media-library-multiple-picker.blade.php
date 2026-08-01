@@ -51,8 +51,10 @@
             انتخاب تصاویر از کتابخانه رسانه
         </x-filament::button>
 
-        <div x-cloak x-show="open" x-transition.opacity style="display: none; background-color: rgba(2, 6, 23, 0.78); backdrop-filter: blur(2px)" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-gray-950/60 p-4">
-            <div x-on:click.outside="open = false" style="height: calc(100dvh - 2rem); max-height: calc(100dvh - 2rem)" class="flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-gray-900">
+        <template x-teleport="body">
+            <div x-cloak x-show="open" x-transition.opacity style="display: none" class="cms-modal-layer flex items-center justify-center overflow-hidden p-4">
+                <div class="cms-modal-backdrop bg-gray-950/60" style="background-color: rgba(2, 6, 23, 0.78); backdrop-filter: blur(2px)" aria-hidden="true"></div>
+                <div x-on:click.outside="open = false" style="height: calc(100dvh - 2rem); max-height: calc(100dvh - 2rem)" class="cms-modal-panel flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-gray-900">
                 <div style="padding: 1rem 1.25rem" class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
                     <div>
                         <h3 class="text-lg font-semibold">انتخاب تصاویر گالری</h3>
@@ -87,6 +89,7 @@
                     <x-filament::button type="button" x-on:click="open = false">تأیید انتخاب</x-filament::button>
                 </div>
             </div>
-        </div>
+            </div>
+        </template>
     </div>
 </x-dynamic-component>

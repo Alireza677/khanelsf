@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Models\Service;
 use App\Models\Template;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
@@ -62,8 +63,8 @@ class TemplateService
                 foreach ([
                     $right['specificity'] <=> $left['specificity'],
                     $right['template']->priority <=> $left['template']->priority,
-                    ($right['template']->is_default ? 1 : 0) <=> ($left['template']->is_default ? 1 : 0),
                     ($right['template']->updated_at?->getTimestamp() ?? 0) <=> ($left['template']->updated_at?->getTimestamp() ?? 0),
+                    $right['template']->getKey() <=> $left['template']->getKey(),
                 ] as $comparison) {
                     if ($comparison !== 0) {
                         return $comparison;
@@ -102,7 +103,10 @@ class TemplateService
             return $this->matchesCategory($template, $model) ? 2 : 0;
         }
 
-        return $conditionType === 'all' || $template->is_default || blank($template->conditions) ? 1 : 0;
+        return $template->is_default
+            && ($conditionType === 'all' || blank($template->conditions))
+                ? 1
+                : 0;
     }
 
     private function specificityLabel(int $specificity): string
@@ -127,6 +131,7 @@ class TemplateService
             'post_single' => $model instanceof Post && $model->getKey() === $itemId,
             'project_single' => $model instanceof Project && $model->getKey() === $itemId,
             'product_single' => $model instanceof Product && $model->getKey() === $itemId,
+            'service_single' => $model instanceof Service && $model->getKey() === $itemId,
             'gallery_single' => $model instanceof Gallery && $model->getKey() === $itemId,
             'post_category' => $model instanceof Category && $model->getKey() === $itemId,
             'project_category' => $model instanceof ProjectCategory && $model->getKey() === $itemId,

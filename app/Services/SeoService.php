@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Models\Service;
 use App\Support\SeoData;
 use Illuminate\Support\Str;
 
@@ -18,6 +19,10 @@ class SeoService
 {
     public function __construct(
         private readonly SettingsService $settings,
+        private readonly ProductPricingService $productPricing,
+        private readonly ProductAvailabilityService $productAvailability,
+        private readonly ProductMediaService $productMedia,
+        private readonly ServiceMediaService $serviceMedia,
     ) {}
 
     public function forPage(Page $page, ?string $canonicalUrl = null, string $ogType = 'website'): SeoData
@@ -114,6 +119,58 @@ class SeoService
         ]);
     }
 
+    public function forService(Service $service, ?array $mediaContext = null): SeoData
+    {
+        $description = $service->seo_description
+            ?: $service->excerpt
+            ?: Str::limit(strip_tags((string) $service->overview), 160, '')
+            ?: $this->settings->siteDescription()
+            ?: $service->name;
+        $mediaContext ??= $this->serviceMedia->context($service);
+        $isPublished = $service->isPublished();
+        $canonical = route('services.show', $service->slug);
+
+        return $this->make([
+            'title' => $service->seo_title ?: $service->name,
+            'description' => $description,
+            'canonical_url' => $canonical,
+            'robots_index' => $isPublished,
+            'robots_follow' => $isPublished,
+            'og_image' => $this->serviceMedia->seoImageUrl($service, $mediaContext),
+            'og_type' => 'website',
+            'schema' => $this->serviceSchema($service, $description, $mediaContext, $canonical),
+        ]);
+    }
+
+    public function forServiceIndex(?string $heading = null, ?string $description = null): SeoData
+    {
+        $heading = filled($heading) ? (string) $heading : 'خدمات';
+        $description = filled($description)
+            ? (string) $description
+            : 'خدمات تخصصی طراحی، مهندسی و اجرای پروژه‌های ساختمانی را مشاهده کنید.';
+        $canonical = route('services.index');
+
+        return $this->make([
+            'title' => $heading,
+            'description' => $description,
+            'canonical_url' => $canonical,
+            'schema' => $this->schemaGraph([
+                [
+                    '@type' => 'CollectionPage',
+                    '@id' => $canonical.'#webpage',
+                    'name' => $heading,
+                    'description' => $description,
+                    'url' => $canonical,
+                    'breadcrumb' => ['@id' => $canonical.'#breadcrumb'],
+                ],
+                $this->breadcrumbSchema([
+                    ['name' => 'خانه', 'url' => route('home')],
+                    ['name' => $heading, 'url' => $canonical],
+                ], $canonical),
+            ]),
+        ]);
+    }
+
     public function forProjectIndex(): SeoData
     {
         return $this->make([
@@ -204,6 +261,12 @@ class SeoService
         $description = $product->seo_description
             ?: $product->excerpt
             ?: Str::limit(strip_tags((string) $product->content), 160, '');
+        $media = $this->productMedia->context($product);
+        $images = collect($this->productMedia->seoImageUrls($product, $media))
+            ->map(fn (string $url): ?string => $this->absoluteUrl($url))
+            ->filter()
+            ->values()
+            ->all();
 
         return $this->make([
             'title' => $product->seo_title ?: $product->title,
@@ -211,9 +274,9 @@ class SeoService
             'canonical_url' => route('shop.show', $product->slug),
             'robots_index' => $product->robots_index,
             'robots_follow' => $product->robots_follow,
-            'og_image' => $product->seo_image ?: $product->featuredImageUrl(),
+            'og_image' => $images[0] ?? null,
             'og_type' => 'product',
-            'schema' => $this->productSchema($product, $description),
+            'schema' => $this->productSchema($product, $description, $images),
         ]);
     }
 
@@ -362,7 +425,7 @@ class SeoService
         ];
     }
 
-    private function productSchema(Product $product, ?string $description = null): array
+    private function productSchema(Product $product, ?string $description = null, array $images = []): array
     {
         return [
             '@context' => 'https://schema.org',
@@ -370,16 +433,88 @@ class SeoService
             'name' => $product->title,
             'description' => $description,
             'sku' => $product->sku,
-            'image' => $this->absoluteUrl($product->seo_image ?: $product->featuredImageUrl()),
+            'image' => $images ?: null,
             'offers' => [
                 '@type' => 'Offer',
-                'price' => number_format($product->currentPrice(), 2, '.', ''),
-                'priceCurrency' => 'USD',
-                'availability' => $product->isPurchasable()
+                'price' => number_format($this->productPricing->effectivePrice($product), 2, '.', ''),
+                'priceCurrency' => $this->productPricing->currency(),
+                'availability' => $this->productAvailability->isPurchasable($product)
                     ? 'https://schema.org/InStock'
                     : 'https://schema.org/OutOfStock',
                 'url' => route('shop.show', $product->slug),
             ],
+        ];
+    }
+
+    private function serviceSchema(
+        Service $service,
+        string $description,
+        array $mediaContext,
+        string $canonical,
+    ): array {
+        $image = data_get($mediaContext, 'featured.url')
+            ?: data_get($mediaContext, 'gallery.0.url');
+
+        $serviceSchema = array_filter([
+            '@type' => 'Service',
+            '@id' => $canonical.'#service',
+            'name' => $service->name,
+            'description' => $description,
+            'url' => $canonical,
+            'image' => $this->absoluteUrl($image),
+            'serviceType' => $service->name,
+            'provider' => $this->organizationSchema(),
+            'mainEntityOfPage' => ['@id' => $canonical],
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        return $this->schemaGraph([
+            $serviceSchema,
+            $this->breadcrumbSchema([
+                ['name' => 'خانه', 'url' => route('home')],
+                ['name' => 'خدمات', 'url' => route('services.index')],
+                ['name' => $service->name, 'url' => $canonical],
+            ], $canonical),
+        ]);
+    }
+
+    private function organizationSchema(): array
+    {
+        return [
+            '@type' => 'Organization',
+            '@id' => url('/').'#organization',
+            'name' => (string) config('app.name'),
+            'url' => url('/'),
+        ];
+    }
+
+    /**
+     * @param  array<int, array{name: string, url: string}>  $items
+     */
+    private function breadcrumbSchema(array $items, string $canonical): array
+    {
+        return [
+            '@type' => 'BreadcrumbList',
+            '@id' => $canonical.'#breadcrumb',
+            'itemListElement' => collect($items)
+                ->values()
+                ->map(fn (array $item, int $index): array => [
+                    '@type' => 'ListItem',
+                    'position' => $index + 1,
+                    'name' => $item['name'],
+                    'item' => $item['url'],
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $nodes
+     */
+    private function schemaGraph(array $nodes): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@graph' => array_values($nodes),
         ];
     }
 

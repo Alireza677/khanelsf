@@ -23,11 +23,11 @@ class ProjectCategoryResource extends Resource
 
     protected static ?string $model = ProjectCategory::class;
 
-    protected static ?string $navigationGroup = 'Projects';
+    protected static ?string $navigationGroup = 'پروژه‌ها';
 
     protected static ?string $navigationIcon = 'heroicon-o-folder';
 
-    protected static ?string $navigationLabel = 'Project Categories';
+    protected static ?string $navigationLabel = 'دسته‌های پروژه';
 
     protected static ?int $navigationSort = 2;
 
@@ -39,11 +39,12 @@ class ProjectCategoryResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Tabs::make('Project category editor')
+            Forms\Components\Tabs::make('ویرایشگر دسته‌بندی پروژه')
                 ->tabs([
-                    Forms\Components\Tabs\Tab::make('Content')
+                    Forms\Components\Tabs\Tab::make('محتوا')
                         ->schema([
                             Forms\Components\TextInput::make('name')
+                                ->label('نام دسته‌بندی')
                                 ->required()
                                 ->maxLength(255)
                                 ->live(onBlur: true)
@@ -51,51 +52,56 @@ class ProjectCategoryResource extends Resource
                                     ? $set('slug', Str::slug($state ?? ''))
                                     : null),
                             Forms\Components\TextInput::make('slug')
+                                ->label('نامک')
                                 ->required()
                                 ->maxLength(255)
                                 ->unique(ignoreRecord: true),
                             Forms\Components\Textarea::make('description')
+                                ->label('توضیحات دسته‌بندی')
                                 ->rows(4)
                                 ->columnSpanFull(),
                         ])
                         ->columns(2),
-                    Forms\Components\Tabs\Tab::make('SEO')
+                    Forms\Components\Tabs\Tab::make('سئو')
                         ->schema([
                             Forms\Components\TextInput::make('seo_title')
-                                ->label('SEO title')
+                                ->label('عنوان سئو')
                                 ->maxLength(70)
-                                ->helperText('Recommended: up to 70 characters. Falls back to the category name when empty.'),
+                                ->helperText('حداکثر ۷۰ نویسه پیشنهاد می‌شود. در صورت خالی بودن، نام دسته‌بندی استفاده خواهد شد.'),
                             Forms\Components\Textarea::make('seo_description')
+                                ->label('توضیحات سئو')
                                 ->maxLength(160)
-                                ->helperText('Recommended: up to 160 characters. Falls back to description or site defaults.')
+                                ->helperText('حداکثر ۱۶۰ نویسه پیشنهاد می‌شود. در صورت خالی بودن، توضیحات دسته‌بندی یا تنظیمات پیش‌فرض سایت استفاده خواهد شد.')
                                 ->rows(3)
                                 ->columnSpanFull(),
                             Forms\Components\ViewField::make('seo_image')
-                                ->label('Social image URL')
+                                ->label('تصویر اشتراک‌گذاری')
                                 ->view('filament.forms.components.media-library-url-picker')
                                 ->viewData(fn (): array => [
                                     'images' => static::mediaLibraryImageItems(),
                                 ])
-                                ->helperText('Optional Open Graph image for this archive page.')
+                                ->helperText('تصویر اختیاری پیش‌نمایش شبکه‌های اجتماعی برای صفحه آرشیو این دسته‌بندی.')
                                 ->columnSpanFull(),
                             Forms\Components\Toggle::make('robots_index')
-                                ->label('Allow search engines to index this category')
+                                ->label('اجازه فهرست‌شدن دسته‌بندی در موتورهای جست‌وجو')
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
-                                ->label('Allow search engines to follow links')
+                                ->label('اجازه دنبال‌کردن پیوندها توسط موتورهای جست‌وجو')
                                 ->default(true),
                         ])
                         ->columns(2),
-                    Forms\Components\Tabs\Tab::make('Publishing')
+                    Forms\Components\Tabs\Tab::make('انتشار')
                         ->schema([
                             Forms\Components\Select::make('status')
+                                ->label('وضعیت')
                                 ->required()
                                 ->options([
-                                    'active' => 'Active',
-                                    'inactive' => 'Inactive',
+                                    'active' => 'فعال',
+                                    'inactive' => 'غیرفعال',
                                 ])
                                 ->default('active'),
                             Forms\Components\TextInput::make('sort_order')
+                                ->label('ترتیب نمایش')
                                 ->required()
                                 ->numeric()
                                 ->minValue(0)
@@ -113,41 +119,66 @@ class ProjectCategoryResource extends Resource
             ->defaultSort('sort_order')
             ->columns([
                 Tables\Columns\TextColumn::make('name')
+                    ->label('نام دسته‌بندی')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('slug')
+                    ->label('نامک')
                     ->searchable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('projects_count')
                     ->counts('projects')
-                    ->label('Projects')
+                    ->label('تعداد پروژه‌ها')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'active' => 'فعال',
+                        'inactive' => 'غیرفعال',
+                        default => $state,
+                    })
                     ->badge()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('sort_order')
+                    ->label('ترتیب نمایش')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
+                    ->label('آخرین ویرایش')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('وضعیت')
                     ->options([
-                        'active' => 'Active',
-                        'inactive' => 'Inactive',
+                        'active' => 'فعال',
+                        'inactive' => 'غیرفعال',
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('ویرایش'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->modalHeading('حذف دسته‌بندی پروژه')
+                    ->modalDescription('آیا از حذف این دسته‌بندی اطمینان دارید؟ این عملیات قابل بازگشت نیست.')
+                    ->modalSubmitActionLabel('بله، حذف شود')
+                    ->successNotificationTitle('دسته‌بندی پروژه حذف شد.'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('حذف دسته‌بندی‌های انتخاب‌شده')
+                        ->modalHeading('حذف دسته‌بندی‌های انتخاب‌شده')
+                        ->modalDescription('آیا از حذف دسته‌بندی‌های انتخاب‌شده اطمینان دارید؟ این عملیات قابل بازگشت نیست.')
+                        ->modalSubmitActionLabel('بله، حذف شوند')
+                        ->successNotificationTitle('دسته‌بندی‌های انتخاب‌شده حذف شدند.'),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('هنوز دسته‌بندی پروژه‌ای ثبت نشده است')
+            ->emptyStateDescription('برای گروه‌بندی پروژه‌ها، نخستین دسته‌بندی را ایجاد کنید.')
+            ->emptyStateIcon('heroicon-o-folder');
     }
 
     public static function getPages(): array

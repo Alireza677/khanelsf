@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\ProductResource\Pages;
 
-use App\Filament\Resources\ProductResource;
 use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
+use App\Filament\Resources\ProductResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -23,6 +23,10 @@ class EditProduct extends EditRecord
             $this->record,
             'gallery',
             data_get($this->form->getRawState(), 'gallery_media_ids', []),
+        );
+        ProductResource::syncRelatedProducts(
+            $this->record,
+            data_get($this->form->getRawState(), 'related_products', []),
         );
     }
 

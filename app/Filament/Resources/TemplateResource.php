@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Hero\HeroBlock;
+use App\CMS\Blocks\Support\HeadingLevel;
+use App\Filament\Forms\Components\BlockBuilder;
 use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
@@ -16,6 +18,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Models\Service;
 use App\Models\Template;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -62,9 +65,13 @@ class TemplateResource extends Resource
                         ->options(Template::TYPES)
                         ->searchable()
                         ->live()
-                        ->afterStateUpdated(function (Set $set): void {
+                        ->afterStateUpdated(function (Set $set, ?string $state): void {
                             $set('conditions.item_id', null);
                             $set('conditions.category_id', null);
+
+                            if ($state === 'service_single') {
+                                $set('conditions.type', 'all');
+                            }
                         }),
                     Forms\Components\Select::make('status')
                         ->required()
@@ -89,7 +96,9 @@ class TemplateResource extends Resource
                 ->schema([
                     Forms\Components\Select::make('conditions.type')
                         ->label('Condition type')
-                        ->options(Template::CONDITION_TYPES)
+                        ->options(fn (Get $get): array => $get('type') === 'service_single'
+                            ? array_intersect_key(Template::CONDITION_TYPES, array_flip(['all', 'specific_item']))
+                            : Template::CONDITION_TYPES)
                         ->default('all')
                         ->live()
                         ->afterStateUpdated(function (Set $set): void {
@@ -142,9 +151,10 @@ class TemplateResource extends Resource
             Forms\Components\Section::make('Blocks')
                 ->description('Use static blocks for fixed sections and dynamic template blocks to render the current post, product, project, gallery, category, or archive collection. Custom Code blocks should be used only by trusted admins.')
                 ->schema([
-                    Forms\Components\Builder::make('blocks')
+                    BlockBuilder::make('blocks')
                         ->label('Template blocks')
-                        ->blocks(static::blockDefinitions())
+                        ->blocks(fn (Get $get): array => static::blockDefinitions((string) $get('type')))
+                        ->cloneable()
                         ->collapsible()
                         ->reorderable()
                         ->columnSpanFull(),
@@ -227,6 +237,7 @@ class TemplateResource extends Resource
             'post_single' => 'Preview post',
             'project_single' => 'Preview project',
             'product_single' => 'Preview product',
+            'service_single' => 'Preview service',
             'gallery_single' => 'Preview gallery',
             'post_category' => 'Preview blog category',
             'project_category' => 'Preview project category',
@@ -242,6 +253,7 @@ class TemplateResource extends Resource
             'post_single' => Post::query()->orderBy('title')->pluck('title', 'id')->all(),
             'project_single' => Project::query()->orderBy('title')->pluck('title', 'id')->all(),
             'product_single' => Product::query()->orderBy('title')->pluck('title', 'id')->all(),
+            'service_single' => Service::query()->orderBy('name')->pluck('name', 'id')->all(),
             'gallery_single' => Gallery::query()->orderBy('title')->pluck('title', 'id')->all(),
             'post_category' => Category::query()->orderBy('title')->pluck('title', 'id')->all(),
             'project_category' => ProjectCategory::query()->orderBy('name')->pluck('name', 'id')->all(),
@@ -301,6 +313,7 @@ class TemplateResource extends Resource
             'blog_index', 'post_single', 'post_category',
             'projects_index', 'project_single', 'project_category',
             'shop_index', 'product_single', 'product_category',
+            'service_single',
             'galleries_index', 'gallery_single', 'gallery_category',
         ], true) && ! static::usesDynamicBlocks($blocks)) {
             $warnings[] = 'This replacement template has no dynamic blocks, so current content may not appear.';
@@ -334,19 +347,29 @@ class TemplateResource extends Resource
 
     private static function usesDynamicBlocks(array $blocks): bool
     {
-        return collect($blocks)
+        $types = collect($blocks)
             ->pluck('type')
-            ->intersect([
-                'template_archive_header',
-                'template_content_grid',
-                'template_shop_complete',
-                'template_single_header',
-                'template_single_content',
-                'template_single_meta',
-                'template_single_gallery',
-                'template_add_to_cart',
-            ])
-            ->isNotEmpty();
+            ->filter(fn (mixed $type): bool => is_string($type));
+
+        if ($types->intersect([
+            'template_archive_header',
+            'template_content_grid',
+            'template_shop_complete',
+            'template_single_header',
+            'template_single_content',
+            'template_single_meta',
+            'template_single_gallery',
+            'template_add_to_cart',
+        ])->isNotEmpty()) {
+            return true;
+        }
+
+        $registry = app(BlockRegistry::class);
+
+        return $types->contains(function (string $type) use ($registry): bool {
+            return $registry->has($type)
+                && in_array('dynamic_data', $registry->find($type)->capabilities(), true);
+        });
     }
 
     private static function specificItemTypeLabels(): array
@@ -357,6 +380,7 @@ class TemplateResource extends Resource
             'project_single' => 'Project',
             'project_category' => 'Project category',
             'product_single' => 'Product',
+            'service_single' => 'Service',
             'product_category' => 'Product category',
             'gallery_single' => 'Gallery',
             'gallery_category' => 'Gallery category',
@@ -395,6 +419,7 @@ class TemplateResource extends Resource
             'project_single' => Project::query()->orderBy('title')->pluck('title', 'id')->all(),
             'project_category' => ProjectCategory::query()->orderBy('name')->pluck('name', 'id')->all(),
             'product_single' => Product::query()->orderBy('title')->pluck('title', 'id')->all(),
+            'service_single' => Service::query()->orderBy('name')->pluck('name', 'id')->all(),
             'product_category' => ProductCategory::query()->orderBy('name')->pluck('name', 'id')->all(),
             'gallery_single' => Gallery::query()->orderBy('title')->pluck('title', 'id')->all(),
             'gallery_category' => GalleryCategory::query()->orderBy('name')->pluck('name', 'id')->all(),
@@ -413,34 +438,70 @@ class TemplateResource extends Resource
         };
     }
 
-    private static function blockDefinitions(): array
+    private static function blockDefinitions(?string $target = null): array
     {
+        if ($target === 'site_header') {
+            return [
+                app(BlockRegistry::class)
+                    ->find('site_header')
+                    ->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
+            ];
+        }
+
+        $projectBlocks = [
+            'project_header',
+            'project_overview',
+            'project_metrics',
+            'project_services',
+            'project_gallery',
+            'project_story',
+            'related_projects',
+        ];
+        $productBlocks = [
+            'product_header',
+            'product_overview',
+            'product_specifications',
+            'product_gallery',
+            'product_documents',
+            'product_related',
+        ];
+        $serviceBlocks = [
+            'service_header',
+            'service_overview',
+            'service_benefits',
+            'service_process',
+            'service_deliverables',
+            'service_projects',
+            'service_gallery',
+            'related_services',
+        ];
+        $entityBlocks = match ($target) {
+            'project_single' => $projectBlocks,
+            'product_single' => $productBlocks,
+            'service_single' => $serviceBlocks,
+            null, '' => [...$projectBlocks, ...$productBlocks, ...$serviceBlocks],
+            default => [],
+        };
+        $commonBlocks = [
+            app(BlockRegistry::class)->find('cta')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
+            app(BlockRegistry::class)->find('form')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
+        ];
+
+        if ($target === 'service_single') {
+            return [
+                ...$commonBlocks,
+                ...app(BlockRegistry::class)->filamentBlocks(
+                    $serviceBlocks,
+                    HeroBlock::CONTEXT_TEMPLATE,
+                ),
+            ];
+        }
+
         return [
             app(BlockRegistry::class)->find('hero')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
-            Forms\Components\Builder\Block::make('cta')
-                ->label('Static: CTA')
-                ->icon('heroicon-o-megaphone')
-                ->schema(static::ctaFields())
-                ->columns(2),
-            Forms\Components\Builder\Block::make('feature_grid')
-                ->label('Static: Feature Grid')
-                ->schema(static::sectionFields([
-                    Forms\Components\TextInput::make('section_title')->required()->maxLength(255),
-                    static::headingTagField(),
-                    Forms\Components\Textarea::make('section_description')->rows(3)->columnSpanFull(),
-                    Forms\Components\Repeater::make('items')
-                        ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'Item')
-                        ->schema([
-                            Forms\Components\TextInput::make('title')->required()->maxLength(255),
-                            static::iconsaxIconPicker('icon', 'Icon'),
-                            static::iconsaxIconSizeInput(label: 'Size'),
-                            Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
-                        ])
-                        ->columns(3)
-                        ->columnSpanFull()
-                        ->collapsible()
-                        ->collapsed(),
-                ])),
+            ...$commonBlocks,
+            ...app(BlockRegistry::class)->filamentBlocks($entityBlocks, HeroBlock::CONTEXT_TEMPLATE),
+            app(BlockRegistry::class)->find('feature_grid')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
             Forms\Components\Builder\Block::make('faq')
                 ->label('Static: FAQ')
                 ->schema(static::sectionFields([
@@ -497,6 +558,7 @@ class TemplateResource extends Resource
                         ->label('Override title')
                         ->helperText('Leave empty to use the current archive/category title.')
                         ->maxLength(255),
+                    static::headingTagField(default: 'h1'),
                     Forms\Components\Textarea::make('description')
                         ->label('Override description')
                         ->helperText('Leave empty to use the current archive/category description.')
@@ -529,6 +591,7 @@ class TemplateResource extends Resource
                         ->label('Override title')
                         ->helperText('Leave empty to use the shop title.')
                         ->maxLength(255),
+                    static::headingTagField(default: 'h1'),
                     Forms\Components\Textarea::make('description')
                         ->label('Override description')
                         ->helperText('Leave empty to use the shop description.')
@@ -608,6 +671,7 @@ class TemplateResource extends Resource
                         ->label('Override title')
                         ->helperText('Leave empty to use the current item title.')
                         ->maxLength(255),
+                    static::headingTagField(default: 'h1'),
                     Forms\Components\Textarea::make('description')
                         ->label('Override excerpt')
                         ->helperText('Leave empty to use the current item excerpt.')
@@ -688,80 +752,12 @@ class TemplateResource extends Resource
         ];
     }
 
-    private static function headingTagField(string $label = 'Heading tag', string $name = 'heading_tag'): Forms\Components\Select
+    private static function headingTagField(
+        string $label = 'Heading tag',
+        string $name = 'heading_tag',
+        string $default = 'h2',
+    ): Forms\Components\Select
     {
-        return Forms\Components\Select::make($name)
-            ->label($label)
-            ->options([
-                'h1' => 'H1',
-                'h2' => 'H2',
-            ])
-            ->default('h2')
-            ->native(false);
-    }
-
-    private static function ctaFields(): array
-    {
-        return [
-            Forms\Components\Select::make('cta_template')
-                ->label('CTA template')
-                ->options([
-                    'classic' => 'قالب فعلی',
-                    'image' => 'قالب تصویری',
-                ])
-                ->default('classic')
-                ->live()
-                ->required(),
-            Forms\Components\TextInput::make('content_width')
-                ->label('Content width')
-                ->numeric()
-                ->minValue(240)
-                ->maxValue(1400)
-                ->default(580)
-                ->suffix('px')
-                ->helperText('Text content width for the image CTA template.')
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
-            Forms\Components\Select::make('section_background')
-                ->label('Section background')
-                ->options(['default' => 'Default', 'muted' => 'Muted', 'dark' => 'Dark'])
-                ->default('default')
-                ->visible(fn (Get $get): bool => ($get('cta_template') ?? 'classic') === 'classic'),
-            Forms\Components\Select::make('alignment')
-                ->options(['left' => 'Left', 'center' => 'Center'])
-                ->default('center')
-                ->visible(fn (Get $get): bool => ($get('cta_template') ?? 'classic') === 'classic'),
-            Forms\Components\TextInput::make('eyebrow')
-                ->label('Eyebrow')
-                ->maxLength(255)
-                ->visible(fn (Get $get): bool => ($get('cta_template') ?? 'classic') === 'classic'),
-            Forms\Components\ViewField::make('background_image')
-                ->label('Background image')
-                ->view('filament.forms.components.media-library-url-picker')
-                ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()])
-                ->helperText('Image CTA template only.')
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image')
-                ->columnSpanFull(),
-            Forms\Components\TextInput::make('title')
-                ->required()
-                ->maxLength(255),
-            static::headingTagField('Heading tag'),
-            Forms\Components\Textarea::make('description')
-                ->rows(3)
-                ->columnSpanFull(),
-            Forms\Components\TextInput::make('button_label')
-                ->label('Primary button label')
-                ->maxLength(255),
-            Forms\Components\TextInput::make('button_url')
-                ->label('Primary button URL')
-                ->maxLength(255),
-            Forms\Components\TextInput::make('secondary_button_label')
-                ->label('Secondary button label')
-                ->maxLength(255)
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
-            Forms\Components\TextInput::make('secondary_button_url')
-                ->label('Secondary button URL')
-                ->maxLength(255)
-                ->visible(fn (Get $get): bool => $get('cta_template') === 'image'),
-        ];
+        return HeadingLevel::field($name, $label, $default);
     }
 }

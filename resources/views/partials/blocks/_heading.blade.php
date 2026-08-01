@@ -1,6 +1,6 @@
 @php
     $requestedHeadingTag = $tag ?? 'h2';
-    $headingTag = in_array($requestedHeadingTag, ['h1', 'h2'], true) ? $requestedHeadingTag : 'h2';
+    $headingTag = \App\CMS\Blocks\Support\HeadingLevel::normalize($requestedHeadingTag);
 @endphp
 
 <{{ $headingTag }} class="block-title">{{ $title }}</{{ $headingTag }}>

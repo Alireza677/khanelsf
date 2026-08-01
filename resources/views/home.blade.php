@@ -2,7 +2,10 @@
 
 @section('content')
     @if ($page?->hasBlocks())
-        @include('partials.page-blocks', ['blocks' => $page->blocks])
+        @include('partials.page-blocks', [
+            'blocks' => $page->blocks,
+            'context' => ['page_id' => $page->getKey(), 'page_url' => request()->getRequestUri()],
+        ])
     @else
         <section class="home-hero">
             <div class="home-hero__content">

@@ -1,3 +1,7 @@
+@php
+    $resolvedSiteFontFamily = app(\App\Services\SiteFontStyleResolver::class)->resolve()['family'];
+@endphp
+
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
@@ -14,8 +18,7 @@
             textColor: $wire.entangle('data.text_color').live,
             linkColor: $wire.entangle('data.link_color').live,
             backgroundColor: $wire.entangle('data.background_color').live,
-            fontFamilyValue: $wire.entangle('data.font_family').live,
-            customFontName: $wire.entangle('data.custom_font_name').live,
+            resolvedSiteFontFamily: @js($resolvedSiteFontFamily),
             sizeDevice: $wire.entangle('data.theme_size_device').live,
             baseFontSize: $wire.entangle('data.base_font_size').live,
             baseFontSizeMobile: $wire.entangle('data.base_font_size_mobile').live,
@@ -39,21 +42,6 @@
                     ? this.value(mobile, mobileFallback)
                     : this.value(desktop, desktopFallback)
             },
-            fontFamily() {
-                if (this.fontFamilyValue === 'serif') {
-                    return 'Georgia, Cambria, Times New Roman, Times, serif'
-                }
-
-                if (this.fontFamilyValue === 'mono') {
-                    return 'Consolas, Liberation Mono, monospace'
-                }
-
-                if (this.fontFamilyValue === 'custom') {
-                    return `'${this.value(this.customFontName, 'فونت سفارشی سایت')}', system-ui, sans-serif`
-                }
-
-                return 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
-            },
         }"
         class="sticky top-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
     >
@@ -67,7 +55,7 @@
             x-bind:style="{
                 backgroundColor: value(backgroundColor, '#f8fafc'),
                 color: value(textColor, '#1f2937'),
-                fontFamily: fontFamily(),
+                fontFamily: resolvedSiteFontFamily,
             }"
         >
             <div class="space-y-2">

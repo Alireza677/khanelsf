@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\CMS\Blocks\BlockEditorHydrator;
 use App\CMS\Blocks\BlockIdentityManager;
+use App\CMS\Blocks\CTA\CTADataNormalizer;
 use App\CMS\Blocks\Hero\HeroDataNormalizer;
 use App\CMS\Blocks\Hero\HeroMediaResolver;
 use Livewire\Livewire;
@@ -64,6 +65,8 @@ class FilamentBuilderLifecycleTest extends TestCase
 
         $component
             ->assertSeeHtml($path)
+            ->assertSeeHtml('x-teleport="body"')
+            ->assertSeeHtml('class="cms-modal-layer')
             ->set($path, '/changed.jpg')
             ->assertSet("data.blocks.{$uuid}.data.content.title", 'First')
             ->call('save');
@@ -110,7 +113,11 @@ class FilamentBuilderLifecycleTest extends TestCase
                 return null;
             }
         };
-        $hydrator = new BlockEditorHydrator(new BlockIdentityManager, new HeroDataNormalizer($resolver));
+        $hydrator = new BlockEditorHydrator(
+            new BlockIdentityManager,
+            new HeroDataNormalizer($resolver),
+            app(CTADataNormalizer::class),
+        );
         $blocks = $hydrator->hydrateV2([['type' => 'hero', 'data' => [
             'template' => 'hero_1', 'title' => 'Title', 'subtitle' => 'Lead', 'description' => 'Description',
             'image' => '/hero.jpg', 'primary_button_label' => 'Primary', 'primary_button_url' => '/primary',

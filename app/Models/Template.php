@@ -23,6 +23,7 @@ class Template extends Model
         'shop_index' => 'Shop index',
         'product_single' => 'Product single',
         'product_category' => 'Product category',
+        'service_single' => 'صفحه جزئیات خدمت',
         'galleries_index' => 'Galleries index',
         'gallery_single' => 'Gallery single',
         'gallery_category' => 'Gallery category',
@@ -38,6 +39,7 @@ class Template extends Model
         'post_single',
         'project_single',
         'product_single',
+        'service_single',
         'gallery_single',
     ];
 

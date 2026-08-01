@@ -603,7 +603,13 @@ class DatabaseSeeder extends Seeder
             ['title' => 'About', 'url' => '/about', 'sort_order' => 2],
             ['title' => 'Projects', 'url' => '/projects', 'sort_order' => 3],
             ['title' => 'Galleries', 'url' => '/galleries', 'sort_order' => 4],
-            ['title' => 'فروشگاه', 'url' => '/shop', 'sort_order' => 5],
+            [
+                'title' => 'فروشگاه',
+                'url' => null,
+                'type' => MenuItem::TYPE_SOURCE,
+                'source_key' => 'shop.index',
+                'sort_order' => 5,
+            ],
             ['title' => 'Blog', 'url' => '/blog', 'sort_order' => 6],
             ['title' => 'Contact', 'url' => '/contact', 'sort_order' => 7],
         ];
@@ -616,6 +622,8 @@ class DatabaseSeeder extends Seeder
                 ],
                 [
                     'parent_id' => null,
+                    'type' => $item['type'] ?? MenuItem::TYPE_CUSTOM_URL,
+                    'source_key' => $item['source_key'] ?? null,
                     'url' => $item['url'],
                     'target' => '_self',
                     'sort_order' => $item['sort_order'],
@@ -623,6 +631,17 @@ class DatabaseSeeder extends Seeder
                 ],
             );
         }
+
+        Setting::query()->firstOrCreate(
+            ['key' => 'header_menu_id'],
+            [
+                'value' => (string) $menu->getKey(),
+                'group' => 'header',
+                'type' => 'select',
+            ],
+        );
+
+        $this->call(IndustrialHeaderTemplateSeeder::class);
 
         $footerMenu = Menu::query()->firstOrCreate(
             ['slug' => 'footer-menu'],
@@ -637,7 +656,13 @@ class DatabaseSeeder extends Seeder
             ['title' => 'About', 'url' => '/about', 'sort_order' => 1],
             ['title' => 'Projects', 'url' => '/projects', 'sort_order' => 2],
             ['title' => 'Galleries', 'url' => '/galleries', 'sort_order' => 3],
-            ['title' => 'فروشگاه', 'url' => '/shop', 'sort_order' => 4],
+            [
+                'title' => 'فروشگاه',
+                'url' => null,
+                'type' => MenuItem::TYPE_SOURCE,
+                'source_key' => 'shop.index',
+                'sort_order' => 4,
+            ],
             ['title' => 'Blog', 'url' => '/blog', 'sort_order' => 5],
             ['title' => 'Contact', 'url' => '/contact', 'sort_order' => 6],
         ] as $item) {
@@ -648,6 +673,8 @@ class DatabaseSeeder extends Seeder
                 ],
                 [
                     'parent_id' => null,
+                    'type' => $item['type'] ?? MenuItem::TYPE_CUSTOM_URL,
+                    'source_key' => $item['source_key'] ?? null,
                     'url' => $item['url'],
                     'target' => '_self',
                     'sort_order' => $item['sort_order'],
@@ -655,6 +682,15 @@ class DatabaseSeeder extends Seeder
                 ],
             );
         }
+
+        Setting::query()->firstOrCreate(
+            ['key' => 'footer_menu_id'],
+            [
+                'value' => (string) $footerMenu->getKey(),
+                'group' => 'footer',
+                'type' => 'select',
+            ],
+        );
 
         foreach ([
             ['shop-index-template', 'Shop Index Template', 'shop_index', 'Shop', 'Browse simple products and starter catalog items.'],

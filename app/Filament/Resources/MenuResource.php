@@ -92,21 +92,68 @@ class MenuResource extends Resource
                         ->all()),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('مدیریت منو'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
+            ])
+            ->emptyStateHeading('هنوز منویی ساخته نشده است')
+            ->emptyStateDescription('نام اولین منو را وارد کنید تا مدیریت آیتم‌های آن را از همین بخش شروع کنید.')
+            ->emptyStateIcon('heroicon-o-bars-3')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('ساخت اولین منو')
+                    ->form(static::quickCreateForm())
+                    ->mutateFormDataUsing(static::prepareQuickCreateData(...))
+                    ->createAnother(false)
+                    ->successRedirectUrl(fn (Menu $record): string => static::getUrl('edit', ['record' => $record])),
             ]);
+    }
+
+    /**
+     * @return array<int, Forms\Components\Component>
+     */
+    public static function quickCreateForm(): array
+    {
+        return [
+            Forms\Components\TextInput::make('title')
+                ->label('نام منو')
+                ->required()
+                ->maxLength(255)
+                ->autofocus(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function prepareQuickCreateData(array $data): array
+    {
+        $baseSlug = Str::slug((string) $data['title']) ?: 'menu';
+        $slug = $baseSlug;
+        $suffix = 2;
+
+        while (Menu::query()->where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$suffix}";
+            $suffix++;
+        }
+
+        return [
+            ...$data,
+            'slug' => $slug,
+            'status' => 'active',
+        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListMenus::route('/'),
-            'create' => Pages\CreateMenu::route('/create'),
             'edit' => Pages\EditMenu::route('/{record}/edit'),
         ];
     }

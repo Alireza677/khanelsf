@@ -3,6 +3,7 @@
 namespace App\CMS\Blocks;
 
 use App\CMS\Blocks\Contracts\BlockDefinition;
+use App\CMS\Blocks\Contracts\BlockNormalizer;
 use Filament\Forms\Components\Builder\Block;
 use Illuminate\Contracts\Container\Container;
 use InvalidArgumentException;
@@ -34,10 +35,38 @@ final class BlockRegistry
         return $definition;
     }
 
+    public function has(string $key): bool
+    {
+        return array_key_exists($key, $this->definitionsByKey);
+    }
+
+    public function renderView(string $key, array $data = []): ?string
+    {
+        return $this->has($key)
+            ? $this->find($key)->renderView($data)
+            : null;
+    }
+
     /** @return array<string> */
     public function keys(): array
     {
         return array_keys($this->definitionsByKey);
+    }
+
+    /** @return array<string, BlockNormalizer> */
+    public function normalizers(): array
+    {
+        $normalizers = [];
+
+        foreach ($this->keys() as $key) {
+            $definition = $this->find($key);
+
+            if ($definition instanceof BlockNormalizer) {
+                $normalizers[$key] = $definition;
+            }
+        }
+
+        return $normalizers;
     }
 
     /**

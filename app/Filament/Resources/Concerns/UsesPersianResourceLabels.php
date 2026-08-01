@@ -7,6 +7,9 @@ trait UsesPersianResourceLabels
     protected static array $persianLabels = [
         'CategoryResource' => ['دسته نوشته', 'دسته‌های نوشته', 'وبلاگ'],
         'ContactMessageResource' => ['پیام تماس', 'پیام‌های تماس', 'صندوق پیام‌ها'],
+        'FormResource' => ['فرم', 'فرم‌ها', 'CRM'],
+        'FormSubmissionResource' => ['ورودی فرم', 'ورودی‌ها', 'CRM'],
+        'LeadResource' => ['سرنخ', 'سرنخ‌ها', 'CRM'],
         'GalleryCategoryResource' => ['دسته گالری', 'دسته‌های گالری', 'گالری‌ها'],
         'GalleryResource' => ['گالری', 'گالری‌ها', 'گالری‌ها'],
         'MediaResource' => ['رسانه', 'رسانه‌ها', 'رسانه'],
@@ -20,6 +23,7 @@ trait UsesPersianResourceLabels
         'ProjectCategoryResource' => ['دسته پروژه', 'دسته‌های پروژه', 'پروژه‌ها'],
         'ProjectResource' => ['پروژه', 'پروژه‌ها', 'پروژه‌ها'],
         'RedirectResource' => ['ریدایرکت', 'ریدایرکت‌ها', 'نگهداری'],
+        'ServiceResource' => ['خدمت', 'خدمات', 'محتوا'],
         'SettingResource' => ['تنظیم', 'تنظیمات', 'تنظیمات سایت'],
         'TemplateResource' => ['قالب', 'قالب‌ها', 'قالب‌ها'],
     ];

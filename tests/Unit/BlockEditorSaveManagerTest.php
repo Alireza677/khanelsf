@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\CMS\Blocks\BlockEditorHydrator;
 use App\CMS\Blocks\BlockEditorSaveManager;
 use App\CMS\Blocks\BlockIdentityManager;
+use App\CMS\Blocks\CTA\CTADataNormalizer;
 use App\CMS\Blocks\Hero\HeroDataNormalizer;
 use App\CMS\Blocks\Hero\HeroMediaResolver;
 use Illuminate\Support\Facades\DB;
@@ -54,6 +55,37 @@ class BlockEditorSaveManagerTest extends TestCase
         $this->assertSame($blocks[1], $result[1]);
     }
 
+    public function test_legacy_hero_mode_still_canonicalizes_cta_at_the_save_boundary(): void
+    {
+        $result = $this->manager()->prepare([[
+            'type' => 'cta',
+            'data' => [
+                'block_id' => self::ID,
+                'cta_template' => 'classic',
+                'title' => 'Legacy CTA',
+                'button_label' => 'Continue',
+                'button_url' => '/continue',
+            ],
+        ]], false);
+
+        $cta = $result[0]['data'];
+
+        $this->assertSame(['block_id', 'schema_version', 'template', 'content', 'settings'], array_keys($cta));
+        $this->assertSame(self::ID, $cta['block_id']);
+        $this->assertSame(2, $cta['schema_version']);
+        $this->assertSame('Legacy CTA', $cta['content']['title']);
+        $this->assertSame([
+            'label' => 'Continue',
+            'action' => [
+                'schema_version' => 1,
+                'type' => 'custom_url',
+                'value' => '/continue',
+                'open_in_new_tab' => false,
+            ],
+        ], $cta['content']['primary_cta']);
+        $this->assertArrayNotHasKey('button_label', $cta);
+    }
+
     public function test_v2_save_is_idempotent_linear_and_uses_no_query_per_block(): void
     {
         $manager = $this->manager();
@@ -84,7 +116,11 @@ class BlockEditorSaveManagerTest extends TestCase
             }
         };
         $identities = new BlockIdentityManager;
-        $hydrator = new BlockEditorHydrator($identities, new HeroDataNormalizer($resolver));
+        $hydrator = new BlockEditorHydrator(
+            $identities,
+            new HeroDataNormalizer($resolver),
+            app(CTADataNormalizer::class),
+        );
 
         return new BlockEditorSaveManager($hydrator, $identities, $resolver);
     }

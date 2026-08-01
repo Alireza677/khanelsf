@@ -13,7 +13,7 @@
                     <span class="eyebrow">{{ $data['eyebrow'] }}</span>
                 @endif
 
-                <h1>{{ $title }}</h1>
+                @include('partials.blocks._heading', ['title' => $title, 'tag' => $data['heading_tag'] ?? 'h1'])
 
                 @if ($excerpt)
                     <p>{{ $excerpt }}</p>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\ModuleService;
+use App\Services\ProductTemplateRuntime;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use App\Services\TemplateService;
@@ -158,8 +159,11 @@ class ShopController extends Controller
         return back();
     }
 
-    public function show(string $slug, SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates): View
-    {
+    public function show(
+        string $slug,
+        ModuleService $modules,
+        ProductTemplateRuntime $runtime,
+    ): View {
         $this->abortIfShopDisabled($modules);
 
         $product = Product::query()
@@ -168,29 +172,7 @@ class ShopController extends Controller
             ->published()
             ->firstOrFail();
 
-        $relatedProducts = Product::query()
-            ->with('category')
-            ->published()
-            ->whereKeyNot($product->getKey())
-            ->when($product->product_category_id, fn ($query) => $query->where('product_category_id', $product->product_category_id))
-            ->orderBy('sort_order')
-            ->latest('published_at')
-            ->take(3)
-            ->get();
-
-        $template = $templates->findTemplateFor('product_single', $product);
-
-        return $templates->viewOrFallback($template, 'shop.show', [
-            'product' => $product,
-            'relatedProducts' => $relatedProducts,
-            'seo' => $seoService->forProduct($product),
-            'templateContext' => [
-                'kind' => 'single',
-                'type' => 'product',
-                'model' => $product,
-                'related' => $relatedProducts,
-            ],
-        ]);
+        return $runtime->render($product);
     }
 
     private function abortIfShopDisabled(ModuleService $modules): void
