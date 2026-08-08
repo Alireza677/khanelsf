@@ -21,6 +21,7 @@ final class ProjectTemplateContextBuilder
             'metrics',
             'relatedServices' => fn ($query) => $query->published(),
             'media',
+            'videos',
         ]);
 
         $relatedProjects = $this->relatedProjects($project, $this->relatedLimit($template));
@@ -33,12 +34,14 @@ final class ProjectTemplateContextBuilder
             'project' => $project,
             'relatedProjects' => $relatedProjects,
             'projectGalleries' => $projectGalleries,
+            'projectVideos' => $project->videos,
             'templateContext' => [
                 'kind' => 'single',
                 'type' => 'project',
                 'model' => $project,
                 'related' => $relatedProjects,
                 'projectGalleries' => $projectGalleries,
+                'videos' => $project->videos,
             ],
         ];
     }

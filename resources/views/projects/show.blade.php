@@ -98,6 +98,10 @@
                 <p class="empty-state">No gallery images have been added yet.</p>
             @endif
         </section>
+
+        @if (($projectVideos ?? collect())->isNotEmpty())
+            @include('projects.partials.videos', ['videos' => $projectVideos])
+        @endif
     </article>
 
     @if (($projectGalleries ?? collect())->isNotEmpty())

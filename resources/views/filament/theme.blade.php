@@ -1406,6 +1406,62 @@
             border-radius: 0.75rem 0.75rem 0 0;
         }
     }
+    .activity-creation-wizard-modal {
+        direction: rtl;
+        overflow: hidden;
+        box-shadow: 0 24px 70px rgb(var(--primary-950) / .16) !important;
+    }
+
+    .activity-creation-wizard-modal .fi-fo-wizard-header {
+        background: rgb(var(--primary-50) / .55);
+    }
+
+    .dark .activity-creation-wizard-modal .fi-fo-wizard-header {
+        background: rgb(var(--primary-950) / .2);
+    }
+
+    .activity-creation-wizard-modal .fi-fo-wizard-step {
+        min-height: 18rem;
+    }
+
+    .activity-wizard-summary {
+        display: grid;
+        gap: .45rem;
+        border: 1px solid rgb(var(--primary-200));
+        border-radius: .75rem;
+        background: rgb(var(--primary-50) / .7);
+        color: rgb(var(--primary-950));
+        padding: 1rem;
+    }
+
+    .activity-wizard-summary strong {
+        font-size: 1rem;
+    }
+
+    .activity-wizard-summary span,
+    .activity-wizard-hint {
+        font-size: .8rem;
+    }
+
+    .dark .activity-wizard-summary {
+        border-color: rgb(var(--primary-800));
+        background: rgb(var(--primary-950) / .3);
+        color: rgb(var(--primary-100));
+    }
+
+    @media (max-width: 639px) {
+        .activity-creation-wizard-modal {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            border-radius: 0 !important;
+        }
+
+        .activity-creation-wizard-modal .fi-fo-wizard-step {
+            min-height: calc(100dvh - 18rem);
+        }
+    }
 </style>
 
 <script>

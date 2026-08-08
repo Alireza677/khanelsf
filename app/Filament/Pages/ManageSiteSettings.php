@@ -39,7 +39,7 @@ class ManageSiteSettings extends Page implements HasForms
         'container_width_mobile' => '343px',
     ];
 
-    protected static ?string $navigationGroup = 'تنظیمات سایت';
+    protected static ?string $navigationGroup = 'ساختار و طراحی وب‌سایت';
 
     protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
 
@@ -396,34 +396,34 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->columnSpanFull(),
                             ])
                             ->columns(2),
-                        Forms\Components\Tabs\Tab::make('گالری‌ها')
+                        Forms\Components\Tabs\Tab::make('گالری پروژه‌ها')
                             ->schema([
                                 Forms\Components\Placeholder::make('galleries_module_note')
                                     ->label('نمایش ماژول')
-                                    ->content('غیرفعال کردن گالری‌ها لینک‌ها و منوی مدیریت گالری را پنهان می‌کند، مسیرهای عمومی گالری 404 می‌شوند و داده‌های موجود حفظ می‌شوند. پاکسازی داده‌ها جداگانه و غیرقابل بازگشت است.'),
+                                    ->content('این بخش نمایش بصری پروژه‌های عمومی در /galleries را کنترل می‌کند. مدیریت محتوای اصلی از بخش پروژه‌های عمومی انجام می‌شود.'),
                                 Forms\Components\Toggle::make('galleries_enabled')
-                                    ->label('فعال‌سازی گالری‌ها')
+                                    ->label('فعال‌سازی گالری پروژه‌ها')
                                     ->default(true)
                                     ->live(),
                                 Forms\Components\Group::make([
                                     Forms\Components\TextInput::make('galleries_label')
-                                        ->label('عنوان ماژول گالری‌ها')
+                                        ->label('عنوان ماژول کشف بصری پروژه‌ها')
                                         ->placeholder('مثلا گالری‌ها')
                                         ->maxLength(255)
                                         ->default('گالری‌ها'),
                                     Forms\Components\TextInput::make('galleries_index_title')
-                                        ->label('عنوان صفحه فهرست گالری‌ها')
+                                        ->label('عنوان صفحه گالری پروژه‌ها')
                                         ->placeholder('مثلا گالری تصاویر')
                                         ->maxLength(255)
                                         ->default('گالری‌ها'),
                                     Forms\Components\TextInput::make('galleries_per_page')
-                                        ->label('تعداد گالری در هر صفحه')
+                                        ->label('تعداد پروژه در هر صفحه گالری')
                                         ->numeric()
                                         ->minValue(1)
                                         ->maxValue(48)
                                         ->default(12),
                                     Forms\Components\Textarea::make('galleries_index_description')
-                                        ->label('توضیحات صفحه فهرست گالری‌ها')
+                                        ->label('توضیحات صفحه کشف بصری پروژه‌ها')
                                         ->placeholder('متن معرفی صفحه گالری‌ها را وارد کنید')
                                         ->rows(3)
                                         ->columnSpanFull(),

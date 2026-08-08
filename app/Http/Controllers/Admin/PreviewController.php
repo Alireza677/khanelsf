@@ -18,7 +18,10 @@ use App\Services\ModuleService;
 use App\Services\ProductTemplateContextBuilder;
 use App\Services\ProductTemplateRuntime;
 use App\Services\ProjectTemplateContextBuilder;
+use App\Services\ProjectDiscoveryTemplateContextBuilder;
+use App\Services\ProjectGalleryDiscoveryService;
 use App\Services\SeoService;
+use App\Services\SettingsService;
 use App\Services\ServiceTemplateRuntime;
 use App\Services\TemplateService;
 use App\Support\SeoData;
@@ -101,6 +104,9 @@ class PreviewController extends Controller
         ProductTemplateContextBuilder $productContextBuilder,
         ProductTemplateRuntime $productRuntime,
         ServiceTemplateRuntime $serviceRuntime,
+        ProjectGalleryDiscoveryService $projectDiscovery,
+        ProjectDiscoveryTemplateContextBuilder $projectDiscoveryContextBuilder,
+        SettingsService $settings,
     ): View {
         $this->authorizePreview();
 
@@ -131,6 +137,22 @@ class PreviewController extends Controller
             if ($product instanceof Product) {
                 return $productRuntime->render($product, preview: true, template: $template);
             }
+        }
+
+        if ($template->type === 'project_discovery_index') {
+            $result = $projectDiscovery->discover(
+                is_array($request->query('filters')) ? $request->query('filters') : [],
+                (int) $settings->get('galleries_per_page', 12),
+            );
+            $heading = $settings->get('galleries_index_title', 'Galleries');
+            $description = $settings->get('galleries_index_description', 'Browse image and video galleries.');
+
+            return view('templates.render', [
+                'template' => $template,
+                'templateContext' => $projectDiscoveryContextBuilder->build($result, $heading, $description),
+                'seo' => $this->noindex($seoService->forGalleryIndex()),
+                'isPreview' => true,
+            ]);
         }
 
         $templateContext = $this->templateContext(

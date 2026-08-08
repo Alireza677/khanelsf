@@ -18,7 +18,7 @@ class ProjectController extends Controller
         $this->abortIfProjectsDisabled($modules);
 
         $projects = Project::query()
-            ->with('category')
+            ->with(['category', 'media'])
             ->published()
             ->orderBy('sort_order')
             ->latest('published_at')
@@ -61,7 +61,7 @@ class ProjectController extends Controller
             ->firstOrFail();
 
         $projects = Project::query()
-            ->with('category')
+            ->with(['category', 'media'])
             ->published()
             ->whereBelongsTo($category, 'category')
             ->orderBy('sort_order')

@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use App\Models\Category;
-use App\Models\Gallery;
-use App\Models\GalleryCategory;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Product;
@@ -52,7 +50,10 @@ class SitemapService
             $this->add($urls, route('projects.index'));
         }
 
-        if (filter_var($this->settings->get('galleries_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
+        if (
+            filter_var($this->settings->get('projects_enabled', true), FILTER_VALIDATE_BOOLEAN)
+            && filter_var($this->settings->get('galleries_enabled', true), FILTER_VALIDATE_BOOLEAN)
+        ) {
             $this->add($urls, route('galleries.index'));
         }
 
@@ -116,31 +117,6 @@ class SitemapService
                     $urls,
                     route('projects.show', $project->slug),
                     ($project->updated_at ?: $project->published_at)?->toAtomString(),
-                ));
-        }
-
-        if (filter_var($this->settings->get('galleries_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
-            GalleryCategory::query()
-                ->active()
-                ->where('robots_index', true)
-                ->latest('updated_at')
-                ->get()
-                ->each(fn (GalleryCategory $category) => $this->add(
-                    $urls,
-                    route('galleries.category', $category->slug),
-                    $category->updated_at?->toAtomString(),
-                ));
-
-            Gallery::query()
-                ->published()
-                ->withPublicCategory()
-                ->where('robots_index', true)
-                ->latest('updated_at')
-                ->get()
-                ->each(fn (Gallery $gallery) => $this->add(
-                    $urls,
-                    route('galleries.show', $gallery->slug),
-                    ($gallery->updated_at ?: $gallery->published_at)?->toAtomString(),
                 ));
         }
 

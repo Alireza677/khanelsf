@@ -12,11 +12,13 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'mobile' => fake()->unique()->numerify('09#########'),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
             'is_admin' => false,
+            'status' => 'active',
         ];
     }
 
@@ -24,6 +26,14 @@ class UserFactory extends Factory
     {
         return $this->state(fn (): array => [
             'is_admin' => true,
+        ]);
+    }
+
+    public function client(): static
+    {
+        return $this->state(fn (): array => [
+            'is_admin' => false,
+            'status' => 'active',
         ]);
     }
 }

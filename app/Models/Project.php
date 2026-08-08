@@ -138,6 +138,21 @@ class Project extends Model implements HasMedia, ResolvesNavigationUrl
             ->orderBy('id');
     }
 
+    public function videos(): HasMany
+    {
+        return $this->hasMany(ProjectVideo::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function discoveryTerms(): BelongsToMany
+    {
+        return $this->belongsToMany(ProjectDiscoveryTerm::class, 'project_discovery_term_project')
+            ->with('vocabulary')
+            ->orderBy('project_discovery_terms.sort_order')
+            ->orderBy('project_discovery_terms.name');
+    }
+
     public function registerMediaCollections(): void
     {
         $this->registerFeaturedImageMediaCollection();
@@ -151,10 +166,36 @@ class Project extends Model implements HasMedia, ResolvesNavigationUrl
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->registerFeaturedImageMediaConversions($media);
+
+        $this
+            ->addMediaConversion('card')
+            ->width(720)
+            ->height(480)
+            ->nonQueued();
     }
 
     public function galleryImages()
     {
         return $this->getMedia('gallery');
+    }
+
+    public function coverImage(): ?Media
+    {
+        return $this->featuredImage() ?: $this->galleryImages()->first();
+    }
+
+    public function coverImageUrl(?string $conversionName = 'card'): ?string
+    {
+        $media = $this->coverImage();
+
+        if (! $media) {
+            return null;
+        }
+
+        if (filled($conversionName) && $media->hasGeneratedConversion($conversionName)) {
+            return $media->getUrl($conversionName);
+        }
+
+        return $media->getUrl();
     }
 }

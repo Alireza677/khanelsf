@@ -157,6 +157,27 @@ class ProjectResource extends Resource
                                 ->columnSpanFull(),
                         ])
                         ->columns(2),
+                    Forms\Components\Tabs\Tab::make('فیلترهای گالری')
+                        ->schema([
+                            Forms\Components\Select::make('discoveryTerms')
+                                ->label('ویژگی‌های قابل فیلتر')
+                                ->relationship('discoveryTerms', 'name')
+                                ->options(fn (): array => \App\Models\ProjectDiscoveryVocabulary::query()
+                                    ->active()
+                                    ->with(['terms' => fn ($query) => $query->active()])
+                                    ->orderBy('sort_order')
+                                    ->orderBy('name')
+                                    ->get()
+                                    ->mapWithKeys(fn ($vocabulary): array => [
+                                        $vocabulary->name => $vocabulary->terms->pluck('name', 'id')->all(),
+                                    ])
+                                    ->all())
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->helperText('گزینه‌ها را از بخش «فیلترهای گالری» تعریف کنید. هر پروژه می‌تواند چند گزینه از گروه‌های مختلف داشته باشد.')
+                                ->columnSpanFull(),
+                        ]),
                     Forms\Components\Tabs\Tab::make('شاخص‌ها و دستاوردها')
                         ->schema([
                             Forms\Components\Repeater::make('metrics')
@@ -225,6 +246,43 @@ class ProjectResource extends Resource
                                 ->imageEditor()
                                 ->reorderable()
                                 ->helperText('تصاویر گالری صفحه جزئیات پروژه را بارگذاری و مرتب کنید.')
+                                ->columnSpanFull(),
+                        ]),
+                    Forms\Components\Tabs\Tab::make('ویدئوها')
+                        ->schema([
+                            Forms\Components\Repeater::make('videos')
+                                ->label('ویدئوهای پروژه')
+                                ->relationship('videos')
+                                ->schema([
+                                    Forms\Components\TextInput::make('url')
+                                        ->label('نشانی ویدئو')
+                                        ->url()
+                                        ->startsWith(['http://', 'https://'])
+                                        ->required()
+                                        ->maxLength(2048)
+                                        ->helperText('YouTube، Vimeo و Aparat به‌صورت امن درون صفحه نمایش داده می‌شوند؛ سایر نشانی‌های معتبر به‌صورت پیوند خارجی باز می‌شوند.'),
+                                    Forms\Components\TextInput::make('title')
+                                        ->label('عنوان')
+                                        ->maxLength(255),
+                                    Forms\Components\Textarea::make('caption')
+                                        ->label('توضیح')
+                                        ->rows(3)
+                                        ->columnSpanFull(),
+                                    Forms\Components\ViewField::make('thumbnail_url')
+                                        ->label('تصویر بندانگشتی')
+                                        ->view('filament.forms.components.media-library-url-picker')
+                                        ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()])
+                                        ->helperText('اختیاری؛ یک تصویر از کتابخانه رسانه برای پیش‌نمایش ویدئو انتخاب کنید.')
+                                        ->columnSpanFull(),
+                                    Forms\Components\Hidden::make('sort_order'),
+                                ])
+                                ->orderColumn('sort_order')
+                                ->reorderable()
+                                ->cloneable()
+                                ->collapsible()
+                                ->defaultItems(0)
+                                ->itemLabel(fn (array $state): string => $state['title'] ?? $state['url'] ?? 'ویدئوی پروژه')
+                                ->columns(2)
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('سئو')

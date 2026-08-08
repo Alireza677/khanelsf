@@ -23,7 +23,7 @@ class OrderResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-receipt-refund';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function shouldRegisterNavigation(): bool
     {

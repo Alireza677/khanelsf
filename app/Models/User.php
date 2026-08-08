@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Support\MobileNormalizer;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\MediaLibrary\HasMedia;
@@ -18,9 +20,11 @@ class User extends Authenticatable implements FilamentUser, HasMedia
 
     protected $fillable = [
         'name',
+        'mobile',
         'email',
         'password',
         'is_admin',
+        'status',
     ];
 
     protected $hidden = [
@@ -39,7 +43,34 @@ class User extends Authenticatable implements FilamentUser, HasMedia
 
     public function canAccessPanel(Panel $panel): bool
     {
+        return $this->isAdmin() && $this->isActive();
+    }
+
+    public function isAdmin(): bool
+    {
         return $this->is_admin;
+    }
+
+    public function isClient(): bool
+    {
+        return ! $this->is_admin;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function customers(): BelongsToMany
+    {
+        return $this->belongsToMany(Customer::class)
+            ->withPivot(['membership_role', 'is_primary'])
+            ->withTimestamps();
+    }
+
+    protected function setMobileAttribute(?string $value): void
+    {
+        $this->attributes['mobile'] = MobileNormalizer::normalize($value);
     }
 
     public function registerMediaCollections(): void

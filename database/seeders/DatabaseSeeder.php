@@ -3,8 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
-use App\Models\Gallery;
-use App\Models\GalleryCategory;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Page;
@@ -438,79 +436,6 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $photoGalleryCategory = GalleryCategory::query()->updateOrCreate(
-            ['slug' => 'project-photos'],
-            [
-                'name' => 'Project Photos',
-                'description' => 'Photo galleries connected to client work and portfolio media.',
-                'status' => 'active',
-                'sort_order' => 1,
-                'seo_title' => 'Project Photo Galleries',
-                'seo_description' => 'Browse selected project photo galleries.',
-            ],
-        );
-
-        $videoGalleryCategory = GalleryCategory::query()->updateOrCreate(
-            ['slug' => 'videos'],
-            [
-                'name' => 'Videos',
-                'description' => 'Video galleries and embedded media links.',
-                'status' => 'active',
-                'sort_order' => 2,
-                'seo_title' => 'Video Galleries',
-                'seo_description' => 'Browse selected video galleries.',
-            ],
-        );
-
-        foreach ([
-            [
-                'slug' => 'corporate-website-media',
-                'gallery_category_id' => $photoGalleryCategory->id,
-                'project_slug' => 'corporate-website-launch',
-                'title' => 'Corporate Website Media',
-                'excerpt' => 'A sample image gallery connected to a project case study.',
-                'content' => '<p>Use this gallery for screenshots, event photos, before/after media, or project progress images.</p>',
-                'type' => 'image',
-                'is_featured' => true,
-                'sort_order' => 1,
-            ],
-            [
-                'slug' => 'service-process-video',
-                'gallery_category_id' => $videoGalleryCategory->id,
-                'project_slug' => 'service-process-improvement',
-                'title' => 'Service Process Video',
-                'excerpt' => 'A sample video gallery that uses an external video URL.',
-                'content' => '<p>This gallery demonstrates the lightweight video URL workflow without video transcoding.</p>',
-                'type' => 'video',
-                'video_url' => 'https://example.com/video',
-                'is_featured' => true,
-                'sort_order' => 2,
-            ],
-        ] as $gallery) {
-            $project = Project::query()->where('slug', $gallery['project_slug'])->first();
-
-            Gallery::query()->updateOrCreate(
-                ['slug' => $gallery['slug']],
-                [
-                    'gallery_category_id' => $gallery['gallery_category_id'],
-                    'project_id' => $project?->id,
-                    'title' => $gallery['title'],
-                    'excerpt' => $gallery['excerpt'],
-                    'content' => $gallery['content'],
-                    'type' => $gallery['type'],
-                    'video_url' => $gallery['video_url'] ?? null,
-                    'status' => 'published',
-                    'published_at' => now(),
-                    'is_featured' => $gallery['is_featured'],
-                    'sort_order' => $gallery['sort_order'],
-                    'seo_title' => $gallery['title'],
-                    'seo_description' => $gallery['excerpt'],
-                    'robots_index' => true,
-                    'robots_follow' => true,
-                ],
-            );
-        }
-
         $digitalCategory = ProductCategory::query()->updateOrCreate(
             ['slug' => 'digital-products'],
             [
@@ -642,6 +567,7 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->call(IndustrialHeaderTemplateSeeder::class);
+        $this->call(ProjectDiscoveryTemplateSeeder::class);
 
         $footerMenu = Menu::query()->firstOrCreate(
             ['slug' => 'footer-menu'],
@@ -696,7 +622,6 @@ class DatabaseSeeder extends Seeder
             ['shop-index-template', 'Shop Index Template', 'shop_index', 'Shop', 'Browse simple products and starter catalog items.'],
             ['projects-index-template', 'Projects Index Template', 'projects_index', 'Projects', 'Selected work and case studies.'],
             ['blog-index-template', 'Blog Index Template', 'blog_index', 'Blog', 'Latest articles and updates.'],
-            ['galleries-index-template', 'Galleries Index Template', 'galleries_index', 'Galleries', 'Browse image and video galleries.'],
         ] as [$slug, $title, $type, $heading, $description]) {
             $template = Template::query()->firstOrCreate(
                 ['slug' => $slug],

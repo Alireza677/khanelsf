@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\EnsureClientUser;
 use App\Http\Middleware\LogLivewireRequests;
 use App\Http\Middleware\ResolveRedirects;
+use App\Http\Middleware\ShareClientPortalContext;
 use App\Support\TemporaryDebugLogger;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands()
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo('/admin/login');
+        $middleware->redirectGuestsTo(fn ($request): string => $request->routeIs('client.*')
+            ? route('login')
+            : '/admin/login');
+        $middleware->alias([
+            'client' => EnsureClientUser::class,
+            'client.context' => ShareClientPortalContext::class,
+        ]);
         $middleware->web(append: [
             ResolveRedirects::class,
             // TEMP DEBUG - remove after production save issue is fixed.

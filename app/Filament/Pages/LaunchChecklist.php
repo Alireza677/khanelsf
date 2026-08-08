@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class LaunchChecklist extends FilamentPage
 {
-    protected static ?string $navigationGroup = 'نگهداری';
+    protected static ?string $navigationGroup = 'نگهداری سیستم';
 
     protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
 

@@ -33,6 +33,10 @@ class ModuleService
             return false;
         }
 
+        if ($path === '/galleries' && (! $this->projectsEnabled() || ! $this->galleriesEnabled())) {
+            return false;
+        }
+
         if (! $this->galleriesEnabled() && $this->matchesAny($path, ['/galleries'])) {
             return false;
         }

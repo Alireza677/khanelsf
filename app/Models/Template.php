@@ -18,16 +18,36 @@ class Template extends Model
         'post_single' => 'Post single',
         'post_category' => 'Post category',
         'projects_index' => 'Projects index',
+        'project_discovery_index' => 'گالری پروژه‌ها',
         'project_single' => 'Project single',
         'project_category' => 'Project category',
         'shop_index' => 'Shop index',
         'product_single' => 'Product single',
         'product_category' => 'Product category',
         'service_single' => 'صفحه جزئیات خدمت',
-        'galleries_index' => 'Galleries index',
-        'gallery_single' => 'Gallery single',
-        'gallery_category' => 'Gallery category',
+        'galleries_index' => 'Galleries index (Legacy)',
+        'gallery_single' => 'Gallery single (Legacy)',
+        'gallery_category' => 'Gallery category (Legacy)',
     ];
+
+    public const LEGACY_GALLERY_TYPES = ['galleries_index', 'gallery_single', 'gallery_category'];
+
+    public static function creatableTypes(): array
+    {
+        return array_diff_key(self::TYPES, array_flip(self::LEGACY_GALLERY_TYPES));
+    }
+
+    public static function editableTypeOptions(?self $template): array
+    {
+        if ($template && in_array($template->type, self::LEGACY_GALLERY_TYPES, true)) {
+            return [
+                ...self::creatableTypes(),
+                $template->type => self::TYPES[$template->type],
+            ];
+        }
+
+        return self::creatableTypes();
+    }
 
     public const CONDITION_TYPES = [
         'all' => 'All items of this type',

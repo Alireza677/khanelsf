@@ -6,6 +6,7 @@ use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
 use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
 use App\Filament\Resources\Concerns\ValidatesTemplatePublication;
 use App\Filament\Resources\TemplateResource;
+use App\Models\Template;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Pages\EditRecord;
@@ -33,6 +34,7 @@ class EditTemplate extends EditRecord
             Actions\Action::make('preview')
                 ->label('Preview')
                 ->icon('heroicon-o-eye')
+                ->visible(fn (): bool => ! in_array($this->record->type, Template::LEGACY_GALLERY_TYPES, true))
                 ->form(fn (): array => $this->previewForm())
                 ->modalSubmitActionLabel('Open preview')
                 ->action(function (array $data) {

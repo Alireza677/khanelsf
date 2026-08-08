@@ -41,7 +41,7 @@ class TemplateResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-swatch';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
@@ -62,7 +62,7 @@ class TemplateResource extends Resource
                         ->unique(ignoreRecord: true),
                     Forms\Components\Select::make('type')
                         ->required()
-                        ->options(Template::TYPES)
+                        ->options(fn (?Template $record): array => Template::editableTypeOptions($record))
                         ->searchable()
                         ->live()
                         ->afterStateUpdated(function (Set $set, ?string $state): void {
@@ -312,6 +312,7 @@ class TemplateResource extends Resource
         if (in_array($type, [
             'blog_index', 'post_single', 'post_category',
             'projects_index', 'project_single', 'project_category',
+            'project_discovery_index',
             'shop_index', 'product_single', 'product_category',
             'service_single',
             'galleries_index', 'gallery_single', 'gallery_category',
@@ -374,7 +375,7 @@ class TemplateResource extends Resource
 
     private static function specificItemTypeLabels(): array
     {
-        return [
+        $blocks = [
             'post_single' => 'Post',
             'post_category' => 'Blog category',
             'project_single' => 'Project',
@@ -497,11 +498,14 @@ class TemplateResource extends Resource
             ];
         }
 
-        return [
+        $blocks = [
             app(BlockRegistry::class)->find('hero')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
             ...$commonBlocks,
             ...app(BlockRegistry::class)->filamentBlocks($entityBlocks, HeroBlock::CONTEXT_TEMPLATE),
             app(BlockRegistry::class)->find('feature_grid')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
+            ...($target === 'project_discovery_index' ? [
+                app(BlockRegistry::class)->find('project_discovery_grid')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
+            ] : []),
             Forms\Components\Builder\Block::make('faq')
                 ->label('Static: FAQ')
                 ->schema(static::sectionFields([
@@ -733,6 +737,20 @@ class TemplateResource extends Resource
                         ->columnSpanFull(),
                 ]),
         ];
+
+        if ($target !== 'project_discovery_index') {
+            return $blocks;
+        }
+
+        $allowed = [
+            'hero', 'cta', 'form', 'feature_grid', 'faq', 'gallery', 'testimonials',
+            'template_archive_header', 'project_discovery_grid', 'custom_html',
+        ];
+
+        return array_values(array_filter(
+            $blocks,
+            fn (Forms\Components\Builder\Block $block): bool => in_array($block->getName(), $allowed, true),
+        ));
     }
 
     private static function sectionFields(array $fields): array

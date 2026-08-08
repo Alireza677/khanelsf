@@ -1,7 +1,7 @@
 <article class="blog-card">
     <a class="blog-card__image" href="{{ route('projects.show', $project->slug) }}" aria-label="{{ $project->title }}">
-        @if ($project->featuredImageUrl('thumb'))
-            <img src="{{ $project->featuredImageUrl('thumb') }}" alt="{{ $project->title }}">
+        @if ($project->coverImageUrl())
+            <img src="{{ $project->coverImageUrl() }}" alt="{{ $project->title }}" loading="lazy">
         @else
             <span>{{ $project->title }}</span>
         @endif

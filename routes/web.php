@@ -9,6 +9,11 @@ use App\Http\Controllers\Admin\RedirectExportController;
 use App\Http\Controllers\CalculatorSubmissionReportController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Client\AuthenticatedSessionController;
+use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\PlaceholderController as ClientPlaceholderController;
+use App\Http\Controllers\Client\ProfileController as ClientProfileController;
+use App\Http\Controllers\Client\ProjectController as ClientProjectController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\GalleryController;
@@ -30,6 +35,27 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/health', HealthController::class)->name('health');
+
+Route::middleware('guest:client')->group(function (): void {
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('client.login.store');
+});
+
+Route::middleware(['auth:client', 'client', 'client.context'])->group(function (): void {
+    Route::get('/dashboard', ClientDashboardController::class)->name('client.dashboard');
+    Route::get('/dashboard/projects', [ClientProjectController::class, 'index'])->name('client.projects.index');
+    Route::get('/dashboard/projects/{project}', [ClientProjectController::class, 'show'])
+        ->whereNumber('project')
+        ->name('client.projects.show');
+    Route::get('/dashboard/reports', [ClientPlaceholderController::class, 'reports'])->name('client.placeholder.reports');
+    Route::get('/dashboard/invoices', [ClientPlaceholderController::class, 'invoices'])->name('client.placeholder.invoices');
+    Route::get('/dashboard/files', [ClientPlaceholderController::class, 'files'])->name('client.placeholder.files');
+    Route::get('/profile', [ClientProfileController::class, 'edit'])->name('client.profile.edit');
+    Route::patch('/profile', [ClientProfileController::class, 'update'])->name('client.profile.update');
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('client.logout');
+});
 
 Route::get('/blog', [PostController::class, 'index'])->name('blog.index');
 Route::get('/blog/search', [PostController::class, 'search'])->name('blog.search');

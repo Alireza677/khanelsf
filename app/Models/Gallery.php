@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasFeaturedImage;
+use App\Services\ExternalVideoResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -119,34 +120,6 @@ class Gallery extends Model implements HasMedia
             return null;
         }
 
-        $url = (string) $this->video_url;
-        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
-        $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
-
-        if (str_contains($host, 'youtu.be')) {
-            return 'https://www.youtube.com/embed/'.$path;
-        }
-
-        if (str_contains($host, 'youtube.com')) {
-            parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
-
-            if (! empty($query['v'])) {
-                return 'https://www.youtube.com/embed/'.$query['v'];
-            }
-
-            if (str_starts_with($path, 'embed/')) {
-                return 'https://www.youtube.com/'.$path;
-            }
-        }
-
-        if (str_contains($host, 'vimeo.com') && preg_match('/(\d+)/', $path, $matches)) {
-            return 'https://player.vimeo.com/video/'.$matches[1];
-        }
-
-        if (str_contains($host, 'aparat.com') && preg_match('~v/([^/?#]+)~', $path, $matches)) {
-            return 'https://www.aparat.com/video/video/embed/videohash/'.$matches[1].'/vt/frame';
-        }
-
-        return null;
+        return app(ExternalVideoResolver::class)->resolve((string) $this->video_url)['embed_url'];
     }
 }

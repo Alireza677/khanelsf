@@ -6,7 +6,6 @@ use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\GalleryResource\Pages;
 use App\Models\Gallery;
-use App\Services\ModuleService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -27,11 +26,28 @@ class GalleryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-photo';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
-    public static function shouldRegisterNavigation(): bool
+    protected static bool $shouldRegisterNavigation = false;
+
+    public static function canCreate(): bool
     {
-        return app(ModuleService::class)->galleriesEnabled();
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function form(Form $form): Form

@@ -23,7 +23,7 @@ class MediaResource extends Resource
 
     protected static ?string $navigationLabel = 'کتابخانه رسانه';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 4;
 
     public static function table(Table $table): Table
     {

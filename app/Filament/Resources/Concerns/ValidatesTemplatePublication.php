@@ -9,8 +9,24 @@ trait ValidatesTemplatePublication
 {
     protected function validateTemplatePublication(array $data): array
     {
-        if (($data['status'] ?? null) !== 'published'
-            || ($data['type'] ?? null) !== 'service_single') {
+        if (($data['status'] ?? null) !== 'published') {
+            return $data;
+        }
+
+        if (($data['type'] ?? null) === 'project_discovery_index') {
+            $hasGrid = collect($data['blocks'] ?? [])->contains(fn (mixed $block): bool => is_array($block)
+                && ($block['type'] ?? null) === 'project_discovery_grid');
+
+            if (! $hasGrid) {
+                throw ValidationException::withMessages([
+                    'data.blocks' => 'قالب گالری پروژه‌ها برای انتشار باید شامل بلاک «گالری پروژه‌ها» باشد.',
+                ]);
+            }
+
+            return $data;
+        }
+
+        if (($data['type'] ?? null) !== 'service_single') {
             return $data;
         }
 

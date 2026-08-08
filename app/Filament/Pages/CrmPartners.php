@@ -6,6 +6,8 @@ use Filament\Pages\Page;
 
 class CrmPartners extends Page
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $navigationGroup = 'CRM';
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';

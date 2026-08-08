@@ -22,6 +22,7 @@ use App\CMS\Blocks\Project\ProjectOverviewBlock;
 use App\CMS\Blocks\Project\ProjectServicesBlock;
 use App\CMS\Blocks\Project\ProjectStoryBlock;
 use App\CMS\Blocks\Project\RelatedProjectsBlock;
+use App\CMS\Blocks\ProjectDiscovery\ProjectDiscoveryGridBlock;
 use App\CMS\Blocks\Service\RelatedServicesBlock;
 use App\CMS\Blocks\Service\ServiceBenefitsBlock;
 use App\CMS\Blocks\Service\ServiceDeliverablesBlock;
@@ -60,6 +61,7 @@ class BlockServiceProvider extends ServiceProvider
                 'project_gallery' => ProjectGalleryBlock::class,
                 'project_story' => ProjectStoryBlock::class,
                 'related_projects' => RelatedProjectsBlock::class,
+                'project_discovery_grid' => ProjectDiscoveryGridBlock::class,
                 'product_header' => ProductHeaderBlock::class,
                 'product_overview' => ProductOverviewBlock::class,
                 'product_specifications' => ProductSpecificationsBlock::class,

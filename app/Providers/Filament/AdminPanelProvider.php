@@ -63,6 +63,15 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
             ])
+            ->navigationGroups([
+                'محتوای وب‌سایت',
+                'خدمات و فروش',
+                'نمونه‌کار و گالری',
+                'فروش و ارتباط با مشتری',
+                'پرتال مشتریان',
+                'ساختار و طراحی وب‌سایت',
+                'نگهداری سیستم',
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
