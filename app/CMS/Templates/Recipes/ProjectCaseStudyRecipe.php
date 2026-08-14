@@ -72,6 +72,7 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'show_secondary_cta' => false,
                 'secondary_cta_label' => null,
                 'secondary_cta_target' => null,
+                'heading_tag' => 'h1',
             ]),
             $this->block('project_overview', 1, 'default', [
                 'title' => 'نمای کلی پروژه',
@@ -82,10 +83,13 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'show_project_type' => true,
                 'show_dates' => true,
                 'date_format' => 'human',
+                'heading_tag' => 'h2',
             ]),
             $this->block('project_metrics', 1, 'default', [
                 'title' => 'دستاوردهای کلیدی',
-            ], []),
+            ], [
+                'heading_tag' => 'h2',
+            ]),
             $this->block('project_story', 1, 'default', [
                 'title' => 'داستان پروژه',
                 'headings' => [
@@ -99,14 +103,18 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'show_solution' => true,
                 'show_results_summary' => true,
                 'show_client_quote' => true,
+                'heading_tag' => 'h2',
             ]),
             $this->block('project_services', 1, 'default', [
                 'title' => 'خدمات ارائه‌شده',
-            ], []),
+            ], [
+                'heading_tag' => 'h2',
+            ]),
             $this->block('project_gallery', 1, 'default', [
                 'title' => 'تصاویر پروژه',
             ], [
                 'lightbox' => true,
+                'heading_tag' => 'h2',
             ]),
             $this->block('cta', 2, 'classic', [
                 'eyebrow' => null,
@@ -115,20 +123,15 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'primary_cta' => [
                     'label' => 'شروع گفتگو',
                     'action' => [
-                        'type' => 'url',
-                        'url' => '/contact',
-                        'form_id' => null,
-                        'display' => null,
+                        'schema_version' => 1,
+                        'type' => 'custom_url',
+                        'value' => '/contact',
+                        'open_in_new_tab' => false,
                     ],
                 ],
                 'secondary_cta' => [
                     'label' => null,
-                    'action' => [
-                        'type' => 'url',
-                        'url' => null,
-                        'form_id' => null,
-                        'display' => null,
-                    ],
+                    'action' => null,
                 ],
                 'media' => ['url' => null],
             ], [
@@ -145,6 +148,7 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'title' => 'پروژه‌های مرتبط',
             ], [
                 'limit' => 3,
+                'heading_tag' => 'h2',
             ]),
         ];
     }

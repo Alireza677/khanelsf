@@ -11,6 +11,7 @@ use App\CMS\InternalLinks\Registry\InternalLinkSearchRegistry;
 use App\CMS\InternalLinks\Sources\ServiceInternalLinkSource;
 use App\CMS\Navigation\NavigationSource;
 use App\CMS\Navigation\NavigationSourceRegistry;
+use App\Services\ServiceSettings;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +22,7 @@ final class ServiceServiceProvider extends ServiceProvider implements RegistersA
         ActionTargetRegistry $actionTargets,
         InternalLinkSearchRegistry $internalLinks,
         ServiceInternalLinkSource $internalLinkSource,
+        ServiceSettings $serviceSettings,
     ): void {
         $this->registerActionTargets($actionTargets);
         $internalLinks->register($internalLinkSource);
@@ -32,7 +34,7 @@ final class ServiceServiceProvider extends ServiceProvider implements RegistersA
             resolver: fn (): ?string => Route::has('services.index')
                 ? route('services.index', absolute: false)
                 : null,
-            availability: fn (): bool => Route::has('services.index'),
+            availability: fn (): bool => $serviceSettings->publicEnabled() && Route::has('services.index'),
         ));
     }
 

@@ -2,11 +2,13 @@
 
 namespace App\Filament\Actions;
 
+use App\Enums\ServicePricingMode;
 use App\Filament\Resources\ClientProjectActivityResource;
 use App\Filament\Resources\ClientProjectResource;
 use App\Models\ClientProjectActivity;
 use App\Services\ActivityWizardProjectContext;
 use App\Services\DurationFormatter;
+use App\Services\ServiceActivityCatalog;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -17,6 +19,7 @@ use Filament\Forms\Set;
 use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\MaxWidth;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 
@@ -49,6 +52,7 @@ class ActivityCreationWizardAction
                 abort_unless($project, 422);
 
                 $data = ClientProjectActivityResource::applyDurationFormState($data);
+                $data = ClientProjectActivityResource::applyCommercialFormState($data);
                 $activity = $project->activities()->create([
                     'performed_by' => auth()->id(),
                     'activity_date' => $data['activity_date'] ?? today()->toDateString(),
@@ -58,6 +62,10 @@ class ActivityCreationWizardAction
                     'internal_notes' => $data['internal_notes'] ?? null,
                     'visibility' => $data['visibility'] ?? ClientProjectActivity::VISIBILITY_INTERNAL,
                     'status' => $data['activity_status'] ?? ClientProjectActivity::STATUS_DRAFT,
+                    ...Arr::only($data, [
+                        'service_id', 'service_name_snapshot', 'service_unit_snapshot', 'service_unit_label_snapshot',
+                        'pricing_mode_snapshot', 'currency_snapshot', 'unit_price_snapshot', 'quantity', 'total_amount',
+                    ]),
                 ]);
 
                 $duration = app(DurationFormatter::class)->format($activity->duration_minutes);
@@ -100,6 +108,20 @@ class ActivityCreationWizardAction
                 ->description('مرحله ۲ از ۳')
                 ->icon('heroicon-o-pencil-square')
                 ->schema([
+                    Forms\Components\Select::make('service_id')
+                        ->label('خدمت (اختیاری)')
+                        ->options(fn (): array => app(ServiceActivityCatalog::class)->options())
+                        ->searchable()->preload()->live()
+                        ->hidden(fn (): bool => ! app(ServiceActivityCatalog::class)->enabled())
+                        ->afterStateUpdated(function (Set $set, Get $get, mixed $state): void {
+                            $service = app(ServiceActivityCatalog::class)->find($state);
+                            if ($service && blank($get('title'))) {
+                                $set('title', $service->name);
+                            }
+                        }),
+                    Forms\Components\Placeholder::make('service_summary')->label('مشخصات خدمت')
+                        ->content(fn (Get $get): string => ClientProjectActivityResource::serviceSummary($get('service_id')))
+                        ->visible(fn (Get $get): bool => filled($get('service_id'))),
                     Forms\Components\TextInput::make('title')->label('عنوان فعالیت')->required()->maxLength(255)->autofocus(),
                     Forms\Components\DatePicker::make('activity_date')->label('تاریخ فعالیت')->default(today()),
                     Forms\Components\Grid::make(2)->schema([
@@ -112,6 +134,10 @@ class ActivityCreationWizardAction
                                 }
                             }]),
                     ]),
+                    Forms\Components\TextInput::make('quantity')->label('مقدار تحویل‌شده')
+                        ->numeric()->minValue(0.0001)->inputMode('decimal')
+                        ->visible(fn (Get $get): bool => ClientProjectActivityResource::selectedPricingMode($get('service_id')) === ServicePricingMode::PerUnit->value)
+                        ->required(fn (Get $get): bool => ClientProjectActivityResource::selectedPricingMode($get('service_id')) === ServicePricingMode::PerUnit->value),
                     Forms\Components\Textarea::make('description')->label('توضیحات قابل نمایش به مشتری')->rows(3),
                     Forms\Components\Textarea::make('internal_notes')->label('یادداشت داخلی — خصوصی')->rows(3)
                         ->helperText('این متن هرگز در پرتال مشتری نمایش داده نمی‌شود.'),
@@ -154,7 +180,8 @@ class ActivityCreationWizardAction
     {
         $project = app(ActivityWizardProjectContext::class)->find($get('client_project_id'));
         $duration = app(DurationFormatter::class)->format(((int) $get('duration_hours') * 60) + (int) $get('duration_remainder_minutes'));
+        $service = ClientProjectActivityResource::serviceSummary($get('service_id'));
 
-        return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($project?->title ?? '—').'</strong><span>زمان: '.e($duration).'</span><span>تاریخ: '.e((string) $get('activity_date')).'</span></div>');
+        return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($project?->title ?? '—').'</strong><span>خدمت: '.e($service).'</span><span>زمان: '.e($duration).'</span><span>تاریخ: '.e((string) $get('activity_date')).'</span></div>');
     }
 }

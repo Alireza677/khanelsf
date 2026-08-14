@@ -33,7 +33,8 @@ class ZarinpalPaymentGatewayTest extends TestCase
 
         $order = Order::query()->first();
 
-        $response->assertRedirect(route('checkout.thank-you', $order));
+        $response->assertRedirect();
+        $this->assertStringStartsWith(route('checkout.thank-you', $order).'?expires=', $response->headers->get('Location'));
 
         $this->assertDatabaseHas('orders', [
             'customer_name' => 'Manual Customer',

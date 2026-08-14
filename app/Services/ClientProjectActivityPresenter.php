@@ -16,6 +16,8 @@ class ClientProjectActivityPresenter
             'description' => $activity->description,
             'activity_date' => $activity->activity_date->format('Y/m/d'),
             'duration' => $this->durations->format($activity->duration_minutes),
+            'project_title' => $activity->project?->title,
+            'status_label' => 'منتشرشده',
         ];
     }
 }

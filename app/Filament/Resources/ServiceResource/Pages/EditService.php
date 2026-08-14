@@ -32,15 +32,17 @@ class EditService extends EditRecord
 
     protected function afterSave(): void
     {
-        ServiceResource::syncFeaturedImage(
-            $this->record,
-            data_get($this->form->getRawState(), 'featured_media_id'),
-        );
-        ServiceResource::syncMediaLibraryCollection(
-            $this->record,
-            'gallery',
-            data_get($this->form->getRawState(), 'gallery_media_ids', []),
-        );
+        if (ServiceResource::sectionEnabled('media')) {
+            ServiceResource::syncFeaturedImage(
+                $this->record,
+                data_get($this->form->getRawState(), 'featured_media_id'),
+            );
+            ServiceResource::syncMediaLibraryCollection(
+                $this->record,
+                'gallery',
+                data_get($this->form->getRawState(), 'gallery_media_ids', []),
+            );
+        }
     }
 
     protected function getHeaderActions(): array

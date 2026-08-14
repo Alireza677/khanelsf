@@ -79,6 +79,8 @@
 .portal-pagination { margin-top: 1.5rem; }
 .portal-auth-main { margin: auto; max-width: 460px; padding: 5rem 1rem; }
 .portal-auth-card { background: #fff; border-radius: calc(var(--theme-button-radius, 10px) + 3px); box-shadow: 0 18px 55px rgba(15, 23, 42, .1); padding: 2rem; }
+.portal-auth-switch { color: #64748b; margin: 1.25rem 0 0; text-align: center; }
+.portal-auth-switch a { color: var(--theme-primary, #2563eb); font-weight: 700; }
 .portal-backdrop { display: none; }
 @media (max-width: 900px) {
     .portal-header__identity { display: none; }

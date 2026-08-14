@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureClientUser;
+use App\Http\Middleware\EnsureCustomerServiceCapability;
 use App\Http\Middleware\LogLivewireRequests;
 use App\Http\Middleware\ResolveRedirects;
 use App\Http\Middleware\ShareClientPortalContext;
@@ -17,12 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands()
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn ($request): string => $request->routeIs('client.*')
+        $middleware->redirectGuestsTo(fn ($request): string => $request->routeIs('client.*', 'account.*')
             ? route('login')
             : '/admin/login');
         $middleware->alias([
             'client' => EnsureClientUser::class,
             'client.context' => ShareClientPortalContext::class,
+            'client.service' => EnsureCustomerServiceCapability::class,
         ]);
         $middleware->web(append: [
             ResolveRedirects::class,

@@ -27,11 +27,12 @@
 
             <x-navigation placement="header" variant="header" />
 
-            @if ($ctaLabel && $ctaUrl)
-                <div class="header-actions">
+            <div class="header-actions">
+                @if ($ctaLabel && $ctaUrl)
                     <a class="header-cta" href="{{ $ctaUrl }}">{{ $ctaLabel }}</a>
-                </div>
-            @endif
+                @endif
+                @include('partials.public-account-controls', ['account' => $account])
+            </div>
         </div>
     </div>
 </header>

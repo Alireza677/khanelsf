@@ -93,6 +93,8 @@
                         'class' => 'industrial-header__primary-action',
                         'presentation' => $header['primary_action']['presentation'],
                     ])
+
+                    @include('partials.public-account-controls', ['account' => $header['account']])
                 </div>
             </div>
         </div>

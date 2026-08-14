@@ -4,7 +4,10 @@ namespace App\Services;
 
 class ModuleService
 {
-    public function __construct(private readonly SettingsService $settings) {}
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly ServiceSettings $serviceSettings,
+    ) {}
 
     public function projectsEnabled(): bool
     {
@@ -21,6 +24,11 @@ class ModuleService
         return filter_var($this->settings->get('galleries_enabled', true), FILTER_VALIDATE_BOOLEAN);
     }
 
+    public function publicServicesEnabled(): bool
+    {
+        return $this->serviceSettings->publicEnabled();
+    }
+
     public function urlIsVisible(?string $url): bool
     {
         $path = $this->path($url);
@@ -30,6 +38,10 @@ class ModuleService
         }
 
         if (! $this->shopEnabled() && $this->matchesAny($path, ['/shop', '/cart', '/checkout'])) {
+            return false;
+        }
+
+        if (! $this->publicServicesEnabled() && $this->matchesAny($path, ['/services'])) {
             return false;
         }
 

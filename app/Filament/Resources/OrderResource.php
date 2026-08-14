@@ -137,6 +137,10 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('user_id')
+                    ->label('کاربر سایت')
+                    ->relationship('user', 'name')
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('status')->options([
                     Order::STATUS_PENDING => 'Pending',
                     Order::STATUS_PAID => 'Paid',

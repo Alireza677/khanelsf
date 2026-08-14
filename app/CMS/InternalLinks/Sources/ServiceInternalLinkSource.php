@@ -8,12 +8,15 @@ use App\CMS\InternalLinks\Contracts\ResolvesInternalLinkReference;
 use App\CMS\InternalLinks\Data\InternalLinkSearchResult;
 use App\CMS\InternalLinks\Support\InternalLinkSourceSupport;
 use App\Models\Service;
+use App\Services\ServiceSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Route;
 
 final class ServiceInternalLinkSource implements InternalLinkSearchSource, ResolvesInternalLinkReference
 {
     use InternalLinkSourceSupport;
+
+    public function __construct(private readonly ServiceSettings $settings) {}
 
     public function key(): string
     {
@@ -27,7 +30,7 @@ final class ServiceInternalLinkSource implements InternalLinkSearchSource, Resol
 
     public function isAvailable(): bool
     {
-        return Route::has('services.show');
+        return $this->settings->publicEnabled() && Route::has('services.show');
     }
 
     public function search(string $query, int $limit): array

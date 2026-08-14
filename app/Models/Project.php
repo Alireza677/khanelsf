@@ -126,9 +126,9 @@ class Project extends Model implements HasMedia, ResolvesNavigationUrl
         return app(ProjectServiceResolver::class)->names($this);
     }
 
-    public function serviceItems(): Collection
+    public function serviceItems(bool $publicLinksEnabled = true): Collection
     {
-        return app(ProjectServiceResolver::class)->items($this);
+        return app(ProjectServiceResolver::class)->items($this, $publicLinksEnabled);
     }
 
     public function metrics(): HasMany

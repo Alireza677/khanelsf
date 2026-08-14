@@ -30,12 +30,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('client.dashboard'));
+        return redirect()->intended(route('account.home'));
     }
 
     public function destroy(Request $request, ClientAuthenticator $authenticator): RedirectResponse
     {
         $authenticator->guard()->logout();
+        $request->session()->regenerate();
         $request->session()->regenerateToken();
 
         return redirect()->route('login');

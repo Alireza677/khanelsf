@@ -1,11 +1,11 @@
-@extends('client.layout')
+@extends('layouts.account')
 
 @section('title', 'پروژه‌ها | پرتال مشتریان')
 
-@section('content')
+@section('account-content')
     <div class="portal-page-heading">
         <div><p class="portal-eyebrow">مدیریت پروژه</p><h1>پروژه‌ها</h1></div>
-        @include('client.partials.customer-selector', ['action' => route('client.projects.index')])
+        @include('client.partials.customer-selector', ['action' => route($serviceRoutes['projects'])])
     </div>
 
     @if (! $portalCustomer)
@@ -31,7 +31,7 @@
                         <div><dt>تاریخ شروع</dt><dd>{{ $project['start_date'] ?: '—' }}</dd></div>
                         <div><dt>تاریخ پایان</dt><dd>{{ $project['end_date'] ?: '—' }}</dd></div>
                     </dl>
-                    <a class="portal-button portal-button--secondary" href="{{ route('client.projects.show', ['project' => $project['id'], 'customer' => $portalCustomer->id]) }}">مشاهده پروژه</a>
+                    <a class="portal-button portal-button--secondary" href="{{ route($serviceRoutes['project'], ['project' => $project['id'], 'customer' => $portalCustomer->id]) }}">مشاهده پروژه</a>
                 </x-client.card>
             @endforeach
         </div>

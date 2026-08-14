@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\ServicePricingMode;
+use App\Enums\ServiceUnit;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ServiceResource\Pages;
 use App\Models\Service;
+use App\Services\ServiceSettings;
+use App\Services\SettingsService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -70,6 +74,7 @@ class ServiceResource extends Resource
                         ])
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('مزایا')
+                        ->hidden(fn (): bool => ! static::sectionEnabled('benefits'))
                         ->schema([
                             Forms\Components\Repeater::make('benefits')
                                 ->label('مزایای خدمت')
@@ -95,6 +100,7 @@ class ServiceResource extends Resource
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('فرآیند اجرا')
+                        ->hidden(fn (): bool => ! static::sectionEnabled('process'))
                         ->schema([
                             Forms\Components\Repeater::make('process')
                                 ->label('مراحل اجرا')
@@ -125,6 +131,7 @@ class ServiceResource extends Resource
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('اقلام تحویلی')
+                        ->hidden(fn (): bool => ! static::sectionEnabled('deliverables'))
                         ->schema([
                             Forms\Components\Repeater::make('deliverables')
                                 ->label('اقلام تحویلی')
@@ -147,6 +154,7 @@ class ServiceResource extends Resource
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('رسانه')
+                        ->hidden(fn (): bool => ! static::sectionEnabled('media'))
                         ->schema([
                             Forms\Components\ViewField::make('featured_media_id')
                                 ->label('تصویر شاخص')
@@ -181,6 +189,7 @@ class ServiceResource extends Resource
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('پروژه‌های مرتبط')
+                        ->hidden(fn (): bool => ! static::sectionEnabled('related_projects'))
                         ->schema([
                             Forms\Components\Select::make('projects')
                                 ->label('پروژه‌ها')
@@ -192,6 +201,67 @@ class ServiceResource extends Resource
                                 ->helperText('فقط Relation ساختاریافته مدیریت می‌شود؛ خدمات قدیمی JSON پروژه تغییری نمی‌کنند.')
                                 ->columnSpanFull(),
                         ]),
+                    Forms\Components\Tabs\Tab::make('قیمت و ارائه خدمت')
+                        ->schema([
+                            Forms\Components\Toggle::make('available_for_activities')
+                                ->label('قابل استفاده در فعالیت‌های مشتریان')
+                                ->default(false)
+                                ->live(),
+                            Forms\Components\Placeholder::make('activity_catalog_note')
+                                ->label('کاتالوگ فعالیت')
+                                ->content(fn (): string => static::serviceSettings()->activityCatalogEnabled()
+                                    ? 'این خدمت در صورت فعال بودن گزینه بالا، بدون وابستگی به وضعیت انتشار عمومی قابل انتخاب است.'
+                                    : 'اتصال کاتالوگ خدمات به فعالیت‌ها اکنون در تنظیمات سایت غیرفعال است.'),
+                            Forms\Components\Group::make([
+                                Forms\Components\Select::make('pricing_mode')
+                                    ->label('روش قیمت‌گذاری')
+                                    ->options(ServicePricingMode::options())
+                                    ->native(false)
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        if ($state === ServicePricingMode::Hourly->value) {
+                                            $set('unit', ServiceUnit::Hour->value);
+                                            $set('custom_unit_label', null);
+                                        } elseif ($state === ServicePricingMode::Fixed->value) {
+                                            $set('unit', ServiceUnit::Fixed->value);
+                                            $set('custom_unit_label', null);
+                                        } elseif ($state === ServicePricingMode::PerUnit->value) {
+                                            $set('unit', null);
+                                            $set('custom_unit_label', null);
+                                        }
+                                    }),
+                                Forms\Components\Select::make('unit')
+                                    ->label('واحد')
+                                    ->options(fn (Get $get): array => static::unitOptionsForMode($get('pricing_mode')))
+                                    ->native(false)
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                        if ($state !== ServiceUnit::Custom->value) {
+                                            $set('custom_unit_label', null);
+                                        }
+                                    })
+                                    ->required(fn (Get $get): bool => filled($get('pricing_mode'))),
+                                Forms\Components\TextInput::make('custom_unit_label')
+                                    ->label('عنوان واحد سفارشی')
+                                    ->maxLength(255)
+                                    ->visible(fn (Get $get): bool => $get('unit') === ServiceUnit::Custom->value)
+                                    ->required(fn (Get $get): bool => $get('unit') === ServiceUnit::Custom->value),
+                                Forms\Components\TextInput::make('default_unit_price')
+                                    ->label('قیمت پایه واحد')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->inputMode('decimal'),
+                                Forms\Components\TextInput::make('currency_code')
+                                    ->label('ارز')
+                                    ->placeholder(fn (): string => (string) app(SettingsService::class)->get('default_service_currency', 'IRT'))
+                                    ->length(3)
+                                    ->rules(['nullable', 'regex:/^[A-Z]{3}$/']),
+                            ])
+                                ->hidden(fn (): bool => ! static::serviceSettings()->pricingEnabled())
+                                ->columns(2)
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2),
                     Forms\Components\Tabs\Tab::make('سئو')
                         ->schema([
                             Forms\Components\TextInput::make('seo_title')
@@ -330,5 +400,30 @@ class ServiceResource extends Resource
             Service::STATUS_ACTIVE => 'فعال قدیمی',
             Service::STATUS_INACTIVE => 'غیرفعال قدیمی',
         ];
+    }
+
+    public static function sectionEnabled(string $section): bool
+    {
+        return static::serviceSettings()->formSectionEnabled($section);
+    }
+
+    private static function serviceSettings(): ServiceSettings
+    {
+        return app(ServiceSettings::class);
+    }
+
+    private static function unitOptionsForMode(?string $mode): array
+    {
+        $options = static::serviceSettings()->allowedUnitOptions();
+
+        return match ($mode) {
+            ServicePricingMode::Hourly->value => array_intersect_key($options, [ServiceUnit::Hour->value => true]),
+            ServicePricingMode::Fixed->value => array_intersect_key($options, [ServiceUnit::Fixed->value => true]),
+            ServicePricingMode::PerUnit->value => array_diff_key($options, [
+                ServiceUnit::Hour->value => true,
+                ServiceUnit::Fixed->value => true,
+            ]),
+            default => $options,
+        };
     }
 }

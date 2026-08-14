@@ -35,6 +35,7 @@ use App\CMS\Blocks\SiteHeader\SiteHeaderBlock;
 use App\CMS\Blocks\SiteHeader\SiteHeaderRuntime;
 use App\CMS\Templates\SiteHeaderTemplateResolver;
 use App\Models\Template;
+use App\Services\PublicAccountNavigation;
 use App\Services\TemplateService;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -85,6 +86,7 @@ class BlockServiceProvider extends ServiceProvider
         SiteHeaderRuntime $siteHeaders,
         SiteHeaderTemplateResolver $headerTemplates,
         TemplateService $templates,
+        PublicAccountNavigation $accounts,
     ): void {
         View::composer(
             'partials.blocks.feature_grid',
@@ -124,6 +126,16 @@ class BlockServiceProvider extends ServiceProvider
                     ! empty($viewData['isPreview']) || ! empty($context['preview']),
                 ));
             },
+        );
+
+        View::composer(
+            'partials.header',
+            fn (IlluminateView $view) => $view->with('account', $accounts->present()),
+        );
+
+        View::composer(
+            'layouts.account',
+            fn (IlluminateView $view) => $view->with('accountNavigation', $accounts->present()),
         );
 
         View::composer(

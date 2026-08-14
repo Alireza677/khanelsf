@@ -10,9 +10,16 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    public function edit(): View
+    public function edit(Request $request): View
     {
-        return view('client.profile');
+        return view('client.profile', [
+            'accountUser' => $request->user('client'),
+        ]);
+    }
+
+    public function legacy(): RedirectResponse
+    {
+        return redirect()->route('account.profile.edit');
     }
 
     public function update(Request $request): RedirectResponse
@@ -25,6 +32,6 @@ class ProfileController extends Controller
 
         $user->update($validated);
 
-        return back()->with('status', 'Profile updated successfully.');
+        return redirect()->route('account.profile.edit')->with('status', 'Profile updated successfully.');
     }
 }

@@ -9,11 +9,14 @@ use App\Http\Controllers\Admin\RedirectExportController;
 use App\Http\Controllers\CalculatorSubmissionReportController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Client\AccountController;
+use App\Http\Controllers\Client\AccountOrderController;
 use App\Http\Controllers\Client\AuthenticatedSessionController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\PlaceholderController as ClientPlaceholderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ProjectController as ClientProjectController;
+use App\Http\Controllers\Client\RegisteredUserController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\GalleryController;
@@ -41,6 +44,10 @@ Route::middleware('guest:client')->group(function (): void {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('client.login.store');
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('client.register.store');
 });
 
 Route::middleware(['auth:client', 'client', 'client.context'])->group(function (): void {
@@ -52,9 +59,27 @@ Route::middleware(['auth:client', 'client', 'client.context'])->group(function (
     Route::get('/dashboard/reports', [ClientPlaceholderController::class, 'reports'])->name('client.placeholder.reports');
     Route::get('/dashboard/invoices', [ClientPlaceholderController::class, 'invoices'])->name('client.placeholder.invoices');
     Route::get('/dashboard/files', [ClientPlaceholderController::class, 'files'])->name('client.placeholder.files');
-    Route::get('/profile', [ClientProfileController::class, 'edit'])->name('client.profile.edit');
+    Route::get('/profile', [ClientProfileController::class, 'legacy'])->name('client.profile.edit');
     Route::patch('/profile', [ClientProfileController::class, 'update'])->name('client.profile.update');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('client.logout');
+});
+
+Route::middleware(['auth:client', 'client'])->group(function (): void {
+    Route::get('/account', AccountController::class)->name('account.home');
+    Route::get('/account/profile', [ClientProfileController::class, 'edit'])->name('account.profile.edit');
+    Route::patch('/account/profile', [ClientProfileController::class, 'update'])->name('account.profile.update');
+    Route::get('/account/orders', [AccountOrderController::class, 'index'])->name('account.orders.index');
+    Route::get('/account/orders/{order}', [AccountOrderController::class, 'show'])
+        ->whereNumber('order')
+        ->name('account.orders.show');
+});
+
+Route::middleware(['auth:client', 'client', 'client.context', 'client.service'])->group(function (): void {
+    Route::get('/account/services', ClientDashboardController::class)->name('account.services.index');
+    Route::get('/account/projects', [ClientProjectController::class, 'index'])->name('account.projects.index');
+    Route::get('/account/projects/{project}', [ClientProjectController::class, 'show'])
+        ->whereNumber('project')
+        ->name('account.projects.show');
 });
 
 Route::get('/blog', [PostController::class, 'index'])->name('blog.index');
@@ -104,7 +129,9 @@ Route::match(['delete', 'post'], '/cart/remove', [CartController::class, 'remove
 
 Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-Route::get('/checkout/thank-you/{order}', [CheckoutController::class, 'thankYou'])->name('checkout.thank-you');
+Route::get('/checkout/thank-you/{order}', [CheckoutController::class, 'thankYou'])
+    ->middleware('signed')
+    ->name('checkout.thank-you');
 Route::match(['get', 'post'], '/payments/zarinpal/callback', ZarinpalCallbackController::class)
     ->withoutMiddleware(VerifyCsrfToken::class)
     ->name('payments.zarinpal.callback');

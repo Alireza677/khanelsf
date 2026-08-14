@@ -55,8 +55,8 @@ class TemplateRecipeInfrastructureTest extends TestCase
         $this->assertSame('دستاوردهای کلیدی', $blocks[2]['data']['content']['title']);
         $this->assertTrue($blocks[3]['data']['settings']['show_results_summary']);
         $this->assertTrue($blocks[5]['data']['settings']['lightbox']);
-        $this->assertSame('/contact', data_get($blocks[6], 'data.content.primary_cta.action.url'));
-        $this->assertNull(data_get($blocks[6], 'data.content.primary_cta.action.form_id'));
+        $this->assertSame('custom_url', data_get($blocks[6], 'data.content.primary_cta.action.type'));
+        $this->assertSame('/contact', data_get($blocks[6], 'data.content.primary_cta.action.value'));
         $this->assertSame(3, $blocks[7]['data']['settings']['limit']);
 
         foreach ($blocks as $block) {

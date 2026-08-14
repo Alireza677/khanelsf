@@ -10,8 +10,8 @@
 
         <div class="cart-summary">
             <p><strong>شماره سفارش:</strong> {{ $order->order_number }}</p>
-            <p><strong>وضعیت:</strong> {{ ucfirst($order->status) }}</p>
-            <p><strong>پرداخت:</strong> {{ ucfirst($order->payment_status) }}</p>
+            <p><strong>وضعیت:</strong> {{ $order->statusLabel() }}</p>
+            <p><strong>پرداخت:</strong> {{ $order->paymentStatusLabel() }}</p>
             <p><strong>مبلغ کل:</strong> {{ number_format((float) $order->total) }} تومان</p>
             <p>{{ $manualPaymentMessage }}</p>
         </div>
@@ -29,9 +29,6 @@
                 <p><strong>آدرس:</strong> {{ $order->customer_address }}</p>
             @endif
 
-            @if ($order->notes)
-                <p><strong>توضیحات:</strong> {{ $order->notes }}</p>
-            @endif
         </div>
 
         <div class="cart-table">

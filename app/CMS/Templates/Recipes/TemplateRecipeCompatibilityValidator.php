@@ -85,9 +85,14 @@ final class TemplateRecipeCompatibilityValidator
                 ? $definition
                 : ($type === 'cta' ? $this->ctas : null);
 
-            if ($normalizer
-                && ($normalizer->normalize($data)['settings'] ?? []) !== ($data['settings'] ?? [])) {
-                $errors[] = "Recipe block [{$type}] settings are not canonical for the installed schema.";
+            if ($normalizer) {
+                $providedSettings = is_array($data['settings'] ?? null) ? $data['settings'] : [];
+                $normalizedSettings = $normalizer->normalize($data)['settings'] ?? [];
+                $normalizedProvidedSettings = array_intersect_key($normalizedSettings, $providedSettings);
+
+                if ($normalizedProvidedSettings !== $providedSettings) {
+                    $errors[] = "Recipe block [{$type}] settings are not canonical for the installed schema.";
+                }
             }
         }
 

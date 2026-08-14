@@ -15,6 +15,7 @@ class ClientProjectActivityFactory extends Factory
         return [
             'client_project_id' => ClientProject::factory(),
             'performed_by' => null,
+            'service_id' => null,
             'activity_date' => now()->toDateString(),
             'started_at' => null,
             'ended_at' => null,

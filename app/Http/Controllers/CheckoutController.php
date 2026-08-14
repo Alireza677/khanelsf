@@ -6,11 +6,13 @@ use App\Contracts\PaymentGateway;
 use App\Models\Order;
 use App\Services\CartService;
 use App\Services\ModuleService;
+use App\Services\OrderConfirmationUrl;
 use App\Services\SettingsService;
 use App\Services\ZarinpalPaymentGateway;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -30,7 +32,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function store(Request $request, CartService $cart, SettingsService $settings, PaymentGateway $paymentGateway, ModuleService $modules): RedirectResponse
+    public function store(Request $request, CartService $cart, SettingsService $settings, PaymentGateway $paymentGateway, ModuleService $modules, OrderConfirmationUrl $confirmations): RedirectResponse
     {
         $this->abortIfShopDisabled($modules);
 
@@ -62,11 +64,17 @@ class CheckoutController extends Controller
                 ]);
         }
 
-        $order = DB::transaction(function () use ($cart, $validated, $paymentGateway): Order {
+        $publicUser = Auth::guard('client')->user();
+        $publicUser = $publicUser && ! $publicUser->is_admin && $publicUser->status === 'active'
+            ? $publicUser
+            : null;
+
+        $order = DB::transaction(function () use ($cart, $validated, $paymentGateway, $publicUser): Order {
             $subtotal = $cart->subtotal();
 
             $order = Order::query()->create([
                 ...$validated,
+                'user_id' => $publicUser?->getKey(),
                 'order_number' => 'ORD-'.now()->format('YmdHis').'-'.random_int(1000, 9999),
                 'status' => 'pending',
                 'subtotal' => $subtotal,
@@ -92,12 +100,15 @@ class CheckoutController extends Controller
         $cart->clear();
         $this->sendOrderEmails($order->load('items'), $settings, $paymentGateway);
 
-        return redirect()->route('checkout.thank-you', $order)->with('success', 'سفارش شما دریافت شد.');
+        return redirect()->to($confirmations->temporary($order))->with('success', 'سفارش شما دریافت شد.');
     }
 
     public function thankYou(Order $order, PaymentGateway $paymentGateway, ModuleService $modules): View
     {
         $this->abortIfShopDisabled($modules);
+        $ownerId = Auth::guard('client')->id();
+
+        abort_if($order->user_id !== null && $ownerId !== $order->user_id, 404);
 
         return view('shop.thank-you', [
             'order' => $order->load('items'),

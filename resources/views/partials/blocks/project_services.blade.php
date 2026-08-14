@@ -1,7 +1,7 @@
 @php
     $data = app(\App\CMS\Blocks\Project\ProjectServicesBlock::class)->normalize(is_array($data ?? null) ? $data : []);
     $project = ($context['model'] ?? null) instanceof \App\Models\Project ? $context['model'] : null;
-    $services = $project ? $project->serviceItems() : collect();
+    $services = $project ? $project->serviceItems((bool) ($context['publicServicesEnabled'] ?? true)) : collect();
 @endphp
 
 @if ($project && $services->isNotEmpty())

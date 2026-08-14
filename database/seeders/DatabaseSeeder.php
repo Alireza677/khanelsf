@@ -568,6 +568,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call(IndustrialHeaderTemplateSeeder::class);
         $this->call(ProjectDiscoveryTemplateSeeder::class);
+        $this->call(StandardProjectTemplateSeeder::class);
+        $this->call(StandardServiceTemplateSeeder::class);
 
         $footerMenu = Menu::query()->firstOrCreate(
             ['slug' => 'footer-menu'],

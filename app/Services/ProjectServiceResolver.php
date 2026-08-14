@@ -11,7 +11,7 @@ final class ProjectServiceResolver
     /**
      * @return Collection<int, array{label: string, url: string|null}>
      */
-    public function items(Project $project): Collection
+    public function items(Project $project, bool $publicLinksEnabled = true): Collection
     {
         $relatedServices = $project->relationLoaded('relatedServices')
             ? $project->getRelation('relatedServices')
@@ -21,7 +21,7 @@ final class ProjectServiceResolver
             ->filter(fn (mixed $service): bool => $service instanceof Service && $service->isPublished())
             ->map(fn (Service $service): array => [
                 'label' => $service->name,
-                'url' => $service->resolveNavigationUrl(),
+                'url' => $publicLinksEnabled ? $service->resolveNavigationUrl() : null,
             ])
             ->filter(fn (array $item): bool => filled($item['label']))
             ->values();

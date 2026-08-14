@@ -10,11 +10,14 @@ use App\CMS\Actions\Enums\CoreActionType;
 use App\CMS\Actions\Enums\ResolutionMode;
 use App\CMS\Actions\Support\PublicationStateReason;
 use App\Models\Service;
+use App\Services\ServiceSettings;
 use Illuminate\Support\Facades\Route;
 
 final class ServiceActionResolver extends AbstractEntityActionResolver
 {
     private const PRODUCTION_ROUTE = 'services.show';
+
+    public function __construct(private readonly ServiceSettings $settings) {}
 
     public function actionType(): CoreActionType
     {
@@ -25,6 +28,10 @@ final class ServiceActionResolver extends AbstractEntityActionResolver
         ActionDestination $destination,
         ResolutionContext $context,
     ): ResolvedAction {
+        if (! $this->settings->publicEnabled()) {
+            return $this->unavailable($destination, ActionResolutionReason::ModuleDisabled);
+        }
+
         $service = Service::query()
             ->select(['id', 'slug', 'status', 'published_at'])
             ->find($destination->referenceId);

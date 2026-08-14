@@ -1,17 +1,17 @@
-@extends('client.layout')
+@extends('layouts.account')
 
 @section('title', $project['title'].' | پرتال مشتریان')
 
-@section('content')
+@section('account-content')
     <div class="portal-page-heading">
         <div><p class="portal-eyebrow">جزئیات پروژه</p><h1>{{ $project['title'] }}</h1></div>
         <div class="portal-actions">
-            <form method="GET" action="{{ route('client.projects.show', ['project' => $project['id']]) }}" class="portal-field">
+            <form method="GET" action="{{ route($serviceRoutes['project'], ['project' => $project['id']]) }}" class="portal-field">
                 <input type="hidden" name="customer" value="{{ $portalCustomer->id }}">
                 <label for="month">ماه</label>
                 <input id="month" type="month" name="month" value="{{ $summary['month'] }}" min="2000-01" max="2100-12" onchange="this.form.submit()">
             </form>
-            <a class="portal-button portal-button--secondary" href="{{ route('client.projects.index', ['customer' => $portalCustomer->id]) }}">بازگشت به پروژه‌ها</a>
+            <a class="portal-button portal-button--secondary" href="{{ route($serviceRoutes['projects'], ['customer' => $portalCustomer->id]) }}">بازگشت به پروژه‌ها</a>
         </div>
     </div>
 
@@ -31,7 +31,7 @@
         </x-client.card>
 
         @if ($project['monthly_hour_limit_minutes'] !== null)
-            <x-client.card title="خلاصه زمان ماهانه">
+            <x-client.card title="زمان مصرف‌شده پروژه">
                 <div class="portal-time-summary">
                     <div><small>سهم ماهانه</small><strong>{{ $summary['allocated'] }}</strong></div>
                     <div><small>زمان ثبت‌شده</small><strong>{{ $summary['used'] }}</strong></div>
@@ -63,10 +63,5 @@
             @endif
         </x-client.card>
 
-        <section class="portal-grid" aria-label="بخش‌های آینده پروژه">
-            @foreach ([['فایل‌ها', 'فایلی برای این پروژه موجود نیست.', 'files'], ['فاکتورها', 'فاکتوری موجود نیست.', 'invoices'], ['خط زمانی', 'رویدادی ثبت نشده است.', 'empty']] as [$title, $message, $icon])
-                <x-client.card><x-client.empty-state :title="$title" :message="$message" :icon="$icon" /></x-client.card>
-            @endforeach
-        </section>
     </div>
 @endsection

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\ServiceTemplateUnavailable;
 use App\Services\SeoService;
 use App\Services\ServiceQueryService;
+use App\Services\ServiceSettings;
 use App\Services\ServiceTemplateRuntime;
 use App\Services\SettingsService;
 use Illuminate\Contracts\View\View;
@@ -15,7 +16,9 @@ final class ServiceController extends Controller
         ServiceQueryService $services,
         SettingsService $settings,
         SeoService $seo,
+        ServiceSettings $serviceSettings,
     ): View {
+        abort_unless($serviceSettings->publicEnabled(), 404);
         $heading = (string) $settings->get('services_index_title', 'خدمات');
         $description = (string) $settings->get(
             'services_index_description',
@@ -34,7 +37,9 @@ final class ServiceController extends Controller
         string $slug,
         ServiceQueryService $services,
         ServiceTemplateRuntime $runtime,
+        ServiceSettings $serviceSettings,
     ): View {
+        abort_unless($serviceSettings->publicEnabled(), 404);
         $service = $services->findPublishedBySlug($slug);
 
         abort_unless($service, 404);

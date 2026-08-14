@@ -9,6 +9,20 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerMembershipManager
 {
+    public function attach(Customer $customer, User $user, string $role, bool $isPrimary = false): void
+    {
+        $this->ensureAssignableClient($user);
+        $this->ensureValidRole($role);
+
+        if ($customer->users()->whereKey($user->getKey())->exists()) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'این کاربر از قبل به مشتری انتخاب‌شده متصل است.',
+            ]);
+        }
+
+        $this->assign($customer, $user, $role, $isPrimary);
+    }
+
     public function assign(Customer $customer, User $user, string $role, bool $isPrimary = false): void
     {
         $this->ensureAssignableClient($user);

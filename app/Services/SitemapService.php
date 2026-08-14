@@ -17,6 +17,7 @@ class SitemapService
     public function __construct(
         private readonly SettingsService $settings,
         private readonly ServiceQueryService $services,
+        private readonly ServiceSettings $serviceSettings,
     ) {}
 
     public function urls(): Collection
@@ -61,7 +62,9 @@ class SitemapService
             $this->add($urls, route('shop.index'));
         }
 
-        $this->add($urls, route('services.index'));
+        if ($this->serviceSettings->publicEnabled()) {
+            $this->add($urls, route('services.index'));
+        }
 
         Page::query()
             ->published()
@@ -144,14 +147,16 @@ class SitemapService
                 ));
         }
 
-        $this->services->archiveQuery()
-            ->latest('updated_at')
-            ->get()
-            ->each(fn (Service $service) => $this->add(
-                $urls,
-                route('services.show', $service->slug),
-                ($service->updated_at ?: $service->published_at)?->toAtomString(),
-            ));
+        if ($this->serviceSettings->publicEnabled()) {
+            $this->services->archiveQuery()
+                ->latest('updated_at')
+                ->get()
+                ->each(fn (Service $service) => $this->add(
+                    $urls,
+                    route('services.show', $service->slug),
+                    ($service->updated_at ?: $service->published_at)?->toAtomString(),
+                ));
+        }
 
         return $urls->values();
     }

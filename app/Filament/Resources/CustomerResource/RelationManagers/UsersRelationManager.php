@@ -13,7 +13,7 @@ class UsersRelationManager extends RelationManager
 {
     protected static string $relationship = 'users';
 
-    protected static ?string $title = 'کاربران مشتری';
+    protected static ?string $title = 'کاربران دارای دسترسی';
 
     public function table(Table $table): Table
     {
@@ -34,7 +34,7 @@ class UsersRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\Action::make('assignClient')
-                    ->label('افزودن کاربر مشتری')
+                    ->label('افزودن کاربر سایت')
                     ->icon('heroicon-o-user-plus')
                     ->form([
                         Forms\Components\Select::make('user_id')
@@ -61,7 +61,7 @@ class UsersRelationManager extends RelationManager
                         $user = User::query()->find($data['user_id']);
 
                         abort_unless($user, 404);
-                        $memberships->assign(
+                        $memberships->attach(
                             $this->getOwnerRecord(),
                             $user,
                             $data['membership_role'],

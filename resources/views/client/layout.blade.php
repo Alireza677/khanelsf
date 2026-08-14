@@ -17,9 +17,9 @@
                     <span></span><span></span><span></span>
                     <span class="sr-only">نمایش منوی پرتال</span>
                 </button>
-                <a class="portal-brand" href="{{ route('client.dashboard', $portalCustomer ? ['customer' => $portalCustomer->id] : []) }}">
+                <a class="portal-brand" href="{{ $portalCustomer ? route('account.services.index', ['customer' => $portalCustomer->id]) : route('account.home') }}">
                     <span class="portal-brand__mark">CP</span>
-                    <span><strong>پرتال مشتریان</strong><small>فضای اختصاصی شما</small></span>
+                    <span><strong>حساب کاربری</strong><small>خدمات اختصاصی شما</small></span>
                 </a>
                 <div class="portal-header__identity">
                     <span>{{ $portalUser->name }}</span>
@@ -35,7 +35,7 @@
                     <ul class="portal-menu">
                         @foreach ($portalNavigation as $item)
                             <li>
-                                <a href="{{ route($item['route'], $portalCustomer ? ['customer' => $portalCustomer->id] : []) }}" class="portal-menu__item @if(request()->routeIs($item['active_routes'] ?? $item['route'])) is-active @endif">
+                                <a href="{{ route($item['route'], $portalCustomer && ($item['requires_customer'] ?? false) ? ['customer' => $portalCustomer->id] : []) }}" class="portal-menu__item @if(request()->routeIs(...(array) ($item['active_routes'] ?? $item['route']))) is-active @endif">
                                     <span class="portal-menu__icon" aria-hidden="true">{{ $item['icon'] }}</span>
                                     <span>{{ $item['label'] }}</span>
                                     @if ($item['coming_soon'] ?? false)<small>به‌زودی</small>@endif

@@ -6,15 +6,14 @@ class ClientPortalNavigation
 {
     private array $items = [];
 
-    public function __construct()
+    public function __construct(private readonly PublicAccountNavigation $accounts)
     {
         $this->items = [
-            ['key' => 'dashboard', 'label' => 'داشبورد', 'route' => 'client.dashboard', 'icon' => '⌂'],
-            ['key' => 'projects', 'label' => 'پروژه‌ها', 'route' => 'client.projects.index', 'active_routes' => 'client.projects.*', 'icon' => '▦'],
-            ['key' => 'reports', 'label' => 'گزارش‌ها', 'route' => 'client.placeholder.reports', 'icon' => '▤', 'coming_soon' => true],
-            ['key' => 'invoices', 'label' => 'فاکتورها', 'route' => 'client.placeholder.invoices', 'icon' => '◫', 'coming_soon' => true],
-            ['key' => 'files', 'label' => 'فایل‌ها', 'route' => 'client.placeholder.files', 'icon' => '▱', 'coming_soon' => true],
-            ['key' => 'profile', 'label' => 'پروفایل', 'route' => 'client.profile.edit', 'icon' => '○'],
+            ['key' => 'account', 'label' => 'حساب کاربری', 'route' => 'account.home', 'icon' => '⌂'],
+            ['key' => 'profile', 'label' => 'پروفایل من', 'route' => 'account.profile.edit', 'icon' => '○'],
+            ['key' => 'orders', 'label' => 'سفارش‌های من', 'route' => 'account.orders.index', 'active_routes' => 'account.orders.*', 'icon' => '▤'],
+            ['key' => 'services', 'label' => 'خدمات و پروژه‌های من', 'route' => 'account.services.index', 'active_routes' => ['account.services.*', 'client.dashboard'], 'icon' => '◫', 'requires_customer' => true],
+            ['key' => 'projects', 'label' => 'پروژه‌ها', 'route' => 'account.projects.index', 'active_routes' => ['account.projects.*', 'client.projects.*'], 'icon' => '▦', 'requires_customer' => true],
         ];
     }
 
@@ -25,6 +24,11 @@ class ClientPortalNavigation
 
     public function items(): array
     {
-        return $this->items;
+        $hasCustomerCapability = $this->accounts->present()['has_customer_capability'];
+
+        return array_values(array_filter(
+            $this->items,
+            fn (array $item): bool => ! ($item['requires_customer'] ?? false) || $hasCustomerCapability,
+        ));
     }
 }

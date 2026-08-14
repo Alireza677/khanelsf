@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ServiceUnit;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Models\Menu;
 use App\Models\Template;
@@ -81,6 +82,16 @@ class ManageSiteSettings extends Page implements HasForms
         'robots_disallow' => ['seo', 'text'],
         'robots_txt' => ['seo', 'textarea'],
         'sitemap_enabled' => ['seo', 'boolean'],
+        'public_services_enabled' => ['services', 'boolean'],
+        'service_activity_catalog_enabled' => ['services', 'boolean'],
+        'service_pricing_enabled' => ['services', 'boolean'],
+        'default_service_currency' => ['services', 'text'],
+        'service_allowed_units' => ['services', 'json'],
+        'service_form_benefits_enabled' => ['services', 'boolean'],
+        'service_form_process_enabled' => ['services', 'boolean'],
+        'service_form_deliverables_enabled' => ['services', 'boolean'],
+        'service_form_media_enabled' => ['services', 'boolean'],
+        'service_form_related_projects_enabled' => ['services', 'boolean'],
         'projects_enabled' => ['projects', 'boolean'],
         'projects_label' => ['projects', 'text'],
         'projects_index_title' => ['projects', 'text'],
@@ -140,6 +151,16 @@ class ManageSiteSettings extends Page implements HasForms
     public function mount(SettingsService $settings): void
     {
         $state = $settings->many(array_keys($this->settingsMeta))->all();
+        $state['public_services_enabled'] ??= true;
+        $state['service_activity_catalog_enabled'] ??= false;
+        $state['service_pricing_enabled'] ??= false;
+        $state['default_service_currency'] ??= 'IRT';
+        $state['service_allowed_units'] = is_string($state['service_allowed_units'] ?? null)
+            ? json_decode($state['service_allowed_units'], true)
+            : ($state['service_allowed_units'] ?? ServiceUnit::values());
+        foreach (['benefits', 'process', 'deliverables', 'media', 'related_projects'] as $section) {
+            $state["service_form_{$section}_enabled"] ??= true;
+        }
 
         foreach (self::THEME_SIZE_DEFAULTS as $key => $default) {
             if (blank($state[$key] ?? null)) {
@@ -308,6 +329,32 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->default(true),
                             ])
                             ->columns(2),
+                        Forms\Components\Tabs\Tab::make('خدمات')
+                            ->schema([
+                                Forms\Components\Section::make('خدمات عمومی')->schema([
+                                    Forms\Components\Toggle::make('public_services_enabled')
+                                        ->label('نمایش خدمات در وب‌سایت')->default(true),
+                                ]),
+                                Forms\Components\Section::make('کاتالوگ خدمات و فعالیت مشتری')->schema([
+                                    Forms\Components\Toggle::make('service_activity_catalog_enabled')
+                                        ->label('استفاده از خدمات در فعالیت‌های مشتریان')->default(false)->live(),
+                                    Forms\Components\Toggle::make('service_pricing_enabled')
+                                        ->label('فعال بودن قیمت‌گذاری خدمات')->default(false)->live(),
+                                    Forms\Components\TextInput::make('default_service_currency')
+                                        ->label('ارز پیش‌فرض خدمات')->default('IRT')->length(3)
+                                        ->rules(['required', 'regex:/^[A-Z]{3}$/']),
+                                    Forms\Components\Select::make('service_allowed_units')
+                                        ->label('واحدهای مجاز')->options(ServiceUnit::options())->multiple()->preload()
+                                        ->default(ServiceUnit::values())->required(),
+                                ])->columns(2),
+                                Forms\Components\Section::make('بخش‌های اختیاری ویرایشگر خدمت')->schema([
+                                    Forms\Components\Toggle::make('service_form_benefits_enabled')->label('مزایا')->default(true),
+                                    Forms\Components\Toggle::make('service_form_process_enabled')->label('فرآیند اجرا')->default(true),
+                                    Forms\Components\Toggle::make('service_form_deliverables_enabled')->label('اقلام تحویلی')->default(true),
+                                    Forms\Components\Toggle::make('service_form_media_enabled')->label('رسانه و گالری')->default(true),
+                                    Forms\Components\Toggle::make('service_form_related_projects_enabled')->label('پروژه‌های مرتبط')->default(true),
+                                ])->columns(2),
+                            ]),
                         Forms\Components\Tabs\Tab::make('پروژه‌ها')
                             ->schema([
                                 Forms\Components\Placeholder::make('projects_module_note')
@@ -830,9 +877,11 @@ class ManageSiteSettings extends Page implements HasForms
 
         try {
             foreach ($this->settingsMeta as $key => [$group, $type]) {
-                $value = $key === 'google_site_verification'
+                $value = $type === 'json'
+                    ? json_encode(array_values($state[$key] ?? []), JSON_THROW_ON_ERROR)
+                    : ($key === 'google_site_verification'
                     ? $this->normalizeGoogleSiteVerification($state[$key] ?? null)
-                    : $this->normalizeValue($state[$key] ?? null);
+                    : $this->normalizeValue($state[$key] ?? null));
 
                 $settings->set($key, $value, $group, $type);
             }

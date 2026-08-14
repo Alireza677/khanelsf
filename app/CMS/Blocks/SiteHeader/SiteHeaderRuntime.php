@@ -9,6 +9,7 @@ use App\CMS\Actions\Presentation\ActionPresentation;
 use App\CMS\Actions\Resolution\RuntimeActionResolver;
 use App\Models\Menu;
 use App\Services\MenuService;
+use App\Services\PublicAccountNavigation;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -21,6 +22,7 @@ final class SiteHeaderRuntime
         private readonly ActionPresentation $presentation,
         private readonly SettingsService $settings,
         private readonly MenuService $menus,
+        private readonly PublicAccountNavigation $accounts,
     ) {}
 
     /**
@@ -80,6 +82,7 @@ final class SiteHeaderRuntime
             'settings' => $header['settings'],
             'top_actions' => array_slice($buttons, 0, 2),
             'primary_action' => $buttons[2],
+            'account' => $this->accounts->present(),
         ];
     }
 

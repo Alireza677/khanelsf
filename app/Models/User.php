@@ -7,6 +7,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\MediaLibrary\HasMedia;
@@ -66,6 +67,11 @@ class User extends Authenticatable implements FilamentUser, HasMedia
         return $this->belongsToMany(Customer::class)
             ->withPivot(['membership_role', 'is_primary'])
             ->withTimestamps();
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     protected function setMobileAttribute(?string $value): void

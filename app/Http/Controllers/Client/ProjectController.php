@@ -21,7 +21,10 @@ class ProjectController extends Controller
         $projects = $access->paginateFor($customer);
         $projects->through(fn ($project): array => $presenter->present($project));
 
-        return view('client.projects.index', compact('projects'));
+        return view('client.projects.index', [
+            'projects' => $projects,
+            'serviceRoutes' => $this->serviceRoutes($request),
+        ]);
     }
 
     public function show(
@@ -52,6 +55,15 @@ class ProjectController extends Controller
             'project' => $presenter->present($project),
             'activities' => $activities,
             'summary' => $summary,
+            'serviceRoutes' => $this->serviceRoutes($request),
         ]);
+    }
+
+    /** @return array{projects: string, project: string} */
+    private function serviceRoutes(Request $request): array
+    {
+        return $request->routeIs('account.*')
+            ? ['projects' => 'account.projects.index', 'project' => 'account.projects.show']
+            : ['projects' => 'client.projects.index', 'project' => 'client.projects.show'];
     }
 }

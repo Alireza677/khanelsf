@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
@@ -25,6 +26,7 @@ class Order extends Model
     public const PAYMENT_STATUS_FAILED = 'failed';
 
     protected $fillable = [
+        'user_id',
         'order_number',
         'customer_name',
         'customer_phone',
@@ -52,6 +54,11 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function isPaid(): bool
     {
         return $this->payment_status === self::PAYMENT_STATUS_PAID;
@@ -60,6 +67,27 @@ class Order extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PENDING => 'در انتظار',
+            self::STATUS_PAID => 'پرداخت‌شده',
+            self::STATUS_CANCELLED => 'لغوشده',
+            self::STATUS_COMPLETED => 'تکمیل‌شده',
+            default => $this->status,
+        };
+    }
+
+    public function paymentStatusLabel(): string
+    {
+        return match ($this->payment_status) {
+            self::PAYMENT_STATUS_UNPAID => 'پرداخت‌نشده',
+            self::PAYMENT_STATUS_PAID => 'پرداخت‌شده',
+            self::PAYMENT_STATUS_FAILED => 'ناموفق',
+            default => $this->payment_status,
+        };
     }
 
     public function canBeCancelled(): bool

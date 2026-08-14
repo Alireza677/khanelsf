@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\OrderConfirmationUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -150,7 +151,8 @@ class ShopTest extends TestCase
 
         $order = Order::query()->first();
 
-        $response->assertRedirect(route('checkout.thank-you', $order));
+        $response->assertRedirect();
+        $this->assertStringStartsWith(route('checkout.thank-you', $order).'?expires=', $response->headers->get('Location'));
 
         $this->assertDatabaseHas('orders', [
             'customer_email' => 'jane@example.com',
@@ -266,7 +268,7 @@ class ShopTest extends TestCase
             'total' => 50,
         ]);
 
-        $this->get(route('checkout.thank-you', $order))
+        $this->get(app(OrderConfirmationUrl::class)->temporary($order))
             ->assertOk()
             ->assertSee('ORD-TEST-100')
             ->assertSee('Jane Client')

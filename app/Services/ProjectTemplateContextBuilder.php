@@ -12,6 +12,7 @@ final class ProjectTemplateContextBuilder
 {
     public function __construct(
         private readonly RelatedProjectsBlock $relatedProjectsBlock,
+        private readonly ServiceSettings $serviceSettings,
     ) {}
 
     public function build(Project $project, ?Template $template, bool $galleriesEnabled): array
@@ -42,6 +43,7 @@ final class ProjectTemplateContextBuilder
                 'related' => $relatedProjects,
                 'projectGalleries' => $projectGalleries,
                 'videos' => $project->videos,
+                'publicServicesEnabled' => $this->serviceSettings->publicEnabled(),
             ],
         ];
     }

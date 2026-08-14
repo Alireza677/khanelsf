@@ -22,5 +22,7 @@
             </label>
             <button class="portal-button" type="submit">ورود به پرتال</button>
         </form>
+
+        <p class="portal-auth-switch">حساب ندارید؟ <a href="{{ route('register') }}">ثبت‌نام</a></p>
     </section>
 @endsection

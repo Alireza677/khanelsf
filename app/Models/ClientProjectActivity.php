@@ -26,7 +26,9 @@ class ClientProjectActivity extends Model
     public const MAX_DURATION_MINUTES = 1440;
 
     protected $fillable = [
-        'client_project_id', 'performed_by', 'activity_date', 'started_at', 'ended_at',
+        'client_project_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot',
+        'service_unit_label_snapshot', 'pricing_mode_snapshot', 'currency_snapshot',
+        'unit_price_snapshot', 'quantity', 'total_amount', 'performed_by', 'activity_date', 'started_at', 'ended_at',
         'duration_minutes', 'title', 'description', 'internal_notes', 'visibility', 'status',
     ];
 
@@ -39,6 +41,9 @@ class ClientProjectActivity extends Model
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'duration_minutes' => 'integer',
+            'unit_price_snapshot' => 'decimal:4',
+            'quantity' => 'decimal:4',
+            'total_amount' => 'decimal:2',
         ];
     }
 
@@ -86,6 +91,11 @@ class ClientProjectActivity extends Model
     public function performedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'performed_by');
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class);
     }
 
     public function scopeForProject(Builder $query, ClientProject|int $project): Builder
