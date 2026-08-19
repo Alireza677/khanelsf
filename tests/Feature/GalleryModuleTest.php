@@ -154,7 +154,7 @@ class GalleryModuleTest extends TestCase
         ]);
 
         $this->get(route('admin.preview.galleries.show', $gallery))
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
 
         $this->actingAs(User::factory()->admin()->create())
             ->get(route('admin.preview.galleries.show', $gallery))

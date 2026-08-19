@@ -26,8 +26,15 @@ class AdminLoginPathTest extends TestCase
         $this->setPath('king-secure-login');
 
         $this->get('/king-secure-login')->assertOk()->assertSee('email', false);
-        $this->get('/admin/login')->assertNotFound();
-        $this->get('/admin')->assertRedirect('/king-secure-login');
+
+        foreach (['/admin/login', '/admin', '/admin/some-resource', '/admin/pages'] as $protectedPath) {
+            $response = $this->get($protectedPath);
+
+            $response
+                ->assertNotFound()
+                ->assertHeaderMissing('Location')
+                ->assertDontSee('king-secure-login');
+        }
     }
 
     public function test_custom_multi_segment_path_works(): void
@@ -56,6 +63,7 @@ class AdminLoginPathTest extends TestCase
 
         $this->setPath('private-manager');
         $this->get('/admin')->assertOk();
+        $this->get('/admin/pages')->assertOk();
         $this->assertAuthenticatedAs($admin);
 
         $this->post('/admin/logout')->assertRedirect('/private-manager');

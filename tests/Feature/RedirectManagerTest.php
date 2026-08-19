@@ -85,8 +85,7 @@ class RedirectManagerTest extends TestCase
         ]);
 
         $this->get('/admin')
-            ->assertStatus(302)
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
     }
 
     public function test_disabled_project_redirect_suggestions_create_redirect_records(): void

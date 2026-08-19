@@ -5,7 +5,6 @@ use App\Http\Middleware\EnsureCustomerServiceCapability;
 use App\Http\Middleware\LogLivewireRequests;
 use App\Http\Middleware\ResolveRedirects;
 use App\Http\Middleware\ShareClientPortalContext;
-use App\Support\AdminLoginPath;
 use App\Support\TemporaryDebugLogger;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,9 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands()
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn ($request): string => $request->routeIs('client.*', 'account.*')
-            ? route('login')
-            : app(AdminLoginPath::class)->url());
+        $middleware->redirectGuestsTo(function ($request): string {
+            if ($request->is('admin', 'admin/*')) {
+                abort(404);
+            }
+
+            return route('login');
+        });
         $middleware->alias([
             'client' => EnsureClientUser::class,
             'client.context' => ShareClientPortalContext::class,

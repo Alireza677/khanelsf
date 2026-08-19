@@ -18,7 +18,7 @@ class AdminPreviewTest extends TestCase
         $page = Page::factory()->draft()->create();
 
         $this->get(route('admin.preview.pages.show', $page))
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
     }
 
     public function test_authenticated_non_admin_cannot_access_preview(): void

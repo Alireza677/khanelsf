@@ -104,7 +104,7 @@ class ServiceRecipePreviewIntegrationTest extends TestCase
         $template = $this->recipeDraft();
 
         $this->get(route('admin.preview.templates.show', $template))
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
 
         $this->actingAs(User::factory()->create())
             ->get(route('admin.preview.templates.show', $template))

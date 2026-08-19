@@ -49,7 +49,7 @@ class ProductionReadinessTest extends TestCase
     public function test_guest_cannot_access_launch_checklist(): void
     {
         $this->get('/admin/launch-checklist')
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
     }
 
     public function test_admin_can_access_launch_checklist(): void
@@ -76,10 +76,10 @@ class ProductionReadinessTest extends TestCase
     public function test_guest_cannot_download_maintenance_exports(): void
     {
         $this->get(route('admin.exports.contact-messages'))
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
 
         $this->get(route('admin.exports.redirects'))
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
     }
 
     public function test_admin_can_download_contact_messages_csv(): void

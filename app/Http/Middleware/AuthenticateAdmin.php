@@ -2,13 +2,12 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\AdminLoginPath;
 use Filament\Http\Middleware\Authenticate;
 
 class AuthenticateAdmin extends Authenticate
 {
-    protected function redirectTo($request): ?string
+    protected function unauthenticated($request, array $guards): never
     {
-        return app(AdminLoginPath::class)->url();
+        abort(404);
     }
 }

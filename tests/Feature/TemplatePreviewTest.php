@@ -21,7 +21,7 @@ class TemplatePreviewTest extends TestCase
         ]);
 
         $this->get(route('admin.preview.templates.show', $template))
-            ->assertRedirect('/admin/login');
+            ->assertNotFound();
     }
 
     public function test_admin_can_preview_product_single_template_with_selected_product(): void
