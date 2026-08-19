@@ -123,7 +123,8 @@ class ClientProjectManagementFoundationTest extends TestCase
     {
         $publicProject = Project::factory()->published()->create(['title' => 'Public Portfolio Project']);
 
-        $this->get(route('projects.index'))->assertOk()->assertSee('Public Portfolio Project');
+        $this->get(route('projects.index'))->assertStatus(301)->assertRedirect(route('galleries.index'));
+        $this->get(route('galleries.index'))->assertOk()->assertSee('Public Portfolio Project');
         $this->get(route('projects.show', $publicProject->slug))->assertOk();
     }
 }

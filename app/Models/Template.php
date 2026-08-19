@@ -24,6 +24,7 @@ class Template extends Model
         'shop_index' => 'Shop index',
         'product_single' => 'Product single',
         'product_category' => 'Product category',
+        'service_index' => 'آرشیو خدمات',
         'service_single' => 'صفحه جزئیات خدمت',
         'galleries_index' => 'Galleries index (Legacy)',
         'gallery_single' => 'Gallery single (Legacy)',

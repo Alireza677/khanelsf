@@ -15,7 +15,9 @@
             @foreach ($benefits as $benefit)
                 <article class="service-card">
                     @if ($data['settings']['show_icons'] && filled($benefit['icon'] ?? null))
-                        <span class="service-card__icon" aria-hidden="true">{{ $benefit['icon'] }}</span>
+                        <span class="service-card__icon" aria-hidden="true">
+                            @include('partials.blocks._icon', ['icon' => $benefit['icon']])
+                        </span>
                     @endif
                     <h3>{{ $benefit['title'] }}</h3>
                     @if (filled($benefit['description'] ?? null))

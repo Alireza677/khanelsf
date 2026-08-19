@@ -3,10 +3,11 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\MediaResource\Pages\ListMedia;
+use App\Http\Middleware\AuthenticateAdmin;
+use App\Http\Middleware\AuthenticateAdminSession;
+use App\Http\Middleware\ProtectFilamentLoginRoute;
 use App\Services\SettingsService;
 use Filament\Forms\Components\Component as FormComponent;
-use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
@@ -80,15 +81,16 @@ class AdminPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                AuthenticateSession::class,
+                AuthenticateAdminSession::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                ProtectFilamentLoginRoute::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
+                AuthenticateAdmin::class,
             ]);
     }
 

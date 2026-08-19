@@ -5,6 +5,10 @@ namespace Tests\Feature;
 use App\Filament\Resources\ProjectResource\Pages\CreateProject;
 use App\Models\Project;
 use App\Models\User;
+use Filament\Forms\Components\Component;
+use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\ViewField;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -105,5 +109,43 @@ class ProjectMetricsFoundationTest extends TestCase
             'suffix' => '%',
             'icon' => 'chart',
         ]);
+    }
+
+    public function test_project_metric_icons_use_the_shared_picker_and_persist_rows_independently(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $component = Livewire::test(CreateProject::class);
+        $component->fillForm([
+            'title' => 'Iconsax Metrics Project',
+            'slug' => 'iconsax-metrics-project',
+            'services' => [],
+            'attributes' => [],
+            'metrics' => [
+                ['label' => 'First', 'value' => '1', 'icon' => 'icon-activity', 'sort_order' => 0],
+                ['label' => 'Second', 'value' => '2', 'icon' => 'legacy-project-icon', 'sort_order' => 1],
+            ],
+            'status' => 'draft',
+            'sort_order' => 0,
+        ]);
+        $fields = collect($component->instance()->form->getFlatComponents(withHidden: true));
+        $metrics = $fields->first(fn (Component $field): bool => $field instanceof Field
+            && $field->getName() === 'metrics');
+        $metricIcons = collect($metrics instanceof Repeater ? $metrics->getChildComponentContainers() : [])
+            ->map(fn ($container) => collect($container->getFlatComponents())
+                ->first(fn (Component $field): bool => $field instanceof ViewField && $field->getName() === 'icon'));
+
+        $this->assertCount(2, $metricIcons);
+        $this->assertTrue($metricIcons->every(fn ($field): bool => $field instanceof ViewField
+            && $field->getView() === 'filament.forms.components.iconsax-icon-picker'));
+        $this->assertCount(2, $metricIcons->map(fn ($field): string => $field->getStatePath())->unique());
+
+        $component->call('create')->assertHasNoFormErrors();
+
+        $project = Project::query()->where('slug', 'iconsax-metrics-project')->firstOrFail();
+
+        $this->assertSame(
+            ['icon-activity', 'legacy-project-icon'],
+            $project->metrics()->pluck('icon')->all(),
+        );
     }
 }

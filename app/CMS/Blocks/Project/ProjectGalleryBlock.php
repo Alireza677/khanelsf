@@ -36,6 +36,22 @@ final class ProjectGalleryBlock extends AbstractProjectBlock
             Forms\Components\Toggle::make('settings.lightbox')
                 ->label('بازشدن تصاویر در نمایش تمام‌صفحه')
                 ->default(true),
+            Forms\Components\Select::make('settings.variant')
+                ->label('چیدمان گالری')
+                ->options(['grid' => 'شبکه‌ای', 'editorial' => 'ادیتوریال'])
+                ->default('grid')->required()->native(false),
+            Forms\Components\Select::make('settings.columns')
+                ->label('تعداد ستون')
+                ->options([2 => '۲', 3 => '۳', 4 => '۴'])
+                ->default(3)->required()->native(false),
+            Forms\Components\Select::make('settings.image_ratio')
+                ->label('نسبت تصویر')
+                ->options(['4:3' => '۴:۳', '16:10' => '۱۶:۱۰', '1:1' => '۱:۱'])
+                ->default('4:3')->required()->native(false),
+            Forms\Components\Select::make('settings.spacing')
+                ->label('فاصله تصاویر')
+                ->options(['compact' => 'فشرده', 'comfortable' => 'راحت'])
+                ->default('comfortable')->required()->native(false),
         ];
     }
 
@@ -48,6 +64,10 @@ final class ProjectGalleryBlock extends AbstractProjectBlock
     {
         return [
             'lightbox' => $this->boolean($settings['lightbox'] ?? null, true),
+            'variant' => ($settings['variant'] ?? null) === 'editorial' ? 'editorial' : 'grid',
+            'columns' => $this->integerBetween($settings['columns'] ?? null, 2, 4, 3),
+            'image_ratio' => in_array($settings['image_ratio'] ?? null, ['16:10', '1:1'], true) ? $settings['image_ratio'] : '4:3',
+            'spacing' => ($settings['spacing'] ?? null) === 'compact' ? 'compact' : 'comfortable',
         ];
     }
 }

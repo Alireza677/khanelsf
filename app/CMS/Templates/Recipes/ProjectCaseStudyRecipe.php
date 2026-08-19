@@ -55,15 +55,15 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
             $this->block('project_header', 1, 'default', [
                 'eyebrow' => 'مطالعه موردی',
             ], [
-                'variant' => 'default',
+                'variant' => 'cover',
                 'alignment' => 'start',
                 'show_image' => true,
                 'show_category' => true,
                 'show_client' => false,
-                'show_location' => false,
+                'show_location' => true,
                 'show_industry' => false,
-                'show_project_type' => false,
-                'show_dates' => false,
+                'show_project_type' => true,
+                'show_dates' => true,
                 'date_format' => 'human',
                 'show_cta' => false,
                 'cta_type' => 'project',
@@ -72,6 +72,24 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'show_secondary_cta' => false,
                 'secondary_cta_label' => null,
                 'secondary_cta_target' => null,
+                'primary_action' => [
+                    'label' => 'درخواست مشاوره',
+                    'action' => [
+                        'schema_version' => 1,
+                        'type' => 'custom_url',
+                        'value' => '/contact',
+                        'open_in_new_tab' => false,
+                    ],
+                ],
+                'secondary_action' => [
+                    'label' => 'مشاهده پروژه‌ها',
+                    'action' => [
+                        'schema_version' => 1,
+                        'type' => 'custom_url',
+                        'value' => '/projects',
+                        'open_in_new_tab' => false,
+                    ],
+                ],
                 'heading_tag' => 'h1',
             ]),
             $this->block('project_overview', 1, 'default', [
@@ -83,11 +101,6 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'show_project_type' => true,
                 'show_dates' => true,
                 'date_format' => 'human',
-                'heading_tag' => 'h2',
-            ]),
-            $this->block('project_metrics', 1, 'default', [
-                'title' => 'دستاوردهای کلیدی',
-            ], [
                 'heading_tag' => 'h2',
             ]),
             $this->block('project_story', 1, 'default', [
@@ -105,8 +118,8 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'show_client_quote' => true,
                 'heading_tag' => 'h2',
             ]),
-            $this->block('project_services', 1, 'default', [
-                'title' => 'خدمات ارائه‌شده',
+            $this->block('project_metrics', 1, 'default', [
+                'title' => 'دستاوردها و مزایا',
             ], [
                 'heading_tag' => 'h2',
             ]),
@@ -114,12 +127,27 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                 'title' => 'تصاویر پروژه',
             ], [
                 'lightbox' => true,
+                'variant' => 'editorial',
+                'columns' => 3,
+                'image_ratio' => '4:3',
+                'spacing' => 'compact',
+                'heading_tag' => 'h2',
+            ]),
+            $this->block('project_services', 1, 'default', [
+                'title' => 'خدمات استفاده‌شده در این پروژه',
+            ], [
+                'heading_tag' => 'h2',
+            ]),
+            $this->block('related_projects', 1, 'default', [
+                'title' => 'پروژه‌های مرتبط',
+            ], [
+                'limit' => 4,
                 'heading_tag' => 'h2',
             ]),
             $this->block('cta', 2, 'classic', [
                 'eyebrow' => null,
-                'title' => 'برای پروژه بعدی آماده‌اید؟',
-                'description' => 'برای بررسی نیازها و شروع همکاری با ما در تماس باشید.',
+                'title' => 'آماده شروع پروژه بعدی شما هستیم',
+                'description' => 'برای دریافت مشاوره رایگان و برآورد پروژه با ما در تماس باشید.',
                 'primary_cta' => [
                     'label' => 'شروع گفتگو',
                     'action' => [
@@ -130,8 +158,13 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                     ],
                 ],
                 'secondary_cta' => [
-                    'label' => null,
-                    'action' => null,
+                    'label' => 'تماس با ما',
+                    'action' => [
+                        'schema_version' => 1,
+                        'type' => 'custom_url',
+                        'value' => '/contact',
+                        'open_in_new_tab' => false,
+                    ],
                 ],
                 'media' => ['url' => null],
             ], [
@@ -143,12 +176,6 @@ final class ProjectCaseStudyRecipe implements TemplateRecipe
                     'desktop' => $this->emptyMediaSettings(),
                     'mobile' => $this->emptyMediaSettings(),
                 ],
-            ]),
-            $this->block('related_projects', 1, 'default', [
-                'title' => 'پروژه‌های مرتبط',
-            ], [
-                'limit' => 3,
-                'heading_tag' => 'h2',
             ]),
         ];
     }

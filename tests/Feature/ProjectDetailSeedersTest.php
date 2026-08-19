@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\TemplateResource\Pages\EditTemplate;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Template;
+use App\Models\User;
 use Database\Seeders\PersianProjectDetailDemoSeeder;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\StandardProjectTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProjectDetailSeedersTest extends TestCase
@@ -23,17 +27,17 @@ class ProjectDetailSeedersTest extends TestCase
         $this->assertSame('قالب استاندارد نمایش پروژه', $template->title);
         $this->assertSame('published', $template->status);
         $this->assertSame('project_single', $template->type);
-        $this->assertFalse($template->is_default);
+        $this->assertTrue($template->is_default);
         $this->assertSame(['type' => 'all'], $template->conditions);
         $this->assertSame([
             'project_header',
             'project_overview',
-            'project_metrics',
             'project_story',
-            'project_services',
+            'project_metrics',
             'project_gallery',
-            'cta',
+            'project_services',
             'related_projects',
+            'cta',
         ], collect($template->blocks)->pluck('type')->all());
         $this->assertCount(8, collect($template->blocks)->pluck('data.block_id')->filter()->unique());
         $this->assertSame(0, Project::query()->count());
@@ -82,5 +86,45 @@ class ProjectDetailSeedersTest extends TestCase
         $this->assertSame(1, Project::query()->where('slug', PersianProjectDetailDemoSeeder::PROJECT_SLUG)->count());
         $this->assertSame(1, $project->relatedServices()->count());
         $this->assertSame('ساخت ویلای LSF در کرمان | پروژه اجرای سازه سبک فولادی', $project->seo_title);
+    }
+
+    public function test_fresh_database_seed_selects_the_standard_template_for_project_single(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $template = Template::query()->where('slug', StandardProjectTemplateSeeder::TEMPLATE_SLUG)->firstOrFail();
+        $project = Project::factory()->published()->create(['title' => 'پروژه نصب تازه']);
+
+        $this->assertTrue($template->is_default);
+        $this->get(route('projects.show', $project->slug))
+            ->assertOk()
+            ->assertSee('project-case-study', false)
+            ->assertSee('shared-hero', false)
+            ->assertSee('پروژه نصب تازه');
+    }
+
+    public function test_template_builder_saves_project_header_canonical_actions(): void
+    {
+        $this->seed(StandardProjectTemplateSeeder::class);
+        $this->actingAs(User::factory()->admin()->create());
+        $template = Template::query()->where('slug', StandardProjectTemplateSeeder::TEMPLATE_SLUG)->firstOrFail();
+        $component = Livewire::test(EditTemplate::class, ['record' => $template->getRouteKey()]);
+        $key = collect($component->get('data')['blocks'])->search(fn (array $block): bool => $block['type'] === 'project_header');
+
+        $component
+            ->set("data.blocks.{$key}.data.settings.primary_action.label", 'برآورد پروژه')
+            ->set("data.blocks.{$key}.data.settings.primary_action.action.type", 'custom_url')
+            ->set("data.blocks.{$key}.data.settings.primary_action.action.value", '/estimate')
+            ->set("data.blocks.{$key}.data.settings.secondary_action.label", 'تماس مستقیم')
+            ->set("data.blocks.{$key}.data.settings.secondary_action.action.type", 'phone')
+            ->set("data.blocks.{$key}.data.settings.secondary_action.action.value", '۰۹۱۲۳۴۵۶۷۸۹')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $fresh = $template->fresh();
+        $header = collect($fresh->blocks)->firstWhere('type', 'project_header');
+        $this->assertSame('custom_url', data_get($header, 'data.settings.primary_action.action.type'));
+        $this->assertSame('/estimate', data_get($header, 'data.settings.primary_action.action.value'));
+        $this->assertSame('phone', data_get($header, 'data.settings.secondary_action.action.type'));
+        $this->assertSame('09123456789', data_get($header, 'data.settings.secondary_action.action.value'));
     }
 }

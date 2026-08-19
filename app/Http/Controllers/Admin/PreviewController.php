@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\CMS\Collections\Blog\BlogCollectionAdapter;
+use App\CMS\Collections\Project\ProjectCollectionAdapter;
+use App\CMS\Collections\Service\ServiceCollectionAdapter;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Gallery;
@@ -23,6 +26,7 @@ use App\Services\ProjectGalleryDiscoveryService;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use App\Services\ServiceTemplateRuntime;
+use App\Services\ServiceQueryService;
 use App\Services\TemplateService;
 use App\Support\SeoData;
 use Illuminate\Contracts\View\View;
@@ -104,6 +108,10 @@ class PreviewController extends Controller
         ProductTemplateContextBuilder $productContextBuilder,
         ProductTemplateRuntime $productRuntime,
         ServiceTemplateRuntime $serviceRuntime,
+        ServiceQueryService $serviceQueries,
+        ServiceCollectionAdapter $serviceCollections,
+        BlogCollectionAdapter $blogCollections,
+        ProjectCollectionAdapter $projectCollections,
         ProjectGalleryDiscoveryService $projectDiscovery,
         ProjectDiscoveryTemplateContextBuilder $projectDiscoveryContextBuilder,
         SettingsService $settings,
@@ -151,6 +159,81 @@ class PreviewController extends Controller
                 'template' => $template,
                 'templateContext' => $projectDiscoveryContextBuilder->build($result, $heading, $description),
                 'seo' => $this->noindex($seoService->forGalleryIndex()),
+                'isPreview' => true,
+            ]);
+        }
+
+        if ($template->type === 'service_index') {
+            $heading = (string) $settings->get('services_index_title', 'خدمات حرفه‌ای برای رشد کسب‌وکار شما');
+            $description = (string) $settings->get(
+                'services_index_description',
+                'با ترکیب تجربه، خلاقیت و فناوری‌های روز، مسیر رشد پایدار کسب‌وکارتان را هموار می‌سازیم.',
+            );
+            $services = $serviceQueries->paginateArchive((int) $settings->get('services_per_page', 12));
+            $collection = $serviceCollections->adapt($services, $heading, $description);
+
+            return view('templates.render', [
+                'template' => $template,
+                'templateContext' => [
+                    'kind' => 'archive',
+                    'type' => 'services',
+                    'heading' => $heading,
+                    'description' => $description,
+                    'emptyMessage' => 'هنوز خدمتی منتشر نشده است.',
+                    'collection' => $collection,
+                    'isPreview' => true,
+                ],
+                'seo' => $this->noindex($seoService->forServiceIndex($heading, $description)),
+                'isPreview' => true,
+            ]);
+        }
+
+        if ($template->type === 'blog_index') {
+            $posts = Post::query()
+                ->with(['category', 'media'])
+                ->published()
+                ->latest('published_at')
+                ->paginate(12);
+            $collection = $blogCollections->adapt($posts);
+
+            return view('templates.render', [
+                'template' => $template,
+                'templateContext' => [
+                    'kind' => 'archive',
+                    'type' => 'posts',
+                    'heading' => 'وبلاگ',
+                    'description' => null,
+                    'emptyMessage' => 'هنوز نوشته‌ای منتشر نشده است.',
+                    'collection' => $collection,
+                    'isPreview' => true,
+                ],
+                'seo' => $this->noindex($seoService->forBlogIndex()),
+                'isPreview' => true,
+            ]);
+        }
+
+        if ($template->type === 'projects_index') {
+            $heading = (string) $settings->get('projects_index_title', 'پروژه‌ها');
+            $description = (string) $settings->get('projects_index_description', 'نمونه پروژه‌ها و تجربه‌های اجرایی ما.');
+            $projects = Project::query()
+                ->with(['category', 'media'])
+                ->published()
+                ->orderBy('sort_order')
+                ->latest('published_at')
+                ->paginate(12);
+
+            return view('templates.render', [
+                'template' => $template,
+                'templateContext' => [
+                    'kind' => 'archive',
+                    'type' => 'projects',
+                    'heading' => $heading,
+                    'description' => $description,
+                    'emptyMessage' => 'هنوز پروژه‌ای منتشر نشده است.',
+                    'collection' => $projectCollections->adapt($projects, $heading, $description),
+                    'isPreview' => true,
+                ],
+                'seo' => $this->noindex($seoService->forProjectIndex()),
                 'isPreview' => true,
             ]);
         }

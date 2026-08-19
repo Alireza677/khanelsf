@@ -6,12 +6,12 @@
 @endphp
 
 @if ($project && $images->isNotEmpty())
-    <section class="content-block project-section">
+    <section class="content-block project-section project-gallery project-gallery--{{ $data['settings']['variant'] }} project-gallery--columns-{{ $data['settings']['columns'] }} project-gallery--ratio-{{ str_replace(':', '-', $data['settings']['image_ratio']) }} project-gallery--spacing-{{ $data['settings']['spacing'] }}">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
-        <div class="block-gallery">
+        <div class="block-gallery project-gallery__grid">
             @foreach ($images as $image)
                 @if ($lightbox)
                     <button class="gallery-lightbox-trigger" type="button" data-gallery-lightbox-src="{{ $image->getUrl() }}" data-gallery-lightbox-alt="{{ $image->name }}">

@@ -1,4 +1,4 @@
-<article class="blog-card">
+<article @class(['blog-card', $class ?? null])>
     <a class="blog-card__image" href="{{ route('projects.show', $project->slug) }}" aria-label="{{ $project->title }}">
         @if ($project->coverImageUrl())
             <img src="{{ $project->coverImageUrl() }}" alt="{{ $project->title }}" loading="lazy">
@@ -16,6 +16,12 @@
 
         @if ($project->excerpt)
             <p>{{ $project->excerpt }}</p>
+        @endif
+
+        @if (! empty($showViewLink))
+            <a class="blog-card__view-link" href="{{ route('projects.show', $project->slug) }}">
+                مشاهده پروژه
+            </a>
         @endif
     </div>
 </article>

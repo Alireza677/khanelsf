@@ -90,7 +90,7 @@ class ProjectProductionBlockBehaviorTest extends TestCase
         $this->assertStringNotContainsString('خدمت قدیمی', $relationHtml);
     }
 
-    public function test_story_falls_back_to_legacy_content_only_without_structured_story(): void
+    public function test_story_preserves_legacy_content_alongside_partial_structured_story(): void
     {
         $legacy = new Project(['content' => '<p>روایت قدیمی پروژه</p>']);
 
@@ -106,7 +106,8 @@ class ProjectProductionBlockBehaviorTest extends TestCase
         $html = $this->render('project_story', $structured);
 
         $this->assertStringContainsString('چالش ساختاریافته', $html);
-        $this->assertStringNotContainsString('روایت قدیمی پروژه', $html);
+        $this->assertStringContainsString('روایت قدیمی پروژه', $html);
+        $this->assertStringContainsString('شرح تکمیلی پروژه', $html);
     }
 
     public function test_related_limit_is_derived_from_selected_template(): void

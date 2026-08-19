@@ -19,12 +19,12 @@ class TemplateRecipeInfrastructureTest extends TestCase
     private const ORDER = [
         'project_header',
         'project_overview',
-        'project_metrics',
         'project_story',
-        'project_services',
+        'project_metrics',
         'project_gallery',
-        'cta',
+        'project_services',
         'related_projects',
+        'cta',
     ];
 
     public function test_project_case_study_recipe_is_registered_with_independent_version(): void
@@ -42,7 +42,7 @@ class TemplateRecipeInfrastructureTest extends TestCase
         $this->assertSame(1, $recipe->version());
         $this->assertSame('project_single', $recipe->targetType());
         $this->assertNotEmpty($recipe->description());
-        $this->assertSame(2, $recipe->blocks()[6]['data']['schema_version']);
+        $this->assertSame(2, $recipe->blocks()[7]['data']['schema_version']);
     }
 
     public function test_recipe_preserves_the_approved_block_order_and_canonical_defaults(): void
@@ -52,12 +52,14 @@ class TemplateRecipeInfrastructureTest extends TestCase
         $this->assertSame(self::ORDER, array_column($blocks, 'type'));
         $this->assertSame('مطالعه موردی', $blocks[0]['data']['content']['eyebrow']);
         $this->assertFalse($blocks[0]['data']['settings']['show_client']);
-        $this->assertSame('دستاوردهای کلیدی', $blocks[2]['data']['content']['title']);
-        $this->assertTrue($blocks[3]['data']['settings']['show_results_summary']);
-        $this->assertTrue($blocks[5]['data']['settings']['lightbox']);
-        $this->assertSame('custom_url', data_get($blocks[6], 'data.content.primary_cta.action.type'));
-        $this->assertSame('/contact', data_get($blocks[6], 'data.content.primary_cta.action.value'));
-        $this->assertSame(3, $blocks[7]['data']['settings']['limit']);
+        $this->assertSame('داستان پروژه', $blocks[2]['data']['content']['title']);
+        $this->assertTrue($blocks[2]['data']['settings']['show_results_summary']);
+        $this->assertSame('دستاوردها و مزایا', $blocks[3]['data']['content']['title']);
+        $this->assertTrue($blocks[4]['data']['settings']['lightbox']);
+        $this->assertSame('editorial', $blocks[4]['data']['settings']['variant']);
+        $this->assertSame('custom_url', data_get($blocks[7], 'data.content.primary_cta.action.type'));
+        $this->assertSame('/contact', data_get($blocks[7], 'data.content.primary_cta.action.value'));
+        $this->assertSame(4, $blocks[6]['data']['settings']['limit']);
 
         foreach ($blocks as $block) {
             $this->assertNull($block['data']['block_id']);
@@ -110,7 +112,7 @@ class TemplateRecipeInfrastructureTest extends TestCase
         $this->assertSame(20, $template->priority);
         $this->assertTrue($template->is_default);
         $this->assertSame(['type' => 'all'], $template->conditions);
-        $this->assertSame([1, 1, 1, 1, 1, 1, 2, 1], collect($template->blocks)->pluck('data.schema_version')->all());
+        $this->assertSame([1, 1, 1, 1, 1, 1, 1, 2], collect($template->blocks)->pluck('data.schema_version')->all());
 
         foreach ($template->blocks as $position => $block) {
             $dataWithoutInstanceIdentity = $block['data'];

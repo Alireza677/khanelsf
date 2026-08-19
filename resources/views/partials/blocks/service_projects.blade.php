@@ -4,14 +4,18 @@
 @endphp
 
 @if ($projects->isNotEmpty())
-    <section class="content-block service-section service-projects" dir="rtl">
+    <section class="content-block service-section service-projects service-projects--{{ $data['settings']['variant'] }}" dir="rtl">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
-        <div class="latest-posts service-grid--{{ $data['settings']['columns'] }}">
+        <div class="latest-posts service-projects__grid service-grid--{{ $data['settings']['columns'] }}">
             @foreach ($projects as $project)
-                @include('projects.partials.card', ['project' => $project])
+                @include('projects.partials.card', [
+                    'project' => $project,
+                    'class' => 'service-project-card',
+                    'showViewLink' => true,
+                ])
             @endforeach
         </div>
     </section>

@@ -80,6 +80,33 @@ class HeroV2EditorTest extends TestCase
         $this->assertArrayNotHasKey('title', $data);
     }
 
+    public function test_template_changes_are_reactive_and_preserve_temporarily_hidden_content(): void
+    {
+        $v2 = app(BlockEditorHydrator::class)->hydrateV2([$this->legacyHero('hero_1')]);
+        $component = Livewire::test(HeroV2EditorLifecycleComponent::class, ['blocks' => $v2]);
+        $uuid = array_key_first($component->get('data')['blocks']);
+
+        $component
+            ->set("data.blocks.{$uuid}.data.content.title_secondary", 'Preserved second line')
+            ->set("data.blocks.{$uuid}.data.template", 'hero_2')
+            ->assertSet("data.blocks.{$uuid}.data.content.title_secondary", 'Preserved second line')
+            ->set("data.blocks.{$uuid}.data.content.selector.placeholder", 'Preserved selector')
+            ->set("data.blocks.{$uuid}.data.template", 'hero_1')
+            ->assertSet("data.blocks.{$uuid}.data.content.title_secondary", 'Preserved second line')
+            ->assertSet("data.blocks.{$uuid}.data.content.selector.placeholder", 'Preserved selector')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $data = $component->get('saved')['blocks'][0]['data'];
+
+        $this->assertSame('hero_1', $data['template']);
+        $this->assertSame('Preserved second line', $data['content']['title_secondary']);
+        $this->assertSame('Preserved selector', $data['content']['selector']['placeholder']);
+        $this->assertSame(['Social'], array_column($data['content']['social_links'], 'label'));
+        $this->assertSame(['First', 'Second'], array_column($data['content']['selector']['items'], 'label'));
+        $this->assertSame(['One', 'Two'], array_column($data['content']['stats'], 'label'));
+    }
+
     public function test_each_template_round_trips_to_v2_without_flat_keys(): void
     {
         foreach (['default', 'hero_1', 'hero_2', 'hero_3'] as $template) {

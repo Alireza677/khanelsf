@@ -91,7 +91,11 @@ final class CTABlock extends AbstractBlock
                 ->viewData(fn (): array => ['images' => self::mediaLibraryImageItems()])
                 ->visible(fn (Get $get): bool => $get('template') === 'image')->columnSpanFull(),
             $this->mediaSettings($page),
-            Forms\Components\TextInput::make('content.title')->label($page ? 'عنوان' : 'Title')->required()->maxLength(255),
+            Forms\Components\TextInput::make('content.title')
+                ->label($page ? 'عنوان' : 'Title')
+                ->required($page)
+                ->helperText($page ? null : 'Optional in templates; an empty CTA block does not render.')
+                ->maxLength(255),
             HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
             Forms\Components\Textarea::make('content.description')->label($page ? 'توضیحات' : 'Description')->rows(3)->columnSpanFull(),
             ...$this->actionFields('primary_cta', $page, false),

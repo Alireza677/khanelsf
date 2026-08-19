@@ -34,10 +34,23 @@ class ServiceTemplateRecipeTest extends TestCase
         $this->assertInstanceOf(ServiceProfessionalV1Recipe::class, $recipe);
         $this->assertSame('service-professional-v1', $recipe->key());
         $this->assertSame('صفحه حرفه‌ای خدمت', $recipe->label());
-        $this->assertSame(1, $recipe->version());
+        $this->assertSame(3, $recipe->version());
         $this->assertSame('service_single', $recipe->targetType());
         $this->assertSame(self::ORDER, array_column($recipe->blocks(), 'type'));
         $this->assertNotContains('form', array_column($recipe->blocks(), 'type'));
+        $blocks = collect($recipe->blocks())->keyBy('type');
+        $this->assertSame('modern-split', data_get($blocks['service_header'], 'data.settings.variant'));
+        $this->assertSame('end', data_get($blocks['service_header'], 'data.settings.image_position'));
+        $this->assertSame('شروع همکاری', data_get($blocks['service_header'], 'data.settings.primary_action.label'));
+        $this->assertSame('custom_url', data_get($blocks['service_header'], 'data.settings.primary_action.action.type'));
+        $this->assertSame('#', data_get($blocks['service_header'], 'data.settings.primary_action.action.value'));
+        $this->assertSame('مشاوره و گفتگو', data_get($blocks['service_header'], 'data.settings.secondary_action.label'));
+        $this->assertSame('professional', data_get($blocks['service_overview'], 'data.settings.variant'));
+        $this->assertSame('icon-cards', data_get($blocks['service_benefits'], 'data.settings.variant'));
+        $this->assertSame('connected-steps', data_get($blocks['service_process'], 'data.settings.variant'));
+        $this->assertSame('compact-grid', data_get($blocks['service_deliverables'], 'data.settings.variant'));
+        $this->assertSame('visual-cards', data_get($blocks['service_projects'], 'data.settings.variant'));
+        $this->assertSame('horizontal-gallery', data_get($blocks['service_gallery'], 'data.settings.variant'));
     }
 
     public function test_recipe_blocks_are_canonical_domain_free_and_compatible(): void

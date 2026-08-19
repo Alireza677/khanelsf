@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\CMS\Collections\Project\ProjectCollectionAdapter;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Services\ModuleService;
@@ -10,10 +11,23 @@ use App\Services\SeoService;
 use App\Services\SettingsService;
 use App\Services\TemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
-    public function index(SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates): View
+    public function index(Request $request): RedirectResponse
+    {
+        $target = route('galleries.index');
+
+        if ($request->getQueryString()) {
+            $target .= '?'.$request->getQueryString();
+        }
+
+        return redirect()->to($target, 301);
+    }
+
+    public function archive(SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates, ProjectCollectionAdapter $collections): View
     {
         $this->abortIfProjectsDisabled($modules);
 
@@ -33,11 +47,15 @@ class ProjectController extends Controller
 
         $template = $templates->findTemplateFor('projects_index');
 
+        $heading = $settings->get('projects_index_title', 'Projects');
+        $description = $settings->get('projects_index_description', 'Selected work and case studies.');
+
         return $templates->viewOrFallback($template, 'projects.index', [
             'projects' => $projects,
             'categories' => $categories,
-            'heading' => $settings->get('projects_index_title', 'Projects'),
-            'description' => $settings->get('projects_index_description', 'Selected work and case studies.'),
+            'heading' => $heading,
+            'description' => $description,
+            'collection' => $collections->adapt($projects, $heading, $description),
             'seo' => $seoService->forProjectIndex(),
             'templateContext' => [
                 'kind' => 'archive',
@@ -47,11 +65,12 @@ class ProjectController extends Controller
                 'heading' => $settings->get('projects_index_title', 'Projects'),
                 'description' => $settings->get('projects_index_description', 'Selected work and case studies.'),
                 'emptyMessage' => 'No projects have been published yet.',
+                'collection' => $collections->adapt($projects, $heading, $description),
             ],
         ]);
     }
 
-    public function category(string $slug, SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates): View
+    public function category(string $slug, SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates, ProjectCollectionAdapter $collections): View
     {
         $this->abortIfProjectsDisabled($modules);
 
@@ -77,6 +96,12 @@ class ProjectController extends Controller
             'description' => $category->description,
             'activeCategory' => $category,
             'emptyMessage' => 'No projects have been published in this category yet.',
+            'collection' => $collections->adapt(
+                $projects,
+                $category->name,
+                $category->description,
+                'No projects have been published in this category yet.',
+            ),
             'seo' => $seoService->forProjectCategory($category),
             'templateContext' => [
                 'kind' => 'archive',

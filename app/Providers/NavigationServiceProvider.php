@@ -26,10 +26,9 @@ class NavigationServiceProvider extends ServiceProvider
         $sources->register(new NavigationSource(
             sourceKey: 'galleries.archive',
             label: 'گالری پروژه‌ها',
-            module: 'galleries',
+            module: 'projects',
             resolver: fn (): string => route('galleries.index', absolute: false),
             availability: fn (): bool => $modules->projectsEnabled()
-                && $modules->galleriesEnabled()
                 && Route::has('galleries.index'),
         ));
     }

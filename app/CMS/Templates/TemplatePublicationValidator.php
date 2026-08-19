@@ -37,9 +37,18 @@ final class TemplatePublicationValidator
                 : '';
             $data = is_array($block['data'] ?? null) ? $block['data'] : [];
 
-            if ($type === '' || ! $this->blocks->has($type)) {
+            $legacyDynamicBlock = in_array($type, [
+                'template_archive_header',
+                'template_content_grid',
+            ], true);
+
+            if ($type === '' || (! $this->blocks->has($type) && ! $legacyDynamicBlock)) {
                 $errors[] = "Template block at position [{$position}] is not registered.";
 
+                continue;
+            }
+
+            if ($legacyDynamicBlock) {
                 continue;
             }
 

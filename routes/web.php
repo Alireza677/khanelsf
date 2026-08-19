@@ -30,6 +30,8 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ZarinpalCallbackController;
+use App\Http\Middleware\MatchAdminLoginPath;
+use Filament\Pages\Auth\Login as FilamentLogin;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -112,7 +114,7 @@ Route::get('/services', [ServiceController::class, 'index'])->name('services.ind
 Route::get('/services/{slug}', [ServiceController::class, 'show'])->name('services.show');
 
 // Reserved public gallery URLs; keep these before the catch-all page route.
-Route::get('/galleries', [GalleryController::class, 'index'])->name('galleries.index');
+Route::get('/galleries', [ProjectController::class, 'archive'])->name('galleries.index');
 Route::get('/galleries/category/{slug}', [GalleryController::class, 'category'])->name('galleries.category');
 Route::get('/galleries/{slug}', [GalleryController::class, 'show'])->name('galleries.show');
 
@@ -192,5 +194,13 @@ Route::middleware('auth')->get('/admin/debug/log-test', function (Request $reque
         'message' => 'Server log test written.',
     ]);
 })->name('admin.debug.log-test');
+
+Route::get('/{admin_login_path}', FilamentLogin::class)
+    ->where('admin_login_path', '.+/.+')
+    ->middleware([
+        'panel:admin',
+        MatchAdminLoginPath::class,
+    ])
+    ->name('admin-login.dynamic');
 
 Route::get('/{slug}', [PageController::class, 'show'])->name('pages.show');

@@ -314,7 +314,7 @@ class TemplateResource extends Resource
             'projects_index', 'project_single', 'project_category',
             'project_discovery_index',
             'shop_index', 'product_single', 'product_category',
-            'service_single',
+            'service_index', 'service_single',
             'galleries_index', 'gallery_single', 'gallery_category',
         ], true) && ! static::usesDynamicBlocks($blocks)) {
             $warnings[] = 'This replacement template has no dynamic blocks, so current content may not appear.';
@@ -568,11 +568,37 @@ class TemplateResource extends Resource
                         ->helperText('Leave empty to use the current archive/category description.')
                         ->rows(3)
                         ->columnSpanFull(),
+                    Forms\Components\Select::make('variant')
+                        ->options(['default' => 'Default', 'modern' => 'Modern hero'])
+                        ->default('default'),
+                    Forms\Components\Select::make('alignment')
+                        ->options(['start' => 'Start', 'center' => 'Center'])
+                        ->default('start'),
+                    Forms\Components\Select::make('spacing')
+                        ->options(['compact' => 'Compact', 'comfortable' => 'Comfortable'])
+                        ->default('comfortable'),
+                    Forms\Components\Select::make('background_type')
+                        ->label('Background type')
+                        ->options([
+                            'default' => 'Default',
+                            'solid' => 'Solid color',
+                            'gradient' => 'Gradient',
+                            'image' => 'Image',
+                        ])
+                        ->default('default')
+                        ->live(),
+                    Forms\Components\ColorPicker::make('background_color')
+                        ->visible(fn (Get $get): bool => $get('background_type') === 'solid'),
+                    Forms\Components\ColorPicker::make('gradient_from')
+                        ->visible(fn (Get $get): bool => $get('background_type') === 'gradient'),
+                    Forms\Components\ColorPicker::make('gradient_to')
+                        ->visible(fn (Get $get): bool => $get('background_type') === 'gradient'),
                     Forms\Components\ViewField::make('background_image')
                         ->label('Background image')
                         ->view('filament.forms.components.media-library-url-picker')
                         ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()])
                         ->helperText('Choose from Media Library or paste an image URL.')
+                        ->visible(fn (Get $get): bool => $get('background_type') === 'image')
                         ->columnSpanFull(),
                     Forms\Components\TextInput::make('overlay_opacity')
                         ->label('Overlay opacity')
@@ -581,7 +607,8 @@ class TemplateResource extends Resource
                         ->maxValue(90)
                         ->default(45)
                         ->suffix('%')
-                        ->helperText('Keep between 0 and 90 for readable text.'),
+                        ->helperText('Keep between 0 and 90 for readable text.')
+                        ->visible(fn (Get $get): bool => $get('background_type') === 'image'),
                 ])
                 ->columns(2),
             Forms\Components\Builder\Block::make('template_shop_complete')
@@ -658,9 +685,39 @@ class TemplateResource extends Resource
                     Forms\Components\TextInput::make('empty_message')
                         ->label('Empty message')
                         ->maxLength(255),
+                    Forms\Components\Select::make('columns_desktop')
+                        ->label('Desktop columns')
+                        ->options([2 => '2', 3 => '3', 4 => '4'])
+                        ->default(3),
+                    Forms\Components\Select::make('columns_tablet')
+                        ->label('Tablet columns')
+                        ->options([1 => '1', 2 => '2'])
+                        ->default(2),
+                    Forms\Components\Select::make('image_ratio')
+                        ->options(['16:10' => '16:10', '16:9' => '16:9', '4:3' => '4:3', '1:1' => '1:1'])
+                        ->default('16:10'),
+                    Forms\Components\Select::make('card_density')
+                        ->options(['compact' => 'Compact', 'comfortable' => 'Comfortable'])
+                        ->default('comfortable'),
+                    Forms\Components\Select::make('presentation_variant')
+                        ->label('Presentation')
+                        ->options([
+                            'clean_grid' => 'Classic cards',
+                            'masonry_gallery' => 'Masonry gallery',
+                        ])
+                        ->helperText('Masonry is image-first and reveals card information on hover or keyboard focus.'),
+                    Forms\Components\Toggle::make('show_image')->default(true),
+                    Forms\Components\Toggle::make('show_icon')->default(true),
+                    Forms\Components\Toggle::make('show_excerpt')->default(true),
+                    Forms\Components\Toggle::make('show_badges')->default(true),
+                    Forms\Components\Toggle::make('show_meta')->default(true),
+                    Forms\Components\Toggle::make('show_action')->default(true),
+                    Forms\Components\TextInput::make('action_label')
+                        ->label('Card action label')
+                        ->maxLength(120),
                     Forms\Components\Placeholder::make('context_note')
                         ->label('Context')
-                        ->content('Renders the current archive collection: posts, projects, products, or galleries. Pagination is preserved when available.')
+                        ->content('Renders the canonical archive collection. Visibility settings only affect presentation; domain data and pagination remain unchanged.')
                         ->columnSpanFull(),
                 ])
                 ->columns(2),

@@ -9,6 +9,7 @@ use App\Models\Template;
 use App\Services\ModuleCleanupService;
 use App\Services\ModuleRedirectSuggestionService;
 use App\Services\SettingsService;
+use App\Support\AdminLoginPath;
 use App\Support\TemporaryDebugLogger;
 use Filament\Forms;
 use Filament\Forms\Contracts\HasForms;
@@ -55,6 +56,7 @@ class ManageSiteSettings extends Page implements HasForms
     public ?array $data = [];
 
     private array $settingsMeta = [
+        'admin_login_path' => ['general', 'text'],
         'site_name' => ['general', 'text'],
         'site_description' => ['general', 'textarea'],
         'image_placeholder' => ['general', 'image'],
@@ -151,6 +153,7 @@ class ManageSiteSettings extends Page implements HasForms
     public function mount(SettingsService $settings): void
     {
         $state = $settings->many(array_keys($this->settingsMeta))->all();
+        $state['admin_login_path'] = app(AdminLoginPath::class)->current();
         $state['public_services_enabled'] ??= true;
         $state['service_activity_catalog_enabled'] ??= false;
         $state['service_pricing_enabled'] ??= false;
@@ -187,6 +190,19 @@ class ManageSiteSettings extends Page implements HasForms
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('عمومی')
                             ->schema([
+                                Forms\Components\TextInput::make('admin_login_path')
+                                    ->label('آدرس ورود مدیریت')
+                                    ->required()
+                                    ->live(onBlur: true)
+                                    ->helperText(fn (?string $state): string => 'آدرس ورود: '.url(app(AdminLoginPath::class)->normalize($state ?: AdminLoginPath::DEFAULT)))
+                                    ->hint('این آدرس برای ورود مدیران سایت استفاده می‌شود. پس از تغییر، آدرس قبلی ورود غیرفعال خواهد شد.')
+                                    ->suffixAction(
+                                        Forms\Components\Actions\Action::make('resetAdminLoginPath')
+                                            ->label('بازنشانی')
+                                            ->action(fn (Forms\Set $set) => $set('admin_login_path', AdminLoginPath::DEFAULT)),
+                                    )
+                                    ->maxLength(190)
+                                    ->columnSpanFull(),
                                 Forms\Components\TextInput::make('site_name')
                                     ->label('نام سایت')
                                     ->placeholder('مثلا نور')
@@ -871,6 +887,7 @@ class ManageSiteSettings extends Page implements HasForms
     public function save(SettingsService $settings): void
     {
         $state = $this->form->getState();
+        $state['admin_login_path'] = app(AdminLoginPath::class)->validate($state['admin_login_path'] ?? null);
 
         // TEMP DEBUG - remove after production save issue is fixed.
         TemporaryDebugLogger::settingsSaveStarted($state);

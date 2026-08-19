@@ -46,6 +46,7 @@ class BlockFoundationTest extends TestCase
             'project_gallery',
             'project_story',
             'related_projects',
+            'project_discovery_grid',
             'product_header',
             'product_overview',
             'product_specifications',

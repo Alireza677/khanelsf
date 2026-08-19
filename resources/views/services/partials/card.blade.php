@@ -8,7 +8,9 @@
         @if (filled($image))
             <img src="{{ $image }}" alt="{{ $service->name }}">
         @elseif (filled($service->icon))
-            <span class="service-archive-card__icon" aria-hidden="true">{{ $service->icon }}</span>
+            <span class="service-archive-card__icon" aria-hidden="true">
+                @include('partials.blocks._icon', ['icon' => $service->icon])
+            </span>
         @else
             <span>{{ $service->name }}</span>
         @endif

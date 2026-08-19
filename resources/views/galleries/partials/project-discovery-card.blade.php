@@ -1,5 +1,6 @@
 @php
-    $imageRatio = in_array($imageRatio ?? 'landscape', ['landscape', 'square', 'portrait'], true) ? $imageRatio : 'landscape';
+    $imageRatio = $imageRatio ?? 'landscape';
+    $imageRatio = in_array($imageRatio, ['landscape', 'square', 'portrait'], true) ? $imageRatio : 'landscape';
     $showCategory = $showCategory ?? true;
     $showDiscoveryTerms = $showDiscoveryTerms ?? true;
 @endphp

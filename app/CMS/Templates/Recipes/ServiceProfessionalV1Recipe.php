@@ -18,7 +18,7 @@ final class ServiceProfessionalV1Recipe implements TemplateRecipe
 
     public function version(): int
     {
-        return 1;
+        return 3;
     }
 
     public function targetType(): string
@@ -57,42 +57,56 @@ final class ServiceProfessionalV1Recipe implements TemplateRecipe
                 'show_excerpt' => true,
                 'show_image' => true,
                 'alignment' => 'start',
-                'variant' => 'default',
+                'variant' => 'modern-split',
+                'image_position' => 'end',
+                'primary_action' => [
+                    'label' => 'شروع همکاری',
+                    'action' => $this->placeholderAction(),
+                ],
+                'secondary_action' => [
+                    'label' => 'مشاوره و گفتگو',
+                    'action' => $this->placeholderAction(),
+                ],
             ]),
             $this->block('service_overview', 1, 'default', [
                 'title' => 'معرفی خدمت',
             ], [
                 'width' => 'default',
+                'variant' => 'professional',
             ]),
             $this->block('service_benefits', 1, 'default', [
                 'title' => 'مزایای این خدمت',
             ], [
                 'columns' => 3,
                 'show_icons' => true,
-                'variant' => 'default',
+                'variant' => 'icon-cards',
             ]),
             $this->block('service_process', 1, 'default', [
                 'title' => 'فرآیند اجرای خدمت',
             ], [
-                'layout' => 'vertical',
+                'layout' => 'horizontal',
                 'show_steps' => true,
+                'variant' => 'connected-steps',
             ]),
             $this->block('service_deliverables', 1, 'default', [
                 'title' => 'خروجی‌ها و اقلام تحویلی',
             ], [
-                'style' => 'list',
-                'columns' => 2,
+                'style' => 'cards',
+                'columns' => 3,
+                'variant' => 'compact-grid',
             ]),
             $this->block('service_projects', 1, 'default', [
                 'title' => 'پروژه‌های مرتبط',
             ], [
                 'columns' => 3,
+                'variant' => 'visual-cards',
             ]),
             $this->block('service_gallery', 1, 'default', [
                 'title' => 'گالری تصاویر',
             ], [
                 'columns' => 3,
                 'lightbox' => true,
+                'variant' => 'horizontal-gallery',
             ]),
             $this->block('related_services', 1, 'default', [
                 'title' => 'خدمات مرتبط',
@@ -155,6 +169,16 @@ final class ServiceProfessionalV1Recipe implements TemplateRecipe
             'width' => ['value' => null, 'unit' => null],
             'height' => ['value' => null, 'unit' => null],
             'fit' => 'normal',
+        ];
+    }
+
+    private function placeholderAction(): array
+    {
+        return [
+            'schema_version' => 1,
+            'type' => 'custom_url',
+            'value' => '#',
+            'open_in_new_tab' => false,
         ];
     }
 }

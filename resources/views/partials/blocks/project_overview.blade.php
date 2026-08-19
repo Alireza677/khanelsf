@@ -37,12 +37,12 @@
 @endphp
 
 @if ($project && $items->isNotEmpty())
-    <section class="content-block project-section">
+    <section class="content-block project-section project-overview">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
-        <dl class="project-meta">
+        <dl class="project-meta project-overview__facts">
             @foreach ($items as $item)
                 <div><dt>{{ $item['label'] }}</dt><dd>{{ $item['value'] }}</dd></div>
             @endforeach

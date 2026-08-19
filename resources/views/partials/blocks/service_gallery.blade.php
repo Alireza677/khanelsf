@@ -6,12 +6,12 @@
 @endphp
 
 @if ($gallery->isNotEmpty())
-    <section class="content-block service-section service-gallery" dir="rtl">
+    <section class="content-block service-section service-gallery service-gallery--{{ $data['settings']['variant'] }}" dir="rtl">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
-        <div class="block-gallery service-grid--{{ $data['settings']['columns'] }}">
+        <div class="block-gallery service-gallery__grid service-grid--{{ $data['settings']['columns'] }}">
             @foreach ($gallery as $image)
                 @if ($data['settings']['lightbox'])
                     <button

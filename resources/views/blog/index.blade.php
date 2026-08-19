@@ -6,6 +6,15 @@
     @endif
 
     <section class="blog-index">
+        @if (isset($collection))
+            <form method="get" action="{{ route('blog.search') }}">
+                <label for="blog-search">جستجوی نوشته‌ها</label>
+                <input id="blog-search" name="q" type="search" value="{{ $searchQuery ?? request('q') }}" placeholder="جستجوی مقاله‌ها">
+                <button class="button" type="submit">جستجو</button>
+            </form>
+
+            @include('partials.presentations.collection', ['collection' => $collection])
+        @else
         <header class="blog-index__header">
             <h1>{{ $heading ?? 'وبلاگ' }}</h1>
 
@@ -47,5 +56,6 @@
         <div class="blog-index__pagination">
             {{ $posts->links() }}
         </div>
+        @endif
     </section>
 @endsection

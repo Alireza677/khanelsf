@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ServicePricingMode;
 use App\Enums\ServiceUnit;
+use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ServiceResource\Pages;
@@ -22,6 +23,7 @@ use Illuminate\Support\Str;
 
 class ServiceResource extends Resource
 {
+    use UsesIconsaxIconPicker;
     use UsesMediaLibraryImages;
     use UsesPersianResourceLabels;
 
@@ -61,10 +63,11 @@ class ServiceResource extends Resource
                             Forms\Components\RichEditor::make('overview')
                                 ->label('معرفی کامل')
                                 ->columnSpanFull(),
-                            Forms\Components\TextInput::make('icon')
-                                ->label('آیکن')
-                                ->maxLength(255)
-                                ->helperText('شناسه متنی آیکن را وارد کنید؛ فایل رسانه‌ای در این فیلد ذخیره نمی‌شود.'),
+                            static::iconsaxIconPicker(
+                                'icon',
+                                'آیکن',
+                                'کلاس آیکن در همان فیلد متنی قبلی ذخیره می‌شود؛ فایل رسانه‌ای ایجاد نمی‌شود.',
+                            ),
                             Forms\Components\TextInput::make('sort_order')
                                 ->label('ترتیب نمایش')
                                 ->required()
@@ -83,9 +86,7 @@ class ServiceResource extends Resource
                                         ->label('عنوان')
                                         ->required()
                                         ->maxLength(255),
-                                    Forms\Components\TextInput::make('icon')
-                                        ->label('آیکن')
-                                        ->maxLength(255),
+                                    static::iconsaxIconPicker('icon', 'آیکن'),
                                     Forms\Components\Textarea::make('description')
                                         ->label('توضیحات')
                                         ->rows(3)

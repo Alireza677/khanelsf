@@ -2,6 +2,7 @@
 
 namespace App\CMS\Blocks\Service;
 
+use App\CMS\Actions\Filament\ActionPicker;
 use Filament\Forms;
 
 final class ServiceHeaderBlock extends AbstractServiceBlock
@@ -35,10 +36,13 @@ final class ServiceHeaderBlock extends AbstractServiceBlock
                 ->label('چیدمان متن')
                 ->options(['start' => 'ابتدای سطر', 'center' => 'وسط'])
                 ->default('start')->required()->native(false),
-            Forms\Components\Select::make('settings.variant')
-                ->label('طرح نمایش')
-                ->options(['default' => 'استاندارد', 'split' => 'دو ستونه'])
-                ->default('default')->required()->native(false),
+            Forms\Components\Section::make('دعوت به اقدام')
+                ->schema([
+                    Forms\Components\TextInput::make('settings.primary_action.label')->label('متن اقدام اصلی')->maxLength(120),
+                    ActionPicker::make('settings.primary_action.action')->label('مقصد اقدام اصلی'),
+                    Forms\Components\TextInput::make('settings.secondary_action.label')->label('متن اقدام ثانویه')->maxLength(120),
+                    ActionPicker::make('settings.secondary_action.action')->label('مقصد اقدام ثانویه'),
+                ])->columns(2)->columnSpanFull(),
         ];
     }
 
@@ -53,7 +57,20 @@ final class ServiceHeaderBlock extends AbstractServiceBlock
             'show_excerpt' => $this->boolean($settings['show_excerpt'] ?? null, true),
             'show_image' => $this->boolean($settings['show_image'] ?? null, true),
             'alignment' => ($settings['alignment'] ?? null) === 'center' ? 'center' : 'start',
-            'variant' => ($settings['variant'] ?? null) === 'split' ? 'split' : 'default',
+            'variant' => 'modern-split',
+            'image_position' => 'end',
+            'primary_action' => $this->action($settings['primary_action'] ?? null),
+            'secondary_action' => $this->action($settings['secondary_action'] ?? null),
+        ];
+    }
+
+    private function action(mixed $value): array
+    {
+        $value = is_array($value) ? $value : [];
+
+        return [
+            'label' => $this->stringOrNull($value['label'] ?? null),
+            'action' => is_array($value['action'] ?? null) ? $value['action'] : null,
         ];
     }
 }

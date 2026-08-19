@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\CMS\Collections\Blog\BlogCollectionAdapter;
 use App\Models\Category;
 use App\Models\Post;
 use App\Services\SeoService;
@@ -11,18 +12,20 @@ use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
-    public function index(SeoService $seoService, TemplateService $templates): View
+    public function index(SeoService $seoService, TemplateService $templates, BlogCollectionAdapter $collections): View
     {
         $posts = Post::query()
-            ->with('category')
+            ->with(['category', 'media'])
             ->published()
             ->latest('published_at')
             ->paginate(12);
 
         $template = $templates->findTemplateFor('blog_index');
+        $collection = $collections->adapt($posts);
 
         return $templates->viewOrFallback($template, 'blog.index', [
             'posts' => $posts,
+            'collection' => $collection,
             'seo' => $seoService->forBlogIndex(),
             'templateContext' => [
                 'kind' => 'archive',
@@ -31,6 +34,7 @@ class PostController extends Controller
                 'heading' => 'Blog',
                 'description' => null,
                 'emptyMessage' => 'No posts have been published yet.',
+                'collection' => $collection,
             ],
         ]);
     }
@@ -67,7 +71,7 @@ class PostController extends Controller
         ]);
     }
 
-    public function category(string $slug, SeoService $seoService, TemplateService $templates): View
+    public function category(string $slug, SeoService $seoService, TemplateService $templates, BlogCollectionAdapter $collections): View
     {
         $category = Category::query()
             ->published()
@@ -75,16 +79,23 @@ class PostController extends Controller
             ->firstOrFail();
 
         $posts = Post::query()
-            ->with('category')
+            ->with(['category', 'media'])
             ->published()
             ->whereBelongsTo($category)
             ->latest('published_at')
             ->paginate(12);
 
         $template = $templates->findTemplateFor('post_category', $category);
+        $collection = $collections->adapt(
+            $posts,
+            $category->title,
+            $category->description,
+            'No posts have been published in this category yet.',
+        );
 
         return $templates->viewOrFallback($template, 'blog.index', [
             'posts' => $posts,
+            'collection' => $collection,
             'heading' => $category->title,
             'emptyMessage' => 'No posts have been published in this category yet.',
             'seo' => $seoService->forBlogCategory($category),
@@ -97,16 +108,17 @@ class PostController extends Controller
                 'heading' => $category->title,
                 'description' => $category->description,
                 'emptyMessage' => 'No posts have been published in this category yet.',
+                'collection' => $collection,
             ],
         ]);
     }
 
-    public function search(Request $request, SeoService $seoService): View
+    public function search(Request $request, SeoService $seoService, BlogCollectionAdapter $collections): View
     {
         $query = trim((string) $request->query('q', ''));
 
         $posts = Post::query()
-            ->with('category')
+            ->with(['category', 'media'])
             ->published()
             ->when($query !== '', function ($builder) use ($query): void {
                 $builder->where(function ($builder) use ($query): void {
@@ -120,9 +132,17 @@ class PostController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $heading = $query !== '' ? 'Search results for "'.$query.'"' : 'Search';
+
         return view('blog.index', [
             'posts' => $posts,
-            'heading' => $query !== '' ? 'Search results for "'.$query.'"' : 'Search',
+            'collection' => $collections->adapt(
+                $posts,
+                $heading,
+                null,
+                'No matching posts were found.',
+            ),
+            'heading' => $heading,
             'emptyMessage' => 'No matching posts were found.',
             'searchQuery' => $query,
             'seo' => $seoService->forBlogSearch($query),

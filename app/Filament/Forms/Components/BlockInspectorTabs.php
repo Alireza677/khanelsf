@@ -50,7 +50,7 @@ final class BlockInspectorTabs
         ];
 
         foreach ($names as $name) {
-            $scores[self::groupForName($name)]++;
+            $scores[self::groupForStateName($name)]++;
         }
 
         $highest = max($scores);
@@ -90,7 +90,7 @@ final class BlockInspectorTabs
         return array_values(array_unique($names));
     }
 
-    private static function groupForName(string $name): string
+    public static function groupForStateName(string $name): string
     {
         $name = strtolower($name);
 
@@ -101,6 +101,17 @@ final class BlockInspectorTabs
         if (in_array($name, ['settings.title', 'settings.description'], true)
             || str_starts_with($name, 'content.')) {
             return self::CONTENT;
+        }
+
+        // A root template selector defines which content contract is available
+        // for variant-driven blocks such as Hero and CTA. Keep it before the
+        // dependent content fields; nested presentation settings remain Design.
+        if ($name === 'template') {
+            return self::CONTENT;
+        }
+
+        if (in_array($name, ['variant', 'layout'], true)) {
+            return self::DESIGN;
         }
 
         if (str_starts_with($name, 'settings.')

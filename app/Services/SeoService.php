@@ -176,13 +176,13 @@ class SeoService
         return $this->make([
             'title' => $this->settings->get('projects_seo_title', $this->settings->get('projects_index_title', 'Projects')),
             'description' => $this->settings->get('projects_seo_description', $this->settings->get('projects_index_description', 'Selected work and case studies.')),
-            'canonical_url' => route('projects.index'),
+            'canonical_url' => route('galleries.index'),
             'og_image' => $this->settings->assetUrl($this->settings->get('projects_og_image')),
             'schema' => [
                 '@context' => 'https://schema.org',
                 '@type' => 'CollectionPage',
                 'name' => $this->settings->get('projects_index_title', 'Projects'),
-                'url' => route('projects.index'),
+                'url' => route('galleries.index'),
             ],
         ]);
     }

@@ -27,7 +27,7 @@ class StandardProjectTemplateSeeder extends Seeder
             'title' => 'قالب استاندارد نمایش پروژه',
             'slug' => self::TEMPLATE_SLUG,
             'priority' => 0,
-            'is_default' => false,
+            'is_default' => true,
             'conditions' => ['type' => 'all'],
         ]);
 
@@ -36,12 +36,12 @@ class StandardProjectTemplateSeeder extends Seeder
 
             if ($type === 'project_overview') {
                 data_set($block, 'data.content.title', 'معرفی پروژه');
-            } elseif ($type === 'project_metrics') {
-                data_set($block, 'data.content.title', 'مشخصات پروژه');
             } elseif ($type === 'project_story') {
                 data_set($block, 'data.content.title', 'چالش و راهکار');
                 data_set($block, 'data.content.headings.solution', 'راهکار اجرا');
                 data_set($block, 'data.content.headings.results_summary', 'نتایج پروژه');
+            } elseif ($type === 'project_metrics') {
+                data_set($block, 'data.content.title', 'دستاوردها و مزایا');
             } elseif ($type === 'project_services') {
                 data_set($block, 'data.content.title', 'خدمات پروژه');
             } elseif ($type === 'project_gallery') {
@@ -55,6 +55,10 @@ class StandardProjectTemplateSeeder extends Seeder
             return $block;
         })->all();
         $template->status = 'published';
+        Template::query()
+            ->where('type', 'project_single')
+            ->where('is_default', true)
+            ->update(['is_default' => false]);
         $template->save();
     }
 }

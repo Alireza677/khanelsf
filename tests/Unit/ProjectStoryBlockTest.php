@@ -63,6 +63,7 @@ class ProjectStoryBlockTest extends TestCase
             'show_solution' => true,
             'show_results_summary' => true,
             'show_client_quote' => true,
+            'heading_tag' => 'h2',
         ], $once['settings']);
         $this->assertArrayNotHasKey('challenge', $once['content']);
         $this->assertArrayNotHasKey('unknown', $once);
@@ -95,6 +96,23 @@ class ProjectStoryBlockTest extends TestCase
         $this->assertStringContainsString('متن نتایج', $html);
         $this->assertStringContainsString('متن نظر کارفرما', $html);
         $this->assertStringNotContainsString('متن راهکار پنهان', $html);
+    }
+
+    public function test_partial_structured_story_keeps_meaningful_legacy_content_visible(): void
+    {
+        $project = new Project([
+            'challenge' => 'چالش ساختاریافته',
+            'content' => '<p>محتوای تاریخی پروژه</p>',
+        ]);
+
+        $html = view('partials.blocks.project_story', [
+            'data' => [],
+            'context' => ['type' => 'project', 'model' => $project],
+        ])->render();
+
+        $this->assertStringContainsString('چالش ساختاریافته', $html);
+        $this->assertStringContainsString('شرح تکمیلی پروژه', $html);
+        $this->assertStringContainsString('محتوای تاریخی پروژه', $html);
     }
 
     /**

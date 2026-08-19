@@ -184,6 +184,101 @@ class ServiceBlocksTemplateRuntimeTest extends TestCase
         }
     }
 
+    public function test_professional_variants_wrap_arbitrary_dynamic_item_counts(): void
+    {
+        foreach ([1, 2, 3, 4, 6, 8, 10] as $count) {
+            $html = view('partials.blocks.service_benefits', [
+                'data' => ['settings' => ['variant' => 'icon-cards', 'columns' => 3]],
+                'context' => ['content' => ['benefits' => $this->items($count)]],
+            ])->render();
+
+            $this->assertSame($count, substr_count($html, '<article class="service-card">'));
+            $this->assertStringContainsString('service-grid--icon-cards', $html);
+        }
+
+        foreach ([2, 3, 4, 6] as $count) {
+            $html = view('partials.blocks.service_process', [
+                'data' => ['settings' => ['variant' => 'connected-steps', 'layout' => 'horizontal']],
+                'context' => ['content' => ['process' => $this->items($count)]],
+            ])->render();
+
+            $this->assertSame($count, substr_count($html, '<li>'));
+            $this->assertStringContainsString('service-process--connected-steps', $html);
+            $this->assertStringContainsString('>'.$count.'<', $html);
+        }
+
+        foreach ([1, 3, 5, 7] as $count) {
+            $html = view('partials.blocks.service_deliverables', [
+                'data' => ['settings' => ['variant' => 'compact-grid', 'style' => 'cards', 'columns' => 3]],
+                'context' => ['content' => ['deliverables' => $this->items($count)]],
+            ])->render();
+
+            $this->assertSame($count, substr_count($html, '<li class="service-card">'));
+            $this->assertStringContainsString('service-deliverables--compact-grid', $html);
+        }
+    }
+
+    public function test_visual_project_cards_keep_one_two_three_and_five_items_in_the_same_grid(): void
+    {
+        Storage::fake('public');
+
+        foreach ([1, 2, 3, 5] as $count) {
+            $projects = Project::factory()->published()->count($count)->create([
+                'excerpt' => str_repeat('خلاصه پروژه ', 12),
+            ])->load(['category', 'media']);
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+
+            $html = view('partials.blocks.service_projects', [
+                'data' => ['settings' => ['variant' => 'visual-cards', 'columns' => 3]],
+                'context' => ['projects' => $projects],
+            ])->render();
+
+            $this->assertSame([], DB::getQueryLog());
+            $this->assertSame($count, substr_count($html, 'class="blog-card service-project-card"'));
+            $this->assertSame($count, substr_count($html, 'class="blog-card__view-link"'));
+            $this->assertStringContainsString('service-projects--visual-cards', $html);
+            $this->assertStringContainsString('service-grid--3', $html);
+        }
+
+        $empty = view('partials.blocks.service_projects', [
+            'data' => ['settings' => ['variant' => 'visual-cards', 'columns' => 3]],
+            'context' => ['projects' => collect()],
+        ])->render();
+
+        $this->assertSame('', trim($empty));
+    }
+
+    public function test_service_icons_use_shared_frontend_renderer_without_printing_icon_keys(): void
+    {
+        $context = [
+            'content' => [
+                'name' => 'Iconsax Service',
+                'icon' => 'icon-arrow-circle-left',
+                'benefits' => [
+                    ['title' => 'First', 'icon' => 'icon-activity'],
+                    ['title' => 'Second', 'icon' => 'icon-airdrop'],
+                    ['title' => 'No icon', 'icon' => null],
+                ],
+            ],
+            'media' => ['featured' => null],
+        ];
+        $header = view('partials.blocks.service_header', ['data' => [], 'context' => $context])->render();
+        $benefits = view('partials.blocks.service_benefits', ['data' => [], 'context' => $context])->render();
+        $legacy = view('partials.blocks._icon', ['icon' => 'heroicon-o-star'])->render();
+
+        $this->assertStringContainsString('<i class="icon-arrow-circle-left"', $header);
+        $this->assertStringNotContainsString('>icon-arrow-circle-left<', $header);
+        $this->assertStringContainsString('<i class="icon-activity"', $benefits);
+        $this->assertStringContainsString('<i class="icon-airdrop"', $benefits);
+        $this->assertStringNotContainsString('>icon-activity<', $benefits);
+        $this->assertSame(2, substr_count($benefits, 'class="service-card__icon"'));
+        $this->assertStringContainsString('<svg', $legacy);
+        $this->assertStringNotContainsString('>heroicon-o-star<', $legacy);
+        $this->assertSame('', trim(view('partials.blocks._icon', ['icon' => null])->render()));
+    }
+
     public function test_service_template_resolution_supports_specific_and_default_assignments(): void
     {
         $service = $this->service();
@@ -302,5 +397,16 @@ class ServiceBlocksTemplateRuntimeTest extends TestCase
             'responsive_images' => [],
             'order_column' => 1,
         ]);
+    }
+
+    private function items(int $count): array
+    {
+        return collect(range(1, $count))
+            ->map(fn (int $index): array => [
+                'title' => "آیتم {$index}",
+                'description' => $index % 2 === 0 ? null : "توضیح پویا {$index}",
+                'icon' => "icon-{$index}",
+            ])
+            ->all();
     }
 }

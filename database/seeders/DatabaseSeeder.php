@@ -567,7 +567,12 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->call(IndustrialHeaderTemplateSeeder::class);
-        $this->call(ProjectDiscoveryTemplateSeeder::class);
+        if (Template::query()->whereKey(4)->where('type', 'galleries_index')->exists()) {
+            $this->call(ProjectDiscoveryTemplateSeeder::class);
+        }
+        $this->call(BlogArchiveTemplateSeeder::class);
+        $this->call(ProjectArchiveTemplateSeeder::class);
+        $this->call(ServiceArchiveTemplateSeeder::class);
         $this->call(StandardProjectTemplateSeeder::class);
         $this->call(StandardServiceTemplateSeeder::class);
 
@@ -622,8 +627,6 @@ class DatabaseSeeder extends Seeder
 
         foreach ([
             ['shop-index-template', 'Shop Index Template', 'shop_index', 'Shop', 'Browse simple products and starter catalog items.'],
-            ['projects-index-template', 'Projects Index Template', 'projects_index', 'Projects', 'Selected work and case studies.'],
-            ['blog-index-template', 'Blog Index Template', 'blog_index', 'Blog', 'Latest articles and updates.'],
         ] as [$slug, $title, $type, $heading, $description]) {
             $template = Template::query()->firstOrCreate(
                 ['slug' => $slug],

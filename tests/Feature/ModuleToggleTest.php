@@ -88,7 +88,8 @@ class ModuleToggleTest extends TestCase
             ->assertDontSee('/projects', false)
             ->assertDontSee('/shop', false);
 
-        $this->get(route('projects.index'))->assertNotFound();
+        $this->get(route('projects.index'))->assertStatus(301)->assertRedirect(route('galleries.index'));
+        $this->get(route('galleries.index'))->assertNotFound();
         $this->get(route('projects.show', 'hidden-project'))->assertNotFound();
         $this->get(route('shop.index'))->assertNotFound();
         $this->get(route('shop.show', 'hidden-product'))->assertNotFound();

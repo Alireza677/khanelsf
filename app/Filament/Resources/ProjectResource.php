@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ProjectResource\Pages;
@@ -19,6 +20,7 @@ use Illuminate\Support\Str;
 
 class ProjectResource extends Resource
 {
+    use UsesIconsaxIconPicker;
     use UsesMediaLibraryImages;
     use UsesPersianResourceLabels;
 
@@ -202,9 +204,7 @@ class ProjectResource extends Resource
                                         ->label('توضیحات')
                                         ->rows(3)
                                         ->columnSpanFull(),
-                                    Forms\Components\TextInput::make('icon')
-                                        ->label('آیکن')
-                                        ->maxLength(255),
+                                    static::iconsaxIconPicker('icon', 'آیکن'),
                                     Forms\Components\TextInput::make('sort_order')
                                         ->label('ترتیب نمایش')
                                         ->numeric()

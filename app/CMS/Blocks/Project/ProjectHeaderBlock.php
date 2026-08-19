@@ -2,6 +2,7 @@
 
 namespace App\CMS\Blocks\Project;
 
+use App\CMS\Actions\Filament\ActionPicker;
 use Filament\Forms;
 use Filament\Forms\Get;
 
@@ -45,6 +46,8 @@ final class ProjectHeaderBlock extends AbstractProjectBlock
                 ->options([
                     'default' => 'استاندارد',
                     'split' => 'دو ستونه',
+                    'modern-split' => 'دو ستونه مدرن',
+                    'cover' => 'تصویر تمام‌عرض',
                 ])
                 ->default('default')
                 ->required()
@@ -112,6 +115,11 @@ final class ProjectHeaderBlock extends AbstractProjectBlock
                         ->maxLength(2048)
                         ->visible(fn (Get $get): bool => (bool) $get('settings.show_cta')
                             && $get('settings.cta_type') === 'marketing'),
+                    Forms\Components\TextInput::make('settings.primary_action.label')
+                        ->label('متن اقدام اصلی جدید')
+                        ->helperText('در صورت تکمیل، این اقدام بر تنظیمات قدیمی دکمه اولویت دارد.')
+                        ->maxLength(120),
+                    ActionPicker::make('settings.primary_action.action')->label('مقصد اقدام اصلی'),
                 ])
                 ->columns(2)
                 ->columnSpanFull(),
@@ -129,6 +137,11 @@ final class ProjectHeaderBlock extends AbstractProjectBlock
                         ->label('نشانی دکمه ثانویه')
                         ->maxLength(2048)
                         ->visible(fn (Get $get): bool => (bool) $get('settings.show_secondary_cta')),
+                    Forms\Components\TextInput::make('settings.secondary_action.label')
+                        ->label('متن اقدام ثانویه جدید')
+                        ->helperText('در صورت تکمیل، این اقدام بر تنظیمات قدیمی دکمه اولویت دارد.')
+                        ->maxLength(120),
+                    ActionPicker::make('settings.secondary_action.action')->label('مقصد اقدام ثانویه'),
                 ])
                 ->columns(2)
                 ->columnSpanFull(),
@@ -145,7 +158,9 @@ final class ProjectHeaderBlock extends AbstractProjectBlock
     protected function normalizeSettings(array $settings): array
     {
         return [
-            'variant' => ($settings['variant'] ?? null) === 'split' ? 'split' : 'default',
+            'variant' => in_array($settings['variant'] ?? null, ['split', 'modern-split', 'cover'], true)
+                ? $settings['variant']
+                : 'default',
             'alignment' => ($settings['alignment'] ?? null) === 'center' ? 'center' : 'start',
             'show_image' => $this->boolean($settings['show_image'] ?? null, true),
             'show_category' => $this->boolean($settings['show_category'] ?? null, true),
@@ -162,6 +177,18 @@ final class ProjectHeaderBlock extends AbstractProjectBlock
             'show_secondary_cta' => $this->boolean($settings['show_secondary_cta'] ?? null, false),
             'secondary_cta_label' => $this->stringOrNull($settings['secondary_cta_label'] ?? null),
             'secondary_cta_target' => $this->stringOrNull($settings['secondary_cta_target'] ?? null),
+            'primary_action' => $this->action($settings['primary_action'] ?? null),
+            'secondary_action' => $this->action($settings['secondary_action'] ?? null),
+        ];
+    }
+
+    private function action(mixed $value): array
+    {
+        $value = is_array($value) ? $value : [];
+
+        return [
+            'label' => $this->stringOrNull($value['label'] ?? null),
+            'action' => is_array($value['action'] ?? null) ? $value['action'] : null,
         ];
     }
 }

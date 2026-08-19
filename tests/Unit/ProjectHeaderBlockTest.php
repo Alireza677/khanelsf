@@ -94,7 +94,7 @@ class ProjectHeaderBlockTest extends TestCase
             'alignment' => 'center',
         ]]);
 
-        $this->assertStringContainsString('<h1>پروژه واقعی</h1>', $html);
+        $this->assertStringContainsString('<h1 class="block-title">پروژه واقعی</h1>', $html);
         $this->assertStringContainsString('خلاصه واقعی پروژه', $html);
         $this->assertStringContainsString('کارفرمای واقعی', $html);
         $this->assertStringContainsString('تهران', $html);
@@ -102,8 +102,8 @@ class ProjectHeaderBlockTest extends TestCase
         $this->assertStringContainsString('بازسازی', $html);
         $this->assertStringContainsString('مسکونی', $html);
         $this->assertStringContainsString('dir="rtl"', $html);
-        $this->assertStringContainsString('project-header--split', $html);
-        $this->assertStringContainsString('project-header--align-center', $html);
+        $this->assertStringContainsString('shared-hero--split', $html);
+        $this->assertStringContainsString('shared-hero--align-center', $html);
     }
 
     public function test_renderer_uses_only_the_featured_image_from_loaded_media(): void
@@ -134,6 +134,47 @@ class ProjectHeaderBlockTest extends TestCase
 
         $this->assertStringContainsString('/storage/project-featured.webp', $html);
         $this->assertStringNotContainsString('/storage/gallery.webp', $html);
+    }
+
+    public function test_renderer_falls_back_to_first_gallery_image_when_featured_image_is_missing(): void
+    {
+        $project = $this->project();
+        $project->setRelation('media', collect([new class
+        {
+            public string $collection_name = 'gallery';
+
+            public function getUrl(): string
+            {
+                return '/storage/gallery-fallback.webp';
+            }
+        }]));
+
+        $this->assertStringContainsString('/storage/gallery-fallback.webp', $this->render($project));
+    }
+
+    public function test_canonical_action_is_preferred_and_invalid_action_fails_closed(): void
+    {
+        $project = $this->project(['external_url' => 'https://legacy.example.com']);
+        $canonical = $this->render($project, ['settings' => [
+            'show_cta' => true,
+            'cta_label' => 'Legacy',
+            'primary_action' => [
+                'label' => 'Canonical',
+                'action' => ['schema_version' => 1, 'type' => 'custom_url', 'value' => '/contact'],
+            ],
+        ]]);
+        $invalid = $this->render($project, ['settings' => [
+            'primary_action' => [
+                'label' => 'Unsafe',
+                'action' => ['schema_version' => 1, 'type' => 'custom_url', 'value' => 'javascript:alert(1)'],
+            ],
+        ]]);
+
+        $this->assertStringContainsString('Canonical', $canonical);
+        $this->assertStringContainsString('href="/contact"', $canonical);
+        $this->assertStringNotContainsString('Legacy', $canonical);
+        $this->assertStringNotContainsString('Unsafe', $invalid);
+        $this->assertStringNotContainsString('javascript:', $invalid);
     }
 
     public function test_date_range_uses_case_study_dates_before_legacy_date(): void
@@ -219,7 +260,7 @@ class ProjectHeaderBlockTest extends TestCase
 
         $html = $this->render($project);
 
-        $this->assertStringContainsString('<h1>پروژه آزمایشی</h1>', $html);
+        $this->assertStringContainsString('<h1 class="block-title">پروژه آزمایشی</h1>', $html);
         $this->assertFalse($project->relationLoaded('media'));
         $this->assertFalse($project->relationLoaded('category'));
     }

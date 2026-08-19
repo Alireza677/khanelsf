@@ -72,6 +72,29 @@ class CTAV2Test extends TestCase
         $this->assertStringContainsString('Edited CTA', $this->render($saved));
     }
 
+    public function test_template_changes_preserve_hidden_cta_content(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $page = Page::factory()->create(['blocks' => [['type' => 'cta', 'data' => $this->legacyCta('image')]]]);
+        $component = Livewire::test(EditPage::class, ['record' => $page->getRouteKey()]);
+        $uuid = array_key_first($component->get('data')['blocks']);
+
+        $component
+            ->assertSet("data.blocks.{$uuid}.data.content.secondary_cta.label", 'Secondary')
+            ->set("data.blocks.{$uuid}.data.template", 'classic')
+            ->assertSet("data.blocks.{$uuid}.data.content.secondary_cta.label", 'Secondary')
+            ->set("data.blocks.{$uuid}.data.template", 'image')
+            ->assertSet("data.blocks.{$uuid}.data.content.secondary_cta.label", 'Secondary')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $saved = $page->fresh()->blocks[0]['data'];
+
+        $this->assertSame('image', $saved['template']);
+        $this->assertSame('Secondary', $saved['content']['secondary_cta']['label']);
+        $this->assertSame('/background.jpg', $saved['content']['media']['url']);
+    }
+
     public function test_template_editor_hydrates_and_saves_the_same_canonical_contract(): void
     {
         config()->set('cms.hero_v2_editor', false);

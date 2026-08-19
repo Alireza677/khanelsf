@@ -43,6 +43,9 @@ final class StandardServiceTemplateSeeder extends Seeder
             } elseif (! $template->hasBlocks()) {
                 $draft = app(TemplateRecipeInstantiator::class)->makeDraft(self::RECIPE_KEY);
                 $template->blocks = $draft->blocks;
+            } else {
+                $draft = app(TemplateRecipeInstantiator::class)->makeDraft(self::RECIPE_KEY);
+                $template->blocks = $this->syncRecipePresentation($template->blocks, $draft->blocks);
             }
 
             $template->status = 'published';
@@ -62,5 +65,48 @@ final class StandardServiceTemplateSeeder extends Seeder
 
             $template->save();
         }, 3);
+    }
+
+    /**
+     * Refresh canonical presentation settings without overwriting editor-owned
+     * content, actions, block identities, or extra blocks.
+     */
+    private function syncRecipePresentation(array $current, array $recipe): array
+    {
+        $recipeByType = collect($recipe)->keyBy('type');
+        $presentTypes = collect($current)->pluck('type')->filter()->all();
+
+        $updated = collect($current)->map(function (array $block) use ($recipeByType): array {
+            $canonical = $recipeByType->get($block['type'] ?? null);
+
+            if (! is_array($canonical)) {
+                return $block;
+            }
+
+            $currentSettings = is_array(data_get($block, 'data.settings'))
+                ? data_get($block, 'data.settings')
+                : [];
+            $canonicalSettings = is_array(data_get($canonical, 'data.settings'))
+                ? data_get($canonical, 'data.settings')
+                : [];
+
+            // Header actions are editor-owned once a template exists. Fresh
+            // installs still receive the portable defaults from the recipe.
+            if (($block['type'] ?? null) === 'service_header') {
+                unset($canonicalSettings['primary_action'], $canonicalSettings['secondary_action']);
+            }
+
+            $block['data']['settings'] = array_replace_recursive(
+                $currentSettings,
+                $canonicalSettings,
+            );
+
+            return $block;
+        });
+
+        return $updated
+            ->concat(collect($recipe)->reject(fn (array $block): bool => in_array($block['type'] ?? null, $presentTypes, true)))
+            ->values()
+            ->all();
     }
 }

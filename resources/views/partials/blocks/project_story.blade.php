@@ -7,9 +7,7 @@
         'results_summary' => $project->results_summary,
         'client_quote' => $project->client_quote,
     ])->filter(fn ($value, string $key): bool => $data['settings']["show_{$key}"] && filled($value)) : collect();
-    $legacyContent = $project && $sections->isEmpty() && filled($project->content)
-        ? $project->content
-        : null;
+    $legacyContent = $project && filled($project->content) ? $project->content : null;
 @endphp
 
 @if ($project && ($sections->isNotEmpty() || $legacyContent))
@@ -34,6 +32,9 @@
 
         @if ($legacyContent)
             <div class="project-story__legacy-content">
+                @if ($sections->isNotEmpty())
+                    <h3>شرح تکمیلی پروژه</h3>
+                @endif
                 {!! $legacyContent !!}
             </div>
         @endif

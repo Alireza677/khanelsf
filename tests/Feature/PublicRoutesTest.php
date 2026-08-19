@@ -571,7 +571,7 @@ class PublicRoutesTest extends TestCase
             'title' => 'Draft Project',
         ]);
 
-        $this->get(route('projects.index'))
+        $this->get(route('galleries.index'))
             ->assertOk()
             ->assertSee('Published Project')
             ->assertDontSee('Draft Project');

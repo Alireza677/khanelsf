@@ -5,7 +5,7 @@
 @endphp
 
 @if ($overview !== '')
-    <section class="content-block service-section service-overview service-overview--{{ $data['settings']['width'] }}" dir="rtl">
+    <section class="content-block service-section service-overview service-overview--{{ $data['settings']['width'] }} service-overview--{{ $data['settings']['variant'] }}" dir="rtl">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif

@@ -11,7 +11,10 @@ use App\Models\Project;
 use App\Models\Service;
 use App\Models\User;
 use Filament\Forms\Components\Component;
+use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ViewField;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -122,6 +125,44 @@ class ServiceAdminStructuredContentTest extends TestCase
         $this->assertStringNotContainsString('_uuid', $rawContent);
         $this->assertStringNotContainsString('temporary_state', $rawContent);
         $this->assertStringNotContainsString('presentation', $rawContent);
+    }
+
+    public function test_service_icon_fields_reuse_iconsax_picker_and_keep_each_repeater_row_independent(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $component = Livewire::test(CreateService::class);
+        $component->fillForm([
+            'name' => 'Iconsax Service',
+            'slug' => 'iconsax-service',
+            'icon' => 'heroicon-o-star',
+            'benefits' => [
+                ['title' => 'First', 'icon' => 'icon-activity'],
+                ['title' => 'Second', 'icon' => 'icon-airdrop'],
+            ],
+            'sort_order' => 0,
+        ]);
+        $fields = collect($component->instance()->form->getFlatComponents(withHidden: true));
+        $benefits = $fields->first(fn (Component $field): bool => $field instanceof Field
+            && $field->getName() === 'benefits');
+        $benefitIcons = collect($benefits instanceof Repeater ? $benefits->getChildComponentContainers() : [])
+            ->map(fn ($container) => collect($container->getFlatComponents())
+                ->first(fn (Component $field): bool => $field instanceof ViewField && $field->getName() === 'icon'));
+
+        $this->assertInstanceOf(
+            ViewField::class,
+            $fields->first(fn (Component $field): bool => $field->getStatePath() === 'data.icon'),
+        );
+        $this->assertCount(2, $benefitIcons);
+        $this->assertTrue($benefitIcons->every(fn ($field): bool => $field instanceof ViewField
+            && $field->getView() === 'filament.forms.components.iconsax-icon-picker'));
+        $this->assertCount(2, $benefitIcons->map(fn ($field): string => $field->getStatePath())->unique());
+
+        $component->call('create')->assertHasNoFormErrors();
+
+        $service = Service::query()->where('slug', 'iconsax-service')->firstOrFail();
+
+        $this->assertSame('heroicon-o-star', $service->icon);
+        $this->assertSame(['icon-activity', 'icon-airdrop'], array_column($service->benefits, 'icon'));
     }
 
     public function test_slug_is_unique_on_create_and_ignores_the_current_record_on_edit(): void

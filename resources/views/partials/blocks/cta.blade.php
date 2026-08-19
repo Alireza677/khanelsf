@@ -36,11 +36,17 @@
     $contentWidth = filled($settings['content_width'])
         ? max(240, min(1400, (int) $settings['content_width']))
         : null;
+    $hasVisibleContent = filled($content['eyebrow'])
+        || filled($content['title'])
+        || filled($content['description'])
+        || filled($primaryCta['label'])
+        || filled($secondaryCta['label'])
+        || filled($backgroundImage);
 @endphp
 
 @include('partials.blocks._image_control_styles')
 
-@if ($template === 'image')
+@if ($hasVisibleContent && $template === 'image')
     <section
         class="content-block block-cta-image block-configured-background"
         @if ($imageStyle || $backgroundVariables) style="{!! trim($imageStyle.' '.$backgroundVariables, ' ;') !!}" @endif
@@ -70,7 +76,7 @@
             @endif
         </div>
     </section>
-@else
+@elseif ($hasVisibleContent)
     <section @class([
         'content-block',
         'block-cta',
@@ -91,10 +97,19 @@
             @endif
         </div>
 
-        @include('partials.actions.render', [
-            'label' => $primaryCta['label'],
-            'class' => 'button',
-            'presentation' => $primaryPresentation,
-        ])
+        @if (! empty($primaryCta['label']) || ! empty($secondaryCta['label']))
+            <div class="block-cta__actions">
+                @include('partials.actions.render', [
+                    'label' => $primaryCta['label'],
+                    'class' => 'button',
+                    'presentation' => $primaryPresentation,
+                ])
+                @include('partials.actions.render', [
+                    'label' => $secondaryCta['label'],
+                    'class' => 'button button--outline',
+                    'presentation' => $secondaryPresentation,
+                ])
+            </div>
+        @endif
     </section>
 @endif

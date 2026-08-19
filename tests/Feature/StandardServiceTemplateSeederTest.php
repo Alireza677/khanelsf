@@ -35,6 +35,43 @@ class StandardServiceTemplateSeederTest extends TestCase
             collect(app(ServiceProfessionalV1Recipe::class)->blocks())->pluck('type')->all(),
             collect($template->blocks)->pluck('type')->all(),
         );
+
+        $blocks = collect($template->blocks)->keyBy('type');
+        $this->assertCount(9, $blocks);
+        $this->assertSame('modern-split', data_get($blocks['service_header'], 'data.settings.variant'));
+        $this->assertSame('end', data_get($blocks['service_header'], 'data.settings.image_position'));
+        $this->assertSame('شروع همکاری', data_get($blocks['service_header'], 'data.settings.primary_action.label'));
+        $this->assertSame('custom_url', data_get($blocks['service_header'], 'data.settings.primary_action.action.type'));
+        $this->assertSame('#', data_get($blocks['service_header'], 'data.settings.primary_action.action.value'));
+        $this->assertSame('مشاوره و گفتگو', data_get($blocks['service_header'], 'data.settings.secondary_action.label'));
+        $this->assertSame('icon-cards', data_get($blocks['service_benefits'], 'data.settings.variant'));
+        $this->assertSame('connected-steps', data_get($blocks['service_process'], 'data.settings.variant'));
+        $this->assertSame('compact-grid', data_get($blocks['service_deliverables'], 'data.settings.variant'));
+        $this->assertSame('visual-cards', data_get($blocks['service_projects'], 'data.settings.variant'));
+        $this->assertSame('horizontal-gallery', data_get($blocks['service_gallery'], 'data.settings.variant'));
+        $this->assertCount(9, collect($template->blocks)->pluck('data.block_id')->unique());
+    }
+
+    public function test_delete_then_seed_recreates_the_complete_blueprint_and_second_seed_is_stable(): void
+    {
+        Template::query()->where('type', 'service_single')->delete();
+
+        $this->seed(StandardServiceTemplateSeeder::class);
+        $first = $this->standardTemplate();
+        $firstIds = collect($first->blocks)->pluck('data.block_id')->all();
+        $firstBlocks = $first->blocks;
+
+        $this->seed(StandardServiceTemplateSeeder::class);
+        $second = $this->standardTemplate();
+
+        $this->assertSame(1, Template::query()->where('slug', StandardServiceTemplateSeeder::TEMPLATE_SLUG)->count());
+        $this->assertSame($first->getKey(), $second->getKey());
+        $this->assertSame($firstIds, collect($second->blocks)->pluck('data.block_id')->all());
+        $this->assertSame($firstBlocks, $second->blocks);
+        $this->assertSame(
+            collect(app(ServiceProfessionalV1Recipe::class)->blocks())->pluck('type')->all(),
+            collect($second->blocks)->pluck('type')->all(),
+        );
     }
 
     public function test_seeder_is_idempotent_preserves_admin_content_and_keeps_one_default(): void
@@ -50,7 +87,24 @@ class StandardServiceTemplateSeederTest extends TestCase
         ]);
         $this->seed(StandardServiceTemplateSeeder::class);
         $template = $this->standardTemplate();
-        $template->update(['title' => 'عنوان ویرایش‌شده مدیر']);
+        $blocks = $template->blocks;
+        data_set($blocks, '0.data.settings.primary_action.label', 'اقدام اختصاصی مدیر');
+        data_set($blocks, '0.data.settings.primary_action.action', [
+            'schema_version' => 1, 'type' => 'custom_url', 'value' => '/manager-action', 'open_in_new_tab' => false,
+        ]);
+        $blocks[] = [
+            'type' => 'cta',
+            'data' => [
+                'block_id' => 'manager-extra-cta', 'schema_version' => 2, 'template' => 'classic',
+                'content' => [
+                    'eyebrow' => null, 'title' => 'CTA مدیر', 'description' => null,
+                    'primary_cta' => ['label' => null, 'action' => null],
+                    'secondary_cta' => ['label' => null, 'action' => null], 'media' => ['url' => null],
+                ],
+                'settings' => data_get($blocks, '8.data.settings'),
+            ],
+        ];
+        $template->update(['title' => 'عنوان ویرایش‌شده مدیر', 'blocks' => $blocks]);
         $blockIds = collect($template->blocks)->pluck('data.block_id')->all();
 
         $this->seed(StandardServiceTemplateSeeder::class);
@@ -59,6 +113,9 @@ class StandardServiceTemplateSeederTest extends TestCase
         $this->assertSame(1, Template::query()->where('type', 'service_single')->where('is_default', true)->count());
         $this->assertSame('عنوان ویرایش‌شده مدیر', $template->fresh()->title);
         $this->assertSame($blockIds, collect($template->fresh()->blocks)->pluck('data.block_id')->all());
+        $this->assertSame('اقدام اختصاصی مدیر', data_get($template->fresh()->blocks, '0.data.settings.primary_action.label'));
+        $this->assertSame('/manager-action', data_get($template->fresh()->blocks, '0.data.settings.primary_action.action.value'));
+        $this->assertSame('CTA مدیر', data_get($template->fresh()->blocks, '9.data.content.title'));
     }
 
     public function test_new_service_resolves_and_renders_through_the_default_template(): void

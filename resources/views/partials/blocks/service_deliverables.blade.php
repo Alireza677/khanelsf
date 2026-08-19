@@ -6,7 +6,7 @@
 @endphp
 
 @if ($deliverables->isNotEmpty())
-    <section class="content-block service-section service-deliverables" dir="rtl">
+    <section class="content-block service-section service-deliverables service-deliverables--{{ $data['settings']['variant'] }}" dir="rtl">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
@@ -14,6 +14,11 @@
         <ul class="service-grid service-grid--{{ $data['settings']['columns'] }} service-grid--{{ $data['settings']['style'] }}">
             @foreach ($deliverables as $item)
                 <li class="service-card">
+                    @if (filled($item['icon'] ?? null))
+                        <span class="service-card__icon" aria-hidden="true">
+                            @include('partials.blocks._icon', ['icon' => $item['icon']])
+                        </span>
+                    @endif
                     <h3>{{ $item['title'] }}</h3>
                     @if (filled($item['description'] ?? null))
                         <p>{{ $item['description'] }}</p>

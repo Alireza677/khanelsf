@@ -48,13 +48,6 @@ class SitemapService
         }
 
         if (filter_var($this->settings->get('projects_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
-            $this->add($urls, route('projects.index'));
-        }
-
-        if (
-            filter_var($this->settings->get('projects_enabled', true), FILTER_VALIDATE_BOOLEAN)
-            && filter_var($this->settings->get('galleries_enabled', true), FILTER_VALIDATE_BOOLEAN)
-        ) {
             $this->add($urls, route('galleries.index'));
         }
 

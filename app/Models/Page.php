@@ -7,6 +7,7 @@ use App\Models\Concerns\HasFeaturedImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -48,6 +49,11 @@ class Page extends Model implements HasMedia, ResolvesNavigationUrl
     public function hasBlocks(): bool
     {
         return collect($this->blocks)->isNotEmpty();
+    }
+
+    public function revisions(): MorphMany
+    {
+        return $this->morphMany(Revision::class, 'revisionable');
     }
 
     public function resolveNavigationUrl(): ?string

@@ -26,6 +26,9 @@ final class ServiceDeliverablesBlock extends AbstractServiceBlock
             Forms\Components\Select::make('settings.columns')
                 ->label('تعداد ستون‌ها')->options([1 => 'یک', 2 => 'دو', 3 => 'سه'])
                 ->default(2)->required()->native(false),
+            Forms\Components\Select::make('settings.variant')
+                ->label('طرح نمایش')->options(['default' => 'استاندارد', 'compact-grid' => 'شبکه فشرده'])
+                ->default('default')->required()->native(false),
         ];
     }
 
@@ -39,6 +42,7 @@ final class ServiceDeliverablesBlock extends AbstractServiceBlock
         return [
             'style' => ($settings['style'] ?? null) === 'cards' ? 'cards' : 'list',
             'columns' => $this->integerBetween($settings['columns'] ?? null, 1, 3, 2),
+            'variant' => ($settings['variant'] ?? null) === 'compact-grid' ? 'compact-grid' : 'default',
         ];
     }
 }

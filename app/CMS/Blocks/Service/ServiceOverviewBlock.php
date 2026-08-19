@@ -23,6 +23,9 @@ final class ServiceOverviewBlock extends AbstractServiceBlock
             Forms\Components\Select::make('settings.width')
                 ->label('عرض محتوا')->options(['default' => 'استاندارد', 'narrow' => 'باریک'])
                 ->default('default')->required()->native(false),
+            Forms\Components\Select::make('settings.variant')
+                ->label('سبک نمایش')->options(['default' => 'استاندارد', 'professional' => 'حرفه‌ای'])
+                ->default('default')->required()->native(false),
         ];
     }
 
@@ -33,6 +36,9 @@ final class ServiceOverviewBlock extends AbstractServiceBlock
 
     protected function normalizeSettings(array $settings): array
     {
-        return ['width' => ($settings['width'] ?? null) === 'narrow' ? 'narrow' : 'default'];
+        return [
+            'width' => ($settings['width'] ?? null) === 'narrow' ? 'narrow' : 'default',
+            'variant' => ($settings['variant'] ?? null) === 'professional' ? 'professional' : 'default',
+        ];
     }
 }

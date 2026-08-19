@@ -5,12 +5,12 @@
 @endphp
 
 @if ($project && $metrics->isNotEmpty())
-    <section class="content-block project-section">
+    <section class="content-block project-section project-achievements">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
-        <div class="stats-grid">
+        <div class="stats-grid project-achievements__grid">
             @foreach ($metrics as $metric)
                 <article class="stats-item">
                     @if ($metric->icon)

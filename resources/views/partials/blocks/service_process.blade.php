@@ -6,16 +6,16 @@
 @endphp
 
 @if ($process->isNotEmpty())
-    <section class="content-block service-section service-process service-process--{{ $data['settings']['layout'] }}" dir="rtl">
+    <section class="content-block service-section service-process service-process--{{ $data['settings']['layout'] }} service-process--{{ $data['settings']['variant'] }}" dir="rtl">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
         <ol class="service-process__list">
-            @foreach ($process as $item)
+            @foreach ($process as $index => $item)
                 <li>
                     @if ($data['settings']['show_steps'])
-                        <span class="service-process__step">{{ (int) ($item['step'] ?? 0) }}</span>
+                        <span class="service-process__step">{{ $index + 1 }}</span>
                     @endif
                     <div>
                         <h3>{{ $item['title'] }}</h3>

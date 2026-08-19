@@ -24,6 +24,9 @@ final class ServiceGalleryBlock extends AbstractServiceBlock
                 ->label('تعداد ستون‌ها')->options([1 => 'یک', 2 => 'دو', 3 => 'سه', 4 => 'چهار'])
                 ->default(3)->required()->native(false),
             Forms\Components\Toggle::make('settings.lightbox')->label('نمایش تمام‌صفحه تصاویر')->default(true),
+            Forms\Components\Select::make('settings.variant')
+                ->label('سبک نمایش')->options(['default' => 'استاندارد', 'horizontal-gallery' => 'گالری افقی'])
+                ->default('default')->required()->native(false),
         ];
     }
 
@@ -37,6 +40,7 @@ final class ServiceGalleryBlock extends AbstractServiceBlock
         return [
             'columns' => $this->integerBetween($settings['columns'] ?? null, 1, 4, 3),
             'lightbox' => $this->boolean($settings['lightbox'] ?? null, true),
+            'variant' => ($settings['variant'] ?? null) === 'horizontal-gallery' ? 'horizontal-gallery' : 'default',
         ];
     }
 }

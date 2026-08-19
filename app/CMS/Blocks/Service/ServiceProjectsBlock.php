@@ -23,6 +23,9 @@ final class ServiceProjectsBlock extends AbstractServiceBlock
             Forms\Components\Select::make('settings.columns')
                 ->label('تعداد ستون‌ها')->options([1 => 'یک', 2 => 'دو', 3 => 'سه'])
                 ->default(3)->required()->native(false),
+            Forms\Components\Select::make('settings.variant')
+                ->label('سبک نمایش')->options(['default' => 'استاندارد', 'visual-cards' => 'کارت تصویری'])
+                ->default('default')->required()->native(false),
         ];
     }
 
@@ -33,6 +36,9 @@ final class ServiceProjectsBlock extends AbstractServiceBlock
 
     protected function normalizeSettings(array $settings): array
     {
-        return ['columns' => $this->integerBetween($settings['columns'] ?? null, 1, 3, 3)];
+        return [
+            'columns' => $this->integerBetween($settings['columns'] ?? null, 1, 3, 3),
+            'variant' => ($settings['variant'] ?? null) === 'visual-cards' ? 'visual-cards' : 'default',
+        ];
     }
 }

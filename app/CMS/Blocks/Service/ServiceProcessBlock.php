@@ -24,6 +24,9 @@ final class ServiceProcessBlock extends AbstractServiceBlock
                 ->label('چیدمان')->options(['vertical' => 'عمودی', 'horizontal' => 'افقی'])
                 ->default('vertical')->required()->native(false),
             Forms\Components\Toggle::make('settings.show_steps')->label('نمایش شماره مراحل')->default(true),
+            Forms\Components\Select::make('settings.variant')
+                ->label('سبک نمایش')->options(['default' => 'استاندارد', 'connected-steps' => 'مراحل پیوسته'])
+                ->default('default')->required()->native(false),
         ];
     }
 
@@ -37,6 +40,7 @@ final class ServiceProcessBlock extends AbstractServiceBlock
         return [
             'layout' => ($settings['layout'] ?? null) === 'horizontal' ? 'horizontal' : 'vertical',
             'show_steps' => $this->boolean($settings['show_steps'] ?? null, true),
+            'variant' => ($settings['variant'] ?? null) === 'connected-steps' ? 'connected-steps' : 'default',
         ];
     }
 }

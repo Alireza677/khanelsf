@@ -1194,6 +1194,195 @@
         gap: 1rem;
     }
 
+    /* Keep nested repeaters visually subordinate to the selected block while
+       making the currently expanded item unmistakable. This scope deliberately
+       excludes repeaters elsewhere in Filament. */
+    .block-builder-inspector .fi-fo-repeater {
+        border-top: 1px solid rgb(229 231 235);
+        padding-top: 1rem;
+    }
+
+    .dark .block-builder-inspector .fi-fo-repeater {
+        border-top-color: rgb(255 255 255 / .1);
+    }
+
+    .block-builder-inspector .fi-fo-repeater > ul > .fi-grid {
+        gap: .85rem;
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item {
+        overflow: hidden;
+        border-radius: .75rem;
+        background: rgb(255 255 255);
+        box-shadow: 0 0 0 1px rgb(209 213 219);
+        transition: background-color .15s ease, box-shadow .15s ease;
+    }
+
+    .dark .block-builder-inspector .fi-fo-repeater-item {
+        background: rgb(17 24 39);
+        box-shadow: 0 0 0 1px rgb(255 255 255 / .14);
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item-header {
+        min-width: 0;
+        background: rgb(255 255 255);
+        transition: background-color .15s ease, color .15s ease;
+    }
+
+    .dark .block-builder-inspector .fi-fo-repeater-item-header {
+        background: rgb(17 24 39);
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item.fi-collapsed:hover {
+        background: rgb(var(--primary-50));
+        box-shadow: 0 0 0 1px rgb(var(--primary-300));
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item.fi-collapsed:hover > .fi-fo-repeater-item-header,
+    .block-builder-inspector .fi-fo-repeater-item.fi-collapsed:focus-within > .fi-fo-repeater-item-header {
+        background: rgb(var(--primary-50));
+    }
+
+    .dark .block-builder-inspector .fi-fo-repeater-item.fi-collapsed:hover,
+    .dark .block-builder-inspector .fi-fo-repeater-item.fi-collapsed:focus-within > .fi-fo-repeater-item-header {
+        background: rgb(var(--primary-950) / .28);
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item:focus-within {
+        box-shadow: 0 0 0 2px rgb(var(--primary-500));
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) {
+        box-shadow: 0 0 0 2px rgb(var(--primary-600));
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) > .fi-fo-repeater-item-header {
+        background: rgb(var(--primary-600));
+        color: rgb(255 255 255);
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) > .fi-fo-repeater-item-header h4,
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) > .fi-fo-repeater-item-header button,
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) > .fi-fo-repeater-item-header svg {
+        color: rgb(255 255 255);
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) > .fi-fo-repeater-item-header button:hover,
+    .block-builder-inspector .fi-fo-repeater-item:not(.fi-collapsed) > .fi-fo-repeater-item-header button:focus-visible {
+        background: rgb(255 255 255 / .16);
+    }
+
+    .block-builder-inspector .fi-fo-repeater-item-content {
+        background: rgb(255 255 255);
+        padding: 1.25rem;
+    }
+
+    .dark .block-builder-inspector .fi-fo-repeater-item-content {
+        background: rgb(17 24 39);
+    }
+
+    .block-builder-inspector .fi-fo-repeater > .fi-ac {
+        margin-top: .25rem;
+    }
+
+    .page-history {
+        display: grid;
+        gap: 1rem;
+        min-height: 24rem;
+    }
+
+    .page-history__tabs {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border-bottom: 1px solid rgb(229 231 235);
+        background: rgb(255 255 255);
+    }
+
+    .dark .page-history__tabs {
+        border-bottom-color: rgb(255 255 255 / .1);
+        background: rgb(17 24 39);
+    }
+
+    .page-history__tabs button {
+        border-bottom: 2px solid transparent;
+        padding: .75rem;
+        color: rgb(107 114 128);
+        font-weight: 600;
+    }
+
+    .page-history__tabs button.is-active {
+        border-bottom-color: rgb(var(--primary-600));
+        color: rgb(var(--primary-600));
+    }
+
+    .page-history__panel,
+    .page-history__list {
+        display: grid;
+        gap: .65rem;
+    }
+
+    .page-history__toolbar {
+        display: flex;
+        gap: .5rem;
+    }
+
+    .page-history__toolbar button,
+    .page-history__apply,
+    .page-history__load-more {
+        border-radius: .5rem;
+        padding: .55rem .8rem;
+        background: rgb(var(--primary-600));
+        color: white;
+        font-weight: 600;
+    }
+
+    .page-history__toolbar button:disabled,
+    .page-history__apply:disabled {
+        cursor: not-allowed;
+        opacity: .45;
+    }
+
+    .page-history__load-more {
+        justify-self: center;
+        background: rgb(var(--primary-50));
+        color: rgb(var(--primary-700));
+    }
+
+    .page-history__entry {
+        display: grid;
+        gap: .2rem;
+        border: 1px solid rgb(229 231 235);
+        border-radius: .65rem;
+        padding: .75rem;
+        text-align: start;
+    }
+
+    .page-history__entry:hover,
+    .page-history__entry:focus-visible {
+        border-color: rgb(var(--primary-400));
+        background: rgb(var(--primary-50));
+    }
+
+    .page-history__entry.is-selected {
+        border-color: rgb(var(--primary-600));
+        box-shadow: 0 0 0 1px rgb(var(--primary-600));
+    }
+
+    .page-history__entry small,
+    .page-history__entry time,
+    .page-history__empty {
+        color: rgb(107 114 128);
+        font-size: .75rem;
+    }
+
+    .page-history__entry strong {
+        color: rgb(var(--primary-600));
+        font-size: .78rem;
+    }
+
     .block-builder-inspector__empty,
     .block-builder-inspector__empty-tab,
     .block-builder-canvas__empty {
@@ -1386,6 +1575,27 @@
 
         .block-builder-inspector__selection {
             max-height: 36rem;
+        }
+    }
+
+    @media (max-width: 639px) {
+        .block-builder-inspector .fi-fo-repeater-item-header {
+            gap: .5rem;
+            padding: .75rem;
+        }
+
+        .block-builder-inspector .fi-fo-repeater-item-header h4 {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .block-builder-inspector .fi-fo-repeater-item-header ul {
+            flex-shrink: 0;
+            gap: .35rem;
+        }
+
+        .block-builder-inspector .fi-fo-repeater-item-content {
+            padding: 1rem;
         }
     }
 

@@ -25,7 +25,7 @@ final class ServiceBenefitsBlock extends AbstractServiceBlock
                 ->default(3)->required()->native(false),
             Forms\Components\Toggle::make('settings.show_icons')->label('نمایش آیکن')->default(true),
             Forms\Components\Select::make('settings.variant')
-                ->label('سبک نمایش')->options(['default' => 'استاندارد', 'cards' => 'کارت'])
+                ->label('سبک نمایش')->options(['default' => 'استاندارد', 'cards' => 'کارت', 'icon-cards' => 'کارت آیکن‌دار'])
                 ->default('default')->required()->native(false),
         ];
     }
@@ -40,7 +40,9 @@ final class ServiceBenefitsBlock extends AbstractServiceBlock
         return [
             'columns' => $this->integerBetween($settings['columns'] ?? null, 1, 4, 3),
             'show_icons' => $this->boolean($settings['show_icons'] ?? null, true),
-            'variant' => ($settings['variant'] ?? null) === 'cards' ? 'cards' : 'default',
+            'variant' => in_array($settings['variant'] ?? null, ['cards', 'icon-cards'], true)
+                ? $settings['variant']
+                : 'default',
         ];
     }
 }
