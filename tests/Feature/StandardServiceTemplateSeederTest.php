@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\CMS\Templates\Recipes\ServiceProfessionalV1Recipe;
 use App\CMS\Templates\Recipes\TemplateRecipeCompatibilityValidator;
+use App\CMS\Templates\Recipes\TemplateRecipeInstantiator;
 use App\CMS\Templates\TemplatePublicationValidator;
 use App\Models\Service;
 use App\Models\Template;
@@ -116,6 +117,105 @@ class StandardServiceTemplateSeederTest extends TestCase
         $this->assertSame('اقدام اختصاصی مدیر', data_get($template->fresh()->blocks, '0.data.settings.primary_action.label'));
         $this->assertSame('/manager-action', data_get($template->fresh()->blocks, '0.data.settings.primary_action.action.value'));
         $this->assertSame('CTA مدیر', data_get($template->fresh()->blocks, '9.data.content.title'));
+    }
+
+    public function test_seeder_repairs_a_production_shaped_legacy_template_through_registered_normalizers(): void
+    {
+        $draft = app(TemplateRecipeInstantiator::class)->makeDraft(StandardServiceTemplateSeeder::RECIPE_KEY);
+        $this->assertSame([], app(TemplatePublicationValidator::class)->validate($draft->toArray()));
+
+        $legacyBlocks = collect($draft->blocks)->map(function (array $block): array {
+            $block['data']['settings'] = array_reverse($block['data']['settings'], true);
+
+            if (array_key_exists('title', $block['data']['content'])) {
+                $block['data']['content']['title'] = 'editor-'.$block['type'];
+            }
+
+            return $block;
+        })->all();
+
+        data_set($legacyBlocks, '0.data.settings', [
+            'variant' => 'legacy',
+            'alignment' => 'center',
+            'show_image' => false,
+            'heading_tag' => 'h2',
+            'show_excerpt' => false,
+            'primary_action' => [
+                'label' => 'اقدام موجود مدیر',
+                'action' => [
+                    'schema_version' => 1,
+                    'type' => 'custom_url',
+                    'value' => '/existing-manager-action',
+                    'open_in_new_tab' => false,
+                ],
+            ],
+            'secondary_action' => [
+                'label' => 'اقدام دوم مدیر',
+                'action' => null,
+            ],
+        ]);
+        $legacyBlocks[] = [
+            'type' => 'cta',
+            'data' => [
+                'block_id' => 'manager-extra-cta',
+                'schema_version' => 2,
+                'template' => 'classic',
+                'content' => [
+                    'eyebrow' => null,
+                    'title' => 'CTA اضافه مدیر',
+                    'description' => 'محتوای اضافه مدیر',
+                    'primary_cta' => ['label' => null, 'action' => null],
+                    'secondary_cta' => ['label' => null, 'action' => null],
+                    'media' => ['url' => null],
+                ],
+                'settings' => array_reverse(data_get($draft->blocks, '8.data.settings'), true),
+            ],
+        ];
+
+        $template = Template::query()->create([
+            'title' => 'قالب Production قدیمی',
+            'slug' => StandardServiceTemplateSeeder::TEMPLATE_SLUG,
+            'type' => 'service_single',
+            'status' => 'published',
+            'priority' => 0,
+            'is_default' => true,
+            'conditions' => ['type' => 'all'],
+            'blocks' => $legacyBlocks,
+        ]);
+        $originalIds = collect($legacyBlocks)->pluck('data.block_id')->all();
+        $legacyErrors = app(TemplatePublicationValidator::class)->validate($template->toArray());
+
+        $this->assertNotSame([], $legacyErrors);
+        foreach (collect($draft->blocks)->pluck('type')->unique() as $type) {
+            $this->assertTrue(collect($legacyErrors)->contains(
+                fn (string $error): bool => str_contains($error, "[{$type}]") && str_contains($error, 'not canonical'),
+            ), "Legacy block [{$type}] should prove non-canonical before seeding.");
+        }
+
+        $this->seed(StandardServiceTemplateSeeder::class);
+        $repaired = $template->fresh();
+        $repairedBlocks = collect($repaired->blocks);
+        $firstRunBlocks = $repaired->blocks;
+
+        $this->assertSame([], app(TemplatePublicationValidator::class)->validate($repaired->toArray()));
+        $this->assertSame($originalIds, $repairedBlocks->pluck('data.block_id')->all());
+        $this->assertCount(10, $repairedBlocks);
+        foreach (collect($draft->blocks)->filter(fn (array $block): bool => array_key_exists('title', $block['data']['content'])) as $draftBlock) {
+            $this->assertSame(
+                'editor-'.$draftBlock['type'],
+                data_get($repairedBlocks->firstWhere('type', $draftBlock['type']), 'data.content.title'),
+            );
+        }
+        $this->assertSame('اقدام موجود مدیر', data_get($repairedBlocks->firstWhere('type', 'service_header'), 'data.settings.primary_action.label'));
+        $this->assertSame('/existing-manager-action', data_get($repairedBlocks->firstWhere('type', 'service_header'), 'data.settings.primary_action.action.value'));
+        $this->assertSame('CTA اضافه مدیر', data_get($repairedBlocks->last(), 'data.content.title'));
+        $this->assertSame('محتوای اضافه مدیر', data_get($repairedBlocks->last(), 'data.content.description'));
+        $this->assertSame('modern-split', data_get($repairedBlocks->firstWhere('type', 'service_header'), 'data.settings.variant'));
+        $this->assertSame('end', data_get($repairedBlocks->firstWhere('type', 'service_header'), 'data.settings.image_position'));
+
+        $this->seed(StandardServiceTemplateSeeder::class);
+
+        $this->assertSame($firstRunBlocks, $template->fresh()->blocks);
     }
 
     public function test_new_service_resolves_and_renders_through_the_default_template(): void

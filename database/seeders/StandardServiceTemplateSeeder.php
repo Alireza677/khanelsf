@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\CMS\Blocks\BlockRegistry;
+use App\CMS\Blocks\Contracts\BlockNormalizer;
+use App\CMS\Blocks\CTA\CTADataNormalizer;
 use App\CMS\Templates\Recipes\TemplateRecipeCompatibilityValidator;
 use App\CMS\Templates\Recipes\TemplateRecipeInstantiator;
 use App\CMS\Templates\Recipes\TemplateRecipeRegistry;
@@ -104,9 +107,33 @@ final class StandardServiceTemplateSeeder extends Seeder
             return $block;
         });
 
-        return $updated
+        $merged = $updated
             ->concat(collect($recipe)->reject(fn (array $block): bool => in_array($block['type'] ?? null, $presentTypes, true)))
             ->values()
             ->all();
+
+        // array_replace_recursive() intentionally preserves editor-owned data,
+        // but it also preserves legacy key order and shapes. Run the merged
+        // data through the exact normalizers used by the publication validator.
+        // Do not use BlockEditorHydrator here: its identity manager may replace
+        // existing IDs, while a normalizer preserves block_id by contract.
+        $normalizers = [
+            ...app(BlockRegistry::class)->normalizers(),
+            'cta' => app(CTADataNormalizer::class),
+        ];
+
+        return collect($merged)->map(function (array $block) use ($normalizers): array {
+            $normalizer = $normalizers[$block['type'] ?? ''] ?? null;
+
+            if (! $normalizer instanceof BlockNormalizer) {
+                return $block;
+            }
+
+            $block['data'] = $normalizer->normalize(
+                is_array($block['data'] ?? null) ? $block['data'] : [],
+            );
+
+            return $block;
+        })->all();
     }
 }
