@@ -38,6 +38,7 @@ class ActivityCreationWizardTest extends TestCase
             ->setActionData(['client_project_id' => $project->id])
             ->goToNextWizardStep('mountedActionForm')
             ->assertWizardCurrentStep(2, 'mountedActionForm')
+            ->assertSee('filamentJalaliFormComponent', escape: false)
             ->goToNextWizardStep('mountedActionForm')
             ->assertHasActionErrors(['title', 'duration_remainder_minutes'])
             ->assertWizardCurrentStep(2, 'mountedActionForm');
@@ -81,5 +82,13 @@ class ActivityCreationWizardTest extends TestCase
         $this->assertSame(ClientProjectActivity::VISIBILITY_INTERNAL, $activity->visibility);
         $this->assertSame(ClientProjectActivity::STATUS_DRAFT, $activity->status);
         $this->assertArrayNotHasKey('internal_notes', $activity->toArray());
+    }
+
+    public function test_jalali_date_picker_frontend_asset_is_published(): void
+    {
+        $assetPath = public_path('js/mokhosh/filament-jalali/components/filament-jalali.js');
+
+        $this->assertFileExists($assetPath);
+        $this->assertStringContainsString('window.dayjs', file_get_contents($assetPath));
     }
 }
