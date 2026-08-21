@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Services\CartService;
 use App\Services\ModuleService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -53,7 +54,7 @@ class CartController extends Controller
         return back()->with('success', 'سبد خرید به‌روزرسانی شد.');
     }
 
-    public function remove(Request $request, CartService $cart, ModuleService $modules): RedirectResponse
+    public function remove(Request $request, CartService $cart, ModuleService $modules): RedirectResponse|JsonResponse
     {
         $this->abortIfShopDisabled($modules);
 
@@ -62,6 +63,21 @@ class CartController extends Controller
         ]);
 
         $cart->remove((int) $validated['product_id']);
+
+        if ($request->expectsJson()) {
+            $count = $cart->count();
+            $subtotal = $cart->subtotal();
+
+            return response()->json([
+                'success' => true,
+                'removed_product_id' => (int) $validated['product_id'],
+                'count' => $count,
+                'display_count' => $count > 99 ? '99+' : (string) $count,
+                'subtotal' => $subtotal,
+                'subtotal_formatted' => number_format($subtotal).' تومان',
+                'is_empty' => $cart->isEmpty(),
+            ]);
+        }
 
         return back()->with('success', 'محصول از سبد خرید حذف شد.');
     }

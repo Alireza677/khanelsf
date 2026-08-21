@@ -475,7 +475,7 @@ class PageResource extends Resource
                                     'archived' => 'بایگانی‌شده',
                                 ])
                                 ->default('draft'),
-                            Forms\Components\DateTimePicker::make('published_at')
+                            Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->label('زمان انتشار')
                                 ->seconds(false)
                                 ->helperText('اگر وضعیت منتشرشده باشد و این فیلد خالی بماند، برگه بلافاصله منتشر می‌شود. دکمه مشاهده عمومی فقط برای رکوردهای منتشرشده نمایش داده می‌شود.'),
@@ -525,12 +525,12 @@ class PageResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('published_at')
                     ->label('زمان انتشار')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین ویرایش')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(),
             ])

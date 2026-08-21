@@ -1,4 +1,6 @@
 import './bootstrap';
+import { initIndustrialStickyHeader } from './components/industrial-sticky-header';
+import { initHeaderOverlays } from './components/header-overlays';
 
 if (document.querySelector('[data-hero-dotted-surface]')) {
     import('./components/hero-dotted-surface');
@@ -76,43 +78,6 @@ const initMobileHeader = () => {
                 close();
             }
         });
-    });
-};
-
-const initIndustrialStickyHeader = () => {
-    document.querySelectorAll('.industrial-header:not(.industrial-header--static)').forEach((header) => {
-        if (
-            header.dataset.stickyActionsInitialized === 'true'
-            || ! header.querySelector('.industrial-header__top-actions')
-        ) {
-            return;
-        }
-
-        header.dataset.stickyActionsInitialized = 'true';
-
-        let lastScrollY = Math.max(window.scrollY, 0);
-        let scrollFrame;
-
-        const update = () => {
-            const currentScrollY = Math.max(window.scrollY, 0);
-
-            if (currentScrollY <= 16 || currentScrollY < lastScrollY) {
-                header.classList.remove('is-top-actions-hidden');
-            } else if (currentScrollY > lastScrollY) {
-                header.classList.add('is-top-actions-hidden');
-            }
-
-            lastScrollY = currentScrollY;
-            scrollFrame = undefined;
-        };
-
-        window.addEventListener('scroll', () => {
-            if (scrollFrame !== undefined) {
-                return;
-            }
-
-            scrollFrame = requestAnimationFrame(update);
-        }, { passive: true });
     });
 };
 
@@ -632,6 +597,7 @@ const initCalculatorResultModals = () => {
 const initPublicInteractions = () => {
     initMobileHeader();
     initIndustrialStickyHeader();
+    initHeaderOverlays();
     initDesktopNavigationOverflow();
     initActionPlaceholders();
     initGalleryLightbox();

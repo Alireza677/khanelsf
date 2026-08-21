@@ -180,29 +180,270 @@
 
                     header.dataset.stickyActionsInitialized = 'true'
 
-                    let lastScrollY = Math.max(window.scrollY, 0)
+                    const hideThreshold = 106
+                    const showThreshold = 5
+                    let hidden = header.classList.contains('is-top-actions-hidden')
                     let scrollFrame
 
                     const update = function () {
                         const currentScrollY = Math.max(window.scrollY, 0)
+                        let nextHidden = hidden
 
-                        if (currentScrollY <= 16 || currentScrollY < lastScrollY) {
-                            header.classList.remove('is-top-actions-hidden')
-                        } else if (currentScrollY > lastScrollY) {
-                            header.classList.add('is-top-actions-hidden')
+                        if (currentScrollY <= showThreshold) {
+                            nextHidden = false
+                        } else if (currentScrollY >= hideThreshold) {
+                            nextHidden = true
                         }
 
-                        lastScrollY = currentScrollY
+                        if (nextHidden !== hidden) {
+                            hidden = nextHidden
+                            header.classList.toggle('is-top-actions-hidden', hidden)
+                        }
+
                         scrollFrame = undefined
                     }
 
-                    window.addEventListener('scroll', function () {
+                    const scheduleUpdate = function () {
                         if (scrollFrame !== undefined) {
                             return
                         }
 
                         scrollFrame = requestAnimationFrame(update)
-                    }, { passive: true })
+                    }
+
+                    update()
+                    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+                    window.addEventListener('pageshow', scheduleUpdate)
+                    window.addEventListener('load', scheduleUpdate, { once: true })
+                })
+            }
+
+            const initHeaderOverlays = function () {
+                if (document.documentElement.dataset.cartDrawerRemovalsInitialized !== 'true') {
+                    document.documentElement.dataset.cartDrawerRemovalsInitialized = 'true'
+                    let cartMutationQueue = Promise.resolve()
+                    document.addEventListener('submit', function (event) {
+                        const form = event.target.closest('[data-cart-drawer-remove]')
+                        if (! form || ! window.fetch) {
+                            return
+                        }
+                        event.preventDefault()
+                        const button = form.querySelector('button[type="submit"]')
+                        const drawer = form.closest('[data-header-overlay]')
+                        const row = form.closest('[data-cart-item]')
+                        const error = drawer?.querySelector('[data-cart-drawer-error]')
+                        button.disabled = true
+                        button.classList.add('is-loading')
+                        cartMutationQueue = cartMutationQueue.then(async function () {
+                            if (error) {
+                                error.hidden = true
+                                error.textContent = ''
+                            }
+                            try {
+                                const response = await fetch(form.action, {
+                                    method: form.method,
+                                    body: new FormData(form),
+                                    credentials: 'same-origin',
+                                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                })
+                                if (! response.ok) {
+                                    throw new Error('Cart removal failed')
+                                }
+                                const state = await response.json()
+                                const items = drawer.querySelector('[data-cart-items]')
+                                const emptyState = drawer.querySelector('[data-cart-empty-state]')
+                                const footer = drawer.querySelector('[data-cart-footer]')
+                                const subtotalBlock = drawer.querySelector('[data-cart-subtotal-block]')
+                                const actions = drawer.querySelector('[data-cart-actions]')
+                                if (state.is_empty) {
+                                    items?.querySelectorAll('[data-cart-item]').forEach(function (item) { item.remove() })
+                                } else {
+                                    row.remove()
+                                }
+                                document.querySelectorAll('[data-cart-trigger]').forEach(function (trigger) {
+                                    trigger.setAttribute('aria-label', state.count > 0 ? 'سبد خرید، ' + state.count + ' کالا' : 'سبد خرید')
+                                })
+                                document.querySelectorAll('[data-cart-badge]').forEach(function (badge) {
+                                    badge.textContent = state.display_count
+                                    badge.hidden = state.count === 0
+                                })
+                                const subtotal = drawer.querySelector('[data-cart-subtotal]')
+                                if (subtotal) {
+                                    subtotal.textContent = state.subtotal_formatted
+                                }
+                                items?.toggleAttribute('hidden', state.is_empty)
+                                emptyState?.toggleAttribute('hidden', ! state.is_empty)
+                                footer?.toggleAttribute('hidden', state.is_empty)
+                                subtotalBlock?.toggleAttribute('hidden', state.is_empty)
+                                actions?.toggleAttribute('hidden', state.is_empty)
+                                ;(drawer.querySelector('[data-cart-drawer-remove] button:not([disabled])')
+                                    || drawer.querySelector('[data-cart-empty-state]:not([hidden]) a')
+                                    || drawer.querySelector('[data-header-overlay-panel]'))?.focus()
+                            } catch (exception) {
+                                button.disabled = false
+                                button.classList.remove('is-loading')
+                                if (error) {
+                                    error.textContent = 'حذف محصول انجام نشد. لطفاً دوباره تلاش کنید.'
+                                    error.hidden = false
+                                }
+                            }
+                        })
+                    })
+                }
+
+                document.querySelectorAll('[data-search-scope]').forEach(function (form) {
+                    if (form.dataset.searchScopeInitialized === 'true') {
+                        return
+                    }
+                    form.dataset.searchScopeInitialized = 'true'
+                    const selector = form.querySelector('[data-search-scope-selector]')
+                    const toggle = form.querySelector('[data-search-scope-toggle]')
+                    const master = form.querySelector('[data-search-scope-all]')
+                    const summary = form.querySelector('[data-search-scope-summary]')
+                    const types = Array.from(form.querySelectorAll('[data-search-scope-type]'))
+                    if (! selector || ! toggle || ! master || ! summary || types.length === 0) {
+                        return
+                    }
+                    const sync = function () {
+                        const selected = types.filter(function (input) { return input.checked })
+                        master.checked = selected.length === types.length
+                        master.indeterminate = selected.length > 0 && selected.length < types.length
+                        summary.textContent = selected.length === types.length
+                            ? 'جستجو در همه'
+                            : selected.length === 1
+                                ? 'فقط ' + selected[0].nextElementSibling.textContent.trim()
+                                : 'جستجو در ' + selected.length.toLocaleString('fa-IR') + ' بخش'
+                    }
+                    toggle.addEventListener('click', function () {
+                        const expanded = ! selector.classList.contains('is-expanded')
+                        selector.classList.toggle('is-expanded', expanded)
+                        toggle.setAttribute('aria-expanded', String(expanded))
+                    })
+                    master.addEventListener('change', function () {
+                        types.forEach(function (input) { input.checked = true })
+                        sync()
+                    })
+                    types.forEach(function (input) {
+                        input.addEventListener('change', function () {
+                            if (! types.some(function (item) { return item.checked })) {
+                                input.checked = true
+                            }
+                            sync()
+                        })
+                    })
+                    form.addEventListener('submit', function () {
+                        const selected = types.filter(function (input) { return input.checked })
+                        types.forEach(function (input) { input.removeAttribute('name') })
+                        if (selected.length < types.length) {
+                            selected.forEach(function (input) { input.setAttribute('name', 'types[]') })
+                        }
+                    })
+                    sync()
+                })
+
+                if (document.documentElement.dataset.headerOverlaysInitialized === 'true') {
+                    return
+                }
+
+                const overlays = new Map(Array.from(document.querySelectorAll('[data-header-overlay]')).map(function (overlay) {
+                    return [overlay.id, overlay]
+                }))
+
+                if (overlays.size === 0) {
+                    return
+                }
+
+                document.documentElement.dataset.headerOverlaysInitialized = 'true'
+                let activeOverlay = null
+                let returnFocus = null
+                let inertElements = []
+                const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+                const close = function (restoreFocus = true) {
+                    if (! activeOverlay) {
+                        return
+                    }
+
+                    const trigger = returnFocus
+                    activeOverlay.hidden = true
+                    activeOverlay = null
+                    returnFocus = null
+                    inertElements.forEach(function (entry) { entry.element.inert = entry.wasInert })
+                    inertElements = []
+                    document.body.classList.remove('header-overlay-open')
+                    document.querySelectorAll('[data-header-overlay-trigger][aria-expanded="true"]').forEach(function (item) {
+                        item.setAttribute('aria-expanded', 'false')
+                    })
+
+                    if (restoreFocus) {
+                        trigger?.focus()
+                    }
+                }
+
+                const open = function (overlay, trigger) {
+                    close(false)
+                    document.querySelectorAll('[data-public-account-controls] details[open]').forEach(function (details) {
+                        details.removeAttribute('open')
+                    })
+                    activeOverlay = overlay
+                    returnFocus = trigger
+                    overlay.hidden = false
+                    trigger.setAttribute('aria-expanded', 'true')
+                    document.body.classList.add('header-overlay-open')
+                    inertElements = Array.from(document.body.children)
+                        .filter(function (element) { return element !== overlay && element.tagName !== 'SCRIPT' })
+                        .map(function (element) {
+                            const wasInert = element.inert
+                            element.inert = true
+                            return { element, wasInert }
+                        })
+                    requestAnimationFrame(function () {
+                        const autofocus = overlay.querySelector('[data-header-overlay-autofocus]')
+                        ;(autofocus || overlay.querySelector('[data-header-overlay-panel]'))?.focus()
+                    })
+                }
+
+                document.addEventListener('click', function (event) {
+                    const trigger = event.target.closest('[data-header-overlay-trigger]')
+
+                    if (trigger) {
+                        const overlay = overlays.get(trigger.dataset.headerOverlayTrigger)
+                        if (overlay) {
+                            event.preventDefault()
+                            open(overlay, trigger)
+                        }
+                        return
+                    }
+
+                    if (activeOverlay && event.target.closest('[data-header-overlay-close]')) {
+                        close()
+                    }
+                })
+
+                document.addEventListener('keydown', function (event) {
+                    if (! activeOverlay) {
+                        return
+                    }
+                    if (event.key === 'Escape') {
+                        event.preventDefault()
+                        close()
+                        return
+                    }
+                    if (event.key !== 'Tab') {
+                        return
+                    }
+                    const focusable = Array.from(activeOverlay.querySelectorAll(focusableSelector)).filter(function (element) {
+                        return ! element.hidden
+                    })
+                    const first = focusable[0]
+                    const last = focusable.at(-1)
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault()
+                        last.focus()
+                    } else if (! event.shiftKey && document.activeElement === last) {
+                        event.preventDefault()
+                        first.focus()
+                    }
                 })
             }
 
@@ -454,6 +695,7 @@
             const initPublicInteractions = function () {
                 initMobileHeader()
                 initIndustrialStickyHeader()
+                initHeaderOverlays()
                 initDesktopNavigationOverflow()
                 initActionPlaceholders()
                 initHeroTemplateSelectors()

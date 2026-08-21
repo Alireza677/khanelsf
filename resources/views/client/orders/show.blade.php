@@ -11,7 +11,7 @@
         </header>
 
         <div class="account-order-detail__summary">
-            <div><small>تاریخ</small><strong>{{ $order->created_at->format('Y/m/d') }}</strong></div>
+            <div><small>تاریخ</small><strong><x-persian-date :value="$order->created_at" /></strong></div>
             <div><small>وضعیت</small><strong>{{ $order->statusLabel() }}</strong></div>
             <div><small>وضعیت پرداخت</small><strong>{{ $order->paymentStatusLabel() }}</strong></div>
             <div><small>مبلغ کل</small><strong>{{ number_format((float) $order->total) }} تومان</strong></div>

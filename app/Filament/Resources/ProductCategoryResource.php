@@ -98,7 +98,7 @@ class ProductCategoryResource extends Resource
                 Tables\Columns\TextColumn::make('products_count')->counts('products')->label('Products')->sortable(),
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('sort_order')->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options(['active' => 'Active', 'inactive' => 'Inactive']),

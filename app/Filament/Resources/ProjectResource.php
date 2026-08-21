@@ -7,6 +7,7 @@ use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ProjectResource\Pages;
 use App\Models\Project;
+use App\Models\ProjectDiscoveryVocabulary;
 use App\Services\ModuleService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -76,7 +77,7 @@ class ProjectResource extends Resource
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('جزئیات تکمیلی')
                         ->schema([
-                            Forms\Components\DatePicker::make('project_date')
+                            Forms\Components\DatePicker::make('project_date')->jalali()
                                 ->label('تاریخ پروژه'),
                             Forms\Components\TextInput::make('external_url')
                                 ->label('نشانی وب پروژه')
@@ -137,9 +138,9 @@ class ProjectResource extends Resource
                                 ->optionsLimit(50)
                                 ->helperText('خدمات ساختاریافته مرتبط با این پروژه را انتخاب کنید. خدمات قدیمی در زبانه «جزئیات تکمیلی» همچنان در دسترس هستند.')
                                 ->columnSpanFull(),
-                            Forms\Components\DatePicker::make('project_started_at')
+                            Forms\Components\DatePicker::make('project_started_at')->jalali()
                                 ->label('تاریخ شروع پروژه'),
-                            Forms\Components\DatePicker::make('project_completed_at')
+                            Forms\Components\DatePicker::make('project_completed_at')->jalali()
                                 ->label('تاریخ پایان پروژه'),
                             Forms\Components\Textarea::make('challenge')
                                 ->label('چالش پروژه')
@@ -164,7 +165,7 @@ class ProjectResource extends Resource
                             Forms\Components\Select::make('discoveryTerms')
                                 ->label('ویژگی‌های قابل فیلتر')
                                 ->relationship('discoveryTerms', 'name')
-                                ->options(fn (): array => \App\Models\ProjectDiscoveryVocabulary::query()
+                                ->options(fn (): array => ProjectDiscoveryVocabulary::query()
                                     ->active()
                                     ->with(['terms' => fn ($query) => $query->active()])
                                     ->orderBy('sort_order')
@@ -324,7 +325,7 @@ class ProjectResource extends Resource
                                     'archived' => 'بایگانی‌شده',
                                 ])
                                 ->default('draft'),
-                            Forms\Components\DateTimePicker::make('published_at')
+                            Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->label('زمان انتشار')
                                 ->seconds(false)
                                 ->helperText('برای انتشار فوری پس از انتخاب وضعیت «منتشرشده»، این فیلد را خالی بگذارید. امکان مشاهده در سایت فقط برای پروژه‌های منتشرشده نمایش داده می‌شود.'),
@@ -377,11 +378,11 @@ class ProjectResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('published_at')
                     ->label('زمان انتشار')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین ویرایش')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

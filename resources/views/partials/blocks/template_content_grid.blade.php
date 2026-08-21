@@ -74,7 +74,7 @@
                             <h2><a href="{{ route('blog.show', $item->slug) }}">{{ $item->title }}</a></h2>
 
                             @if ($item->published_at)
-                                <time datetime="{{ $item->published_at->toDateString() }}">{{ $item->published_at->toFormattedDateString() }}</time>
+                                <x-persian-date :value="$item->published_at" format="weekday" :datetime="$item->published_at->toIso8601String()" />
                             @endif
 
                             @if ($item->category)

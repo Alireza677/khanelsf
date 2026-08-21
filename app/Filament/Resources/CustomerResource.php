@@ -55,7 +55,7 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('mobile')->label('موبایل')->searchable()->placeholder('—'),
                 Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge()->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
                 Tables\Columns\TextColumn::make('users_count')->label('کاربران')->counts('users'),
-                Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->jalaliDateTime()->sortable(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()->label('مشاهده'),

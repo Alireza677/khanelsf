@@ -43,7 +43,7 @@
             @if ($project->project_date)
                 <div>
                     <dt>Date</dt>
-                    <dd>{{ $project->project_date->toFormattedDateString() }}</dd>
+                    <dd><x-persian-date :value="$project->project_date" format="weekday" /></dd>
                 </div>
             @endif
         </dl>

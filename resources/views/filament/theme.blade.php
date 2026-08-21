@@ -1618,7 +1618,7 @@
     }
     .activity-creation-wizard-modal {
         direction: rtl;
-        overflow: hidden;
+        overflow: visible;
         box-shadow: 0 24px 70px rgb(var(--primary-950) / .16) !important;
     }
 

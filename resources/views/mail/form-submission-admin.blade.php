@@ -11,7 +11,7 @@
 یک ورودی جدید ثبت شد.
 
 فرم: {{ $submission->form?->name ?? '—' }}
-تاریخ ارسال: {{ $submission->submitted_at?->format('Y-m-d H:i') ?? '—' }}
+تاریخ ارسال: {{ \App\Support\PersianDate::dateTime($submission->submitted_at) ?? '—' }}
 منبع: {{ $source }}
 ارسال‌کننده: {{ $submitter->resolve($submission) }}
 ایمیل: {{ $submitter->email($submission) ?? '—' }}

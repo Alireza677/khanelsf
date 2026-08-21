@@ -34,7 +34,7 @@ class ViewMedia extends ViewRecord
                 ->label('مجموعه'),
             Infolists\Components\TextEntry::make('created_at')
                 ->label('زمان بارگذاری')
-                ->dateTime(),
+                ->jalaliDateTime(),
             Infolists\Components\TextEntry::make('url')
                 ->label('لینک')
                 ->state(fn (Media $record): string => $record->getUrl())

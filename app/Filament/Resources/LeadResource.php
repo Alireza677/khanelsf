@@ -102,7 +102,7 @@ class LeadResource extends Resource
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('source')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('form.name')->label('فرم')->sortable(),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('created_at')->jalaliDateTime()->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options([
@@ -149,7 +149,7 @@ class LeadResource extends Resource
                     Infolists\Components\TextEntry::make('form.name')->label('فرم')->placeholder('—'),
                     Infolists\Components\TextEntry::make('submission.submitted_at')
                         ->label('زمان ارسال')
-                        ->dateTime()
+                        ->jalaliDateTime()
                         ->placeholder('—'),
                     Infolists\Components\TextEntry::make('submission.source')
                         ->label('منبع')

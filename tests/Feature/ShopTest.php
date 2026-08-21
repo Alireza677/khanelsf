@@ -112,6 +112,89 @@ class ShopTest extends TestCase
             ->assertSee('سبد خرید شما خالی است.');
     }
 
+    public function test_drawer_remove_contract_returns_to_origin_and_recalculates_remaining_cart(): void
+    {
+        $first = Product::factory()->published()->create(['title' => 'Remove Me', 'price' => 100]);
+        $second = Product::factory()->published()->create(['title' => 'Keep Me', 'price' => 250]);
+        $this->post(route('cart.add', $first), ['quantity' => 2]);
+        $this->post(route('cart.add', $second), ['quantity' => 1]);
+
+        $this->from(route('home'))
+            ->delete(route('cart.remove'), ['product_id' => $first->id])
+            ->assertRedirect(route('home'));
+
+        $items = app(\App\Services\CartService::class)->items();
+        $this->assertCount(1, $items);
+        $this->assertSame($second->id, $items->first()['product_id']);
+        $this->assertSame(1, app(\App\Services\CartService::class)->count());
+        $this->assertSame(250.0, app(\App\Services\CartService::class)->subtotal());
+
+        $this->from(route('home'))
+            ->delete(route('cart.remove'), ['product_id' => $second->id])
+            ->assertRedirect(route('home'));
+
+        $this->assertTrue(app(\App\Services\CartService::class)->isEmpty());
+        $this->assertSame(0, app(\App\Services\CartService::class)->count());
+        $this->assertSame(0.0, app(\App\Services\CartService::class)->subtotal());
+    }
+
+    public function test_removing_unknown_product_id_is_safe(): void
+    {
+        $product = Product::factory()->published()->create();
+        $this->post(route('cart.add', $product), ['quantity' => 1]);
+
+        $this->from(route('home'))
+            ->delete(route('cart.remove'), ['product_id' => 999999])
+            ->assertRedirect(route('home'));
+
+        $this->assertSame(1, app(\App\Services\CartService::class)->count());
+    }
+
+    public function test_ajax_remove_returns_authoritative_remaining_cart_state(): void
+    {
+        $first = Product::factory()->published()->create(['price' => 100]);
+        $second = Product::factory()->published()->create(['price' => 250]);
+        $this->post(route('cart.add', $first), ['quantity' => 2]);
+        $this->post(route('cart.add', $second), ['quantity' => 1]);
+
+        $this->deleteJson(route('cart.remove'), ['product_id' => $first->id])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'removed_product_id' => $first->id,
+                'count' => 1,
+                'display_count' => '1',
+                'subtotal' => 250,
+                'subtotal_formatted' => '250 تومان',
+                'is_empty' => false,
+            ]);
+
+        $this->assertSame([$second->id], app(\App\Services\CartService::class)
+            ->items()
+            ->pluck('product_id')
+            ->all());
+    }
+
+    public function test_ajax_remove_last_item_returns_empty_state(): void
+    {
+        $product = Product::factory()->published()->create(['price' => 100]);
+        $this->post(route('cart.add', $product), ['quantity' => 1]);
+
+        $this->deleteJson(route('cart.remove'), ['product_id' => $product->id])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'removed_product_id' => $product->id,
+                'count' => 0,
+                'display_count' => '0',
+                'subtotal' => 0,
+                'subtotal_formatted' => '0 تومان',
+                'is_empty' => true,
+            ]);
+
+        $this->assertTrue(app(\App\Services\CartService::class)->isEmpty());
+    }
+
     public function test_checkout_page_requires_cart_and_loads_when_cart_has_items(): void
     {
         $this->get(route('checkout.create'))

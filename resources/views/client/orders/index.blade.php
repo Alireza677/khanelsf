@@ -21,7 +21,7 @@
                 @foreach ($orders as $order)
                     <article class="account-order-card">
                         <div><small>شماره سفارش</small><strong>{{ $order->order_number }}</strong></div>
-                        <div><small>تاریخ</small><span>{{ $order->created_at->format('Y/m/d') }}</span></div>
+                        <div><small>تاریخ</small><x-persian-date :value="$order->created_at" /></div>
                         <div><small>وضعیت</small><span>{{ $order->statusLabel() }}</span></div>
                         <div><small>وضعیت پرداخت</small><span>{{ $order->paymentStatusLabel() }}</span></div>
                         <div><small>تعداد اقلام</small><span>{{ $order->items_count }}</span></div>

@@ -60,7 +60,7 @@ class FormSubmissionResource extends Resource
                     ->badge()
                     ->state(fn (FormSubmission $record): string => $record->lead?->status ?? 'received')
                     ->formatStateUsing(fn (string $state): string => static::statusLabels()[$state] ?? $state),
-                Tables\Columns\TextColumn::make('submitted_at')->label('تاریخ ارسال')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('submitted_at')->label('تاریخ ارسال')->jalaliDateTime()->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('form_id')
@@ -85,7 +85,7 @@ class FormSubmissionResource extends Resource
             Infolists\Components\Section::make('خلاصه ورودی')
                 ->schema([
                     Infolists\Components\TextEntry::make('form.name')->label('فرم')->placeholder('—'),
-                    Infolists\Components\TextEntry::make('submitted_at')->label('تاریخ ارسال')->dateTime(),
+                    Infolists\Components\TextEntry::make('submitted_at')->label('تاریخ ارسال')->jalaliDateTime(),
                     Infolists\Components\TextEntry::make('source')
                         ->label('منبع')
                         ->badge()

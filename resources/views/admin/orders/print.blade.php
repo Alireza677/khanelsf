@@ -126,7 +126,7 @@
 
             <div class="right">
                 <h1>{{ $order->order_number }}</h1>
-                <p>تاریخ: {{ $order->created_at?->format('Y-m-d H:i') }}</p>
+                <p>تاریخ: {{ \App\Support\PersianDate::dateTime($order->created_at) }}</p>
                 <p>وضعیت: {{ ucfirst($order->status) }}</p>
                 <p>پرداخت: {{ ucfirst($order->payment_status) }}</p>
             </div>

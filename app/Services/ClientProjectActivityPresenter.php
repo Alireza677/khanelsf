@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClientProjectActivity;
+use App\Support\PersianDate;
 
 class ClientProjectActivityPresenter
 {
@@ -14,7 +15,7 @@ class ClientProjectActivityPresenter
             'id' => $activity->getKey(),
             'title' => $activity->title,
             'description' => $activity->description,
-            'activity_date' => $activity->activity_date->format('Y/m/d'),
+            'activity_date' => PersianDate::date($activity->activity_date),
             'duration' => $this->durations->format($activity->duration_minutes),
             'project_title' => $activity->project?->title,
             'status_label' => 'منتشرشده',

@@ -284,7 +284,7 @@ class ServiceResource extends Resource
                                 ->required()
                                 ->options(static::statusOptions())
                                 ->default(Service::STATUS_DRAFT),
-                            Forms\Components\DateTimePicker::make('published_at')
+                            Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->label('زمان انتشار')
                                 ->seconds(false)
                                 ->disabled(fn (Get $get): bool => $get('status') !== Service::STATUS_PUBLISHED)
@@ -330,12 +330,12 @@ class ServiceResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('published_at')
                     ->label('زمان انتشار')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->placeholder('—')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین ویرایش')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

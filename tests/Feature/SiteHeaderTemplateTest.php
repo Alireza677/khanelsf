@@ -119,7 +119,7 @@ class SiteHeaderTemplateTest extends TestCase
             ->assertSee($target->resolveNavigationUrl(), false)
             ->assertSee('پروژه‌ها')
             ->assertSee('/projects', false)
-            ->assertSee(route('blog.search', absolute: false), false);
+            ->assertSee(route('search.index', absolute: false), false);
     }
 
     public function test_industrial_header_visual_contract_keeps_desktop_navigation_single_line(): void
@@ -161,6 +161,14 @@ class SiteHeaderTemplateTest extends TestCase
             '/\.industrial-header__(?:top-action|primary-action)[^{]*\{[^}]*(?:#b91c1c|#991b1b)/s',
             $css,
         );
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__navigation\s*>\s*ul\s*>\s*li\s*>\s*a::before\s*\{[^}]*background:\s*currentColor;/s',
+            $css,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.industrial-header__navigation\s*>\s*ul\s*>\s*li\s*>\s*a::before\s*\{[^}]*background:\s*#b91c1c;/s',
+            $css,
+        );
     }
 
     public function test_industrial_header_mobile_drawer_and_sticky_actions_contract(): void
@@ -172,12 +180,176 @@ class SiteHeaderTemplateTest extends TestCase
         $this->assertStringContainsString('height: calc(100dvh - 70px);', $css);
         $this->assertStringContainsString('position: fixed;', $css);
         $this->assertStringContainsString('body.industrial-mobile-menu-open', $css);
-        $this->assertStringContainsString("header.classList.add('is-top-actions-hidden')", $javascript);
-        $this->assertStringContainsString("header.classList.remove('is-top-actions-hidden')", $javascript);
         $this->assertStringContainsString("document.body.classList.add('industrial-mobile-menu-open')", $javascript);
         $this->assertStringContainsString("document.body.classList.remove('industrial-mobile-menu-open')", $javascript);
         $this->assertStringContainsString("toggle.setAttribute('aria-expanded', 'true')", $javascript);
         $this->assertStringContainsString('toggle.focus()', $javascript);
+        $this->assertStringContainsString('initIndustrialStickyHeader', $javascript);
+
+        $stickyHeader = file_get_contents(resource_path('js/components/industrial-sticky-header.js'));
+
+        $this->assertStringContainsString('INDUSTRIAL_HEADER_HIDE_THRESHOLD = 106', $stickyHeader);
+        $this->assertStringContainsString('INDUSTRIAL_HEADER_SHOW_THRESHOLD = 5', $stickyHeader);
+        $this->assertStringNotContainsString('lastScrollY', $stickyHeader);
+        $this->assertStringContainsString("header.classList.toggle('is-top-actions-hidden', hidden)", $stickyHeader);
+        $this->assertStringContainsString("window.addEventListener('scroll', scheduleUpdate, { passive: true })", $stickyHeader);
+        $this->assertStringContainsString("window.addEventListener('pageshow', scheduleUpdate)", $stickyHeader);
+        $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
+    }
+
+    public function test_disabled_shop_does_not_render_industrial_header_cart(): void
+    {
+        $this->home();
+        $template = $this->template(blocks: $this->headerBlocks());
+        $this->select($template);
+        app(\App\Services\SettingsService::class)->set('shop_enabled', false, 'shop', 'boolean');
+
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('industrial-header__cart', $html);
+        $this->assertStringNotContainsString('header-cart-drawer', $html);
+        $this->assertStringNotContainsString('industrial-header__cart-badge', $html);
+        $this->assertStringNotContainsString(route('cart.index', absolute: false), $html);
+        $this->assertStringContainsString('industrial-header__search', $html);
+    }
+
+    public function test_enabled_shop_renders_cart_without_badge_when_cart_is_empty(): void
+    {
+        $this->home();
+        $template = $this->template(blocks: $this->headerBlocks());
+        $this->select($template);
+        app(\App\Services\SettingsService::class)->set('shop_enabled', true, 'shop', 'boolean');
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('industrial-header__cart', false)
+            ->assertSee('aria-label="سبد خرید"', false)
+            ->assertSee('data-header-overlay-trigger', false)
+            ->assertSee('header-cart-drawer', false)
+            ->assertSee('سبد خرید شما خالی است.')
+            ->assertSee('href="'.route('shop.index', absolute: false).'"', false)
+            ->assertDontSee('industrial-header__cart-badge', false);
+    }
+
+    public function test_industrial_header_guest_uses_one_canonical_login_icon(): void
+    {
+        $this->home();
+        $template = $this->template(blocks: $this->headerBlocks());
+        $this->select($template);
+
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('public-account-controls--icon-only', $html);
+        $this->assertStringContainsString('public-account-controls__guest-icon', $html);
+        $this->assertStringContainsString('href="'.route('login').'"', $html);
+        $this->assertStringContainsString('aria-label="ورود به حساب کاربری"', $html);
+        $this->assertStringNotContainsString('public-account-controls__register', $html);
+        $this->assertStringNotContainsString('public-account-menu__trigger', $html);
+        $this->assertStringNotContainsString('public-account-menu__dropdown', $html);
+    }
+
+    public function test_authenticated_industrial_header_keeps_account_dropdown_and_cart(): void
+    {
+        $this->home();
+        $template = $this->template(blocks: $this->headerBlocks());
+        $this->select($template);
+        $user = User::factory()->client()->create(['name' => 'کاربر هدر']);
+
+        $html = $this->actingAs($user, 'client')
+            ->get(route('home'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('public-account-menu__icon', $html);
+        $this->assertStringContainsString('کاربر هدر', $html);
+        $this->assertStringContainsString('public-account-menu__trigger', $html);
+        $this->assertStringContainsString('public-account-menu__dropdown', $html);
+        $this->assertStringContainsString('industrial-header__cart', $html);
+        $this->assertStringNotContainsString('public-account-controls__guest-icon', $html);
+        $this->assertStringNotContainsString('public-account-controls__register', $html);
+    }
+
+    public function test_industrial_header_cart_badge_uses_total_quantity_and_caps_display(): void
+    {
+        $this->home();
+        $template = $this->template(blocks: $this->headerBlocks());
+        $this->select($template);
+        app(\App\Services\SettingsService::class)->set('shop_enabled', true, 'shop', 'boolean');
+
+        $cart = static fn (int $first, int $second): array => [
+            ['product_id' => 10, 'title' => 'محصول اول', 'slug' => 'first', 'image' => null, 'quantity' => $first, 'unit_price' => 100],
+            ['product_id' => 20, 'title' => 'محصول دوم', 'slug' => 'second', 'image' => null, 'quantity' => $second, 'unit_price' => 200],
+        ];
+
+        $html = $this->withSession(['shop_cart' => $cart(2, 3)])
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('aria-label="سبد خرید، 5 کالا"', false)
+            ->assertSee('industrial-header__cart-badge', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/industrial-header__cart-badge[^>]*>\s*5\s*<\/span>/',
+            $html,
+        );
+        $this->assertStringContainsString('محصول اول', $html);
+        $this->assertStringContainsString('2 × 100 تومان', $html);
+        $this->assertStringContainsString('800 تومان', $html);
+        $this->assertStringContainsString('href="'.route('cart.index', absolute: false).'"', $html);
+        $this->assertStringContainsString('href="'.route('checkout.create', absolute: false).'"', $html);
+        $this->assertStringContainsString('action="'.route('cart.remove', absolute: false).'"', $html);
+        $this->assertStringContainsString('name="_method" value="DELETE"', $html);
+        $this->assertStringContainsString('name="_token"', $html);
+        $this->assertStringContainsString('name="product_id" value="10"', $html);
+        $this->assertStringContainsString('aria-label="حذف محصول اول از سبد خرید"', $html);
+        $this->assertStringContainsString('class="icon-trash"', $html);
+        $this->assertStringContainsString('data-cart-drawer-remove', $html);
+        $this->assertStringContainsString('data-cart-item="10"', $html);
+        $this->assertStringContainsString('data-cart-subtotal', $html);
+        $this->assertStringContainsString('data-cart-subtotal-block', $html);
+        $this->assertStringContainsString('data-cart-actions', $html);
+        $this->assertStringContainsString('data-cart-empty-state', $html);
+        $this->assertStringContainsString('data-cart-footer', $html);
+        $this->assertStringContainsString('data-cart-trigger', $html);
+        $this->assertStringContainsString('data-cart-badge', $html);
+
+        $this->withSession(['shop_cart' => $cart(60, 50)])
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('aria-label="سبد خرید، 110 کالا"', false)
+            ->assertSee('99+', false);
+    }
+
+    public function test_industrial_header_search_uses_shared_global_search_contract(): void
+    {
+        $this->home();
+        $template = $this->template(blocks: $this->headerBlocks());
+        $this->select($template);
+
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('industrial-header__search', $html);
+        $this->assertStringContainsString('aria-haspopup="dialog"', $html);
+        $this->assertStringContainsString('aria-expanded="false"', $html);
+        $this->assertStringContainsString('header-search-modal', $html);
+        $this->assertStringContainsString('method="get" action="'.route('search.index', absolute: false).'"', $html);
+        $this->assertStringContainsString('name="q"', $html);
+        $this->assertStringContainsString('data-header-overlay-autofocus', $html);
+        $this->assertStringContainsString('value="product"', $html);
+        $this->assertStringContainsString('value="project"', $html);
+        $this->assertStringContainsString('value="service"', $html);
+        $this->assertStringContainsString('value="post"', $html);
+        $this->assertStringNotContainsString('جستجوی نوشته‌ها', $html);
+        $this->assertStringContainsString('icon-arrow-circle-left fhai', $html);
+        $this->assertStringContainsString('icon-arrow-circle-right', $html);
+        $this->assertStringContainsString('aria-controls="industrial-navigation-', $html);
+
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertMatchesRegularExpression(
+            '/\.search-scope-option input:checked \+ span\s*\{[^}]*background:\s*var\(--theme-primary/s',
+            $css,
+        );
+        $this->assertStringContainsString('height: 64px;', $css);
     }
 
     public function test_missing_draft_and_unavailable_actions_fail_closed_to_legacy_header(): void
@@ -244,8 +416,6 @@ class SiteHeaderTemplateTest extends TestCase
 
         $this->assertStringContainsString('پروژه‌ها', $html);
         $this->assertStringNotContainsString('منبع ناموجود', $html);
-        $this->assertSame(1, substr_count($html, 'id="industrial-navigation-'));
-        $this->assertSame(1, substr_count($html, 'aria-controls="industrial-navigation-'));
         $this->assertSame(1, substr_count($html, 'data-menu-toggle'));
         $this->assertSame(1, substr_count($html, 'data-site-nav'));
         $this->assertStringContainsString('aria-expanded="false"', $html);

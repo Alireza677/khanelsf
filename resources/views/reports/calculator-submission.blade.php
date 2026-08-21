@@ -91,7 +91,7 @@
         <p>خلاصه اطلاعات ثبت‌شده و نتیجه نهایی ارزیابی</p>
     </header>
 
-    <div class="meta">شماره گزارش: {{ $submission->getKey() }} | تاریخ ثبت: {{ $submission->submitted_at?->format('Y/m/d H:i') }}</div>
+    <div class="meta">شماره گزارش: {{ $submission->getKey() }} | تاریخ ثبت: {{ \App\Support\PersianDate::dateTime($submission->submitted_at) }}</div>
 
     <section class="hero">
         <span>پیشنهاد مناسب برای شما</span>
@@ -170,7 +170,7 @@
     @endif
 
     <footer class="footer">
-        <div>تاریخ تولید گزارش: {{ $generatedAt->format('Y/m/d H:i') }}</div>
+        <div>تاریخ تولید گزارش: {{ \App\Support\PersianDate::dateTime($generatedAt) }}</div>
         <div class="footer-contact">
             راه‌های ارتباطی:
             {{ $brand['phone'] ?: 'شماره تماس مجموعه' }}

@@ -9,7 +9,7 @@
         <h1>{{ $post->title }}</h1>
 
         @if ($post->published_at)
-            <p><time datetime="{{ $post->published_at->toDateString() }}">{{ $post->published_at->toFormattedDateString() }}</time></p>
+            <p><x-persian-date :value="$post->published_at" format="weekday" :datetime="$post->published_at->toIso8601String()" /></p>
         @endif
 
         @if ($post->category)

@@ -49,7 +49,7 @@ class SiteUserResource extends Resource
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('mobile')->label('شماره موبایل')->searchable()->copyable(),
                 Tables\Columns\TextColumn::make('email')->label('ایمیل')->searchable()->placeholder('—'),
-                Tables\Columns\TextColumn::make('created_at')->label('تاریخ ثبت‌نام')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('created_at')->label('تاریخ ثبت‌نام')->jalaliDateTime()->sortable(),
                 Tables\Columns\TextColumn::make('status')->label('وضعیت حساب')->badge()
                     ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state)
                     ->color(fn (string $state): string => $state === 'active' ? 'success' : 'gray'),
@@ -92,7 +92,7 @@ class SiteUserResource extends Resource
                 Infolists\Components\TextEntry::make('email')->label('ایمیل')->placeholder('—'),
                 Infolists\Components\TextEntry::make('status')->label('وضعیت')->badge()
                     ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
-                Infolists\Components\TextEntry::make('created_at')->label('تاریخ ثبت‌نام')->dateTime(),
+                Infolists\Components\TextEntry::make('created_at')->label('تاریخ ثبت‌نام')->jalaliDateTime(),
             ])->columns(2),
             Infolists\Components\Section::make('خریدها')->schema([
                 Infolists\Components\TextEntry::make('orders_count')->label('تعداد سفارش‌ها')

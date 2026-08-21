@@ -75,18 +75,53 @@
                     @endif
                 </nav>
 
-                <div class="industrial-header__utilities">
+                <div @class([
+                    'industrial-header__utilities',
+                    'industrial-header__utilities--with-cart' => $header['cart'],
+                    'industrial-header__utilities--guest-account' => ! $header['account']['authenticated'],
+                ])>
                     @if ($header['search_url'])
-                        <a
-                            class="industrial-header__search"
-                            href="{{ $header['search_url'] }}"
+                        <button
+                            type="button"
+                            class="industrial-header__icon-action industrial-header__search"
                             aria-label="جستجو در سایت"
+                            aria-haspopup="dialog"
+                            aria-expanded="false"
+                            aria-controls="{{ $header['overlay_ids']['search'] }}"
+                            data-header-overlay-trigger="{{ $header['overlay_ids']['search'] }}"
                         >
                             <svg aria-hidden="true" viewBox="0 0 24 24">
                                 <path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" />
                             </svg>
-                        </a>
+                        </button>
                     @endif
+
+                    @if ($header['cart'])
+                        <button
+                            type="button"
+                            class="industrial-header__icon-action industrial-header__cart"
+                            aria-label="{{ $header['cart']['label'] }}"
+                            aria-haspopup="dialog"
+                            aria-expanded="false"
+                            aria-controls="{{ $header['overlay_ids']['cart'] }}"
+                            data-header-overlay-trigger="{{ $header['overlay_ids']['cart'] }}"
+                            data-cart-trigger
+                        >
+                            <svg aria-hidden="true" viewBox="0 0 24 24">
+                                <path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20 7H6m4 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
+                            </svg>
+                            @if ($header['cart']['count'] > 0)
+                                <span class="industrial-header__cart-badge" aria-hidden="true" data-cart-badge>
+                                    {{ $header['cart']['badge'] }}
+                                </span>
+                            @endif
+                        </button>
+                    @endif
+
+                    @include('partials.public-account-controls', [
+                        'account' => $header['account'],
+                        'iconOnlyGuest' => true,
+                    ])
 
                     @include('partials.actions.render', [
                         'label' => $header['primary_action']['label'],
@@ -94,9 +129,23 @@
                         'presentation' => $header['primary_action']['presentation'],
                     ])
 
-                    @include('partials.public-account-controls', ['account' => $header['account']])
                 </div>
             </div>
         </div>
     </div>
 </header>
+
+@if ($header['cart'])
+    @include('partials.header.cart-drawer', [
+        'cart' => $header['cart'],
+        'overlayId' => $header['overlay_ids']['cart'],
+    ])
+@endif
+
+@if ($header['search_url'])
+    @include('partials.header.search-modal', [
+        'searchUrl' => $header['search_url'],
+        'searchSources' => $header['search_sources'],
+        'overlayId' => $header['overlay_ids']['search'],
+    ])
+@endif

@@ -9,6 +9,7 @@ use App\Models\ClientProjectActivity;
 use App\Services\ActivityWizardProjectContext;
 use App\Services\DurationFormatter;
 use App\Services\ServiceActivityCatalog;
+use App\Support\PersianDate;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -123,7 +124,7 @@ class ActivityCreationWizardAction
                         ->content(fn (Get $get): string => ClientProjectActivityResource::serviceSummary($get('service_id')))
                         ->visible(fn (Get $get): bool => filled($get('service_id'))),
                     Forms\Components\TextInput::make('title')->label('عنوان فعالیت')->required()->maxLength(255)->autofocus(),
-                    Forms\Components\DatePicker::make('activity_date')->label('تاریخ فعالیت')->default(today()),
+                    Forms\Components\DatePicker::make('activity_date')->jalali()->label('تاریخ فعالیت')->default(today()),
                     Forms\Components\Grid::make(2)->schema([
                         Forms\Components\TextInput::make('duration_hours')->label('ساعت')->numeric()->minValue(0)->maxValue(24)->default(0)->required()->live(),
                         Forms\Components\TextInput::make('duration_remainder_minutes')->label('دقیقه')->numeric()->minValue(0)->maxValue(59)->default(0)->required()->live()
@@ -182,6 +183,6 @@ class ActivityCreationWizardAction
         $duration = app(DurationFormatter::class)->format(((int) $get('duration_hours') * 60) + (int) $get('duration_remainder_minutes'));
         $service = ClientProjectActivityResource::serviceSummary($get('service_id'));
 
-        return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($project?->title ?? '—').'</strong><span>خدمت: '.e($service).'</span><span>زمان: '.e($duration).'</span><span>تاریخ: '.e((string) $get('activity_date')).'</span></div>');
+        return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($project?->title ?? '—').'</strong><span>خدمت: '.e($service).'</span><span>زمان: '.e($duration).'</span><span>تاریخ: '.e(PersianDate::date($get('activity_date')) ?? '—').'</span></div>');
     }
 }

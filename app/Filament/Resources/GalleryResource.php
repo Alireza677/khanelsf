@@ -177,7 +177,7 @@ class GalleryResource extends Resource
                                     'archived' => 'Archived',
                                 ])
                                 ->default('draft'),
-                            Forms\Components\DateTimePicker::make('published_at')
+                            Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->seconds(false)
                                 ->helperText('Leave empty to publish immediately when status is Published.'),
                             Forms\Components\Toggle::make('is_featured')
@@ -239,7 +239,7 @@ class GalleryResource extends Resource
                     ->boolean()
                     ->label('Index'),
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(),
             ])

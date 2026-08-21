@@ -121,8 +121,10 @@ class PublicAccountShellTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('industrial-header', false)
-            ->assertSee('ورود')
-            ->assertSee('ثبت‌نام');
+            ->assertSee('public-account-controls__guest-icon', false)
+            ->assertSee('aria-label="ورود به حساب کاربری"', false)
+            ->assertDontSee('public-account-controls__register', false)
+            ->assertDontSee('public-account-menu__dropdown', false);
 
         $user = User::factory()->client()->create(['name' => 'کاربر قالب']);
 

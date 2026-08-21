@@ -11,6 +11,7 @@ use App\CMS\Collections\Data\CollectionPagination;
 use App\CMS\Collections\Data\CollectionPaginationLink;
 use App\CMS\Collections\Data\CollectionPresentation;
 use App\Models\Project;
+use App\Support\PersianDate;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 final class ProjectCollectionAdapter
@@ -54,7 +55,7 @@ final class ProjectCollectionAdapter
         return collect([
             ['موقعیت', $this->text($project->location)],
             ['نوع پروژه', $this->text($project->project_type)],
-            ['تاریخ', $project->project_date?->format('Y/m/d')],
+            ['تاریخ', PersianDate::date($project->project_date)],
         ])->filter(fn (array $item): bool => filled($item[1]))
             ->map(fn (array $item): CollectionMetaItem => new CollectionMetaItem($item[0], $item[1]))
             ->values()

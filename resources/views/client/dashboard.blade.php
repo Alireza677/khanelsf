@@ -14,7 +14,7 @@
             <section class="services-hero-card" aria-labelledby="monthly-time-title">
                 <div class="services-hero-card__heading">
                     <div><span class="services-kicker">وضعیت خدمات این ماه</span><h2 id="monthly-time-title">زمان مصرف‌شده پروژه در این ماه</h2></div>
-                    <span class="services-month">{{ now()->translatedFormat('F Y') }}</span>
+                    <span class="services-month"><x-persian-date :value="now()" format="month-year" /></span>
                 </div>
                 <div class="services-time-layout">
                     <div class="services-donut {{ $monthly['has_limit'] ? '' : 'is-neutral' }}" style="--usage: {{ $monthly['chart_percentage'] }}" role="img" aria-label="زمان مصرف‌شده {{ $monthly['used_time'] }}{{ $monthly['has_limit'] ? '، باقی‌مانده '.$monthly['remaining_time'] : '، سقف ماهانه تعیین نشده' }}">

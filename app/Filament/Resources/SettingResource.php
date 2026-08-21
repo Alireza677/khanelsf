@@ -70,7 +70,7 @@ class SettingResource extends Resource
                     ->badge()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(),
             ])

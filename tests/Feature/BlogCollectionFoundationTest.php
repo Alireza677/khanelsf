@@ -7,6 +7,7 @@ use App\CMS\Collections\Data\CollectionItem;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Template;
+use App\Support\PersianDate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,7 @@ class BlogCollectionFoundationTest extends TestCase
         $this->assertSame('خلاصه نوشته', $item->excerpt);
         $this->assertSame(['فناوری'], $item->badges);
         $this->assertSame('تاریخ انتشار', $item->metaItems[0]->label);
-        $this->assertSame($post->published_at->toFormattedDateString(), $item->metaItems[0]->value);
+        $this->assertSame(PersianDate::dateWithWeekday($post->published_at), $item->metaItems[0]->value);
         $this->assertSame(route('blog.show', 'sample-post', absolute: false), $item->action?->href);
         $this->assertStringContainsString('cover.jpg', $item->image?->url ?? '');
     }

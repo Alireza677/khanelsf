@@ -62,7 +62,7 @@ class ClientProjectActivityResource extends Resource
                     ->label('مشخصات خدمت')
                     ->content(fn (Forms\Get $get): string => self::serviceSummary($get('service_id')))
                     ->visible(fn (Forms\Get $get): bool => filled($get('service_id'))),
-                Forms\Components\DatePicker::make('activity_date')->label('تاریخ فعالیت')->default(today())->required(),
+                Forms\Components\DatePicker::make('activity_date')->jalali()->label('تاریخ فعالیت')->default(today())->required(),
                 Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(255),
                 Forms\Components\Select::make('performed_by')->label('ثبت‌کننده / اجراکننده')
                     ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
@@ -75,8 +75,8 @@ class ClientProjectActivityResource extends Resource
                     ->numeric()->minValue(0.0001)->inputMode('decimal')
                     ->visible(fn (Forms\Get $get): bool => self::selectedPricingMode($get('service_id')) === ServicePricingMode::PerUnit->value)
                     ->required(fn (Forms\Get $get): bool => self::selectedPricingMode($get('service_id')) === ServicePricingMode::PerUnit->value),
-                Forms\Components\DateTimePicker::make('started_at')->label('زمان شروع اختیاری')->seconds(false),
-                Forms\Components\DateTimePicker::make('ended_at')->label('زمان پایان اختیاری')->seconds(false),
+                Forms\Components\DateTimePicker::make('started_at')->jalali()->label('زمان شروع اختیاری')->seconds(false),
+                Forms\Components\DateTimePicker::make('ended_at')->jalali()->label('زمان پایان اختیاری')->seconds(false),
                 Forms\Components\Select::make('visibility')->label('نمایش')
                     ->options(self::visibilityOptions())->default(ClientProjectActivity::VISIBILITY_INTERNAL)->required(),
                 Forms\Components\Select::make('status')->label('وضعیت')
@@ -92,7 +92,7 @@ class ClientProjectActivityResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            Tables\Columns\TextColumn::make('activity_date')->label('تاریخ')->date()->sortable(),
+            Tables\Columns\TextColumn::make('activity_date')->label('تاریخ')->jalaliDate()->sortable(),
             Tables\Columns\TextColumn::make('title')->label('عنوان')->searchable(),
             Tables\Columns\TextColumn::make('project.title')->label('پروژه')->searchable(),
             Tables\Columns\TextColumn::make('project.customer.display_name')->label('مشتری')->searchable(),
@@ -119,7 +119,7 @@ class ClientProjectActivityResource extends Resource
             Infolists\Components\Section::make('اطلاعات فعالیت')->schema([
                 Infolists\Components\TextEntry::make('project.title')->label('پروژه'),
                 Infolists\Components\TextEntry::make('project.customer.display_name')->label('مشتری'),
-                Infolists\Components\TextEntry::make('activity_date')->label('تاریخ')->date(),
+                Infolists\Components\TextEntry::make('activity_date')->label('تاریخ')->jalaliDate(),
                 Infolists\Components\TextEntry::make('title')->label('عنوان'),
                 Infolists\Components\TextEntry::make('duration_minutes')->label('مدت')->formatStateUsing(fn (int $state): string => app(DurationFormatter::class)->format($state)),
                 Infolists\Components\TextEntry::make('performedBy.name')->label('اجراکننده')->placeholder('—'),

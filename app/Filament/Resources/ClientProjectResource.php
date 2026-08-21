@@ -80,8 +80,8 @@ class ClientProjectResource extends Resource
                     Forms\Components\Toggle::make('has_unlimited_monthly_hours')
                         ->label('بدون محدودیت زمانی ماهانه')
                         ->default(true),
-                    Forms\Components\DatePicker::make('start_date')->label('تاریخ شروع'),
-                    Forms\Components\DatePicker::make('end_date')
+                    Forms\Components\DatePicker::make('start_date')->jalali()->label('تاریخ شروع'),
+                    Forms\Components\DatePicker::make('end_date')->jalali()
                         ->label('تاریخ پایان')
                         ->afterOrEqual('start_date'),
                     Forms\Components\Textarea::make('description')
@@ -104,8 +104,8 @@ class ClientProjectResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
                 Tables\Columns\TextColumn::make('progress')->label('پیشرفت')->suffix('٪')->sortable(),
-                Tables\Columns\TextColumn::make('start_date')->label('شروع')->date()->placeholder('—')->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('start_date')->label('شروع')->jalaliDate()->placeholder('—')->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->jalaliDateTime()->sortable(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()->label('مشاهده'),
@@ -127,8 +127,8 @@ class ClientProjectResource extends Resource
                 Infolists\Components\TextEntry::make('monthly_hour_limit_minutes')
                     ->label('سهم ماهانه')
                     ->formatStateUsing(fn (?int $state): string => $state === null ? 'بدون محدودیت' : app(DurationFormatter::class)->format($state)),
-                Infolists\Components\TextEntry::make('start_date')->label('تاریخ شروع')->date()->placeholder('—'),
-                Infolists\Components\TextEntry::make('end_date')->label('تاریخ پایان')->date()->placeholder('—'),
+                Infolists\Components\TextEntry::make('start_date')->label('تاریخ شروع')->jalaliDate()->placeholder('—'),
+                Infolists\Components\TextEntry::make('end_date')->label('تاریخ پایان')->jalaliDate()->placeholder('—'),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات')->placeholder('—')->columnSpanFull(),
             ])->columns(2),
         ]);

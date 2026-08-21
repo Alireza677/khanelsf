@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClientProject;
+use App\Support\PersianDate;
 
 class ClientProjectPresenter
 {
@@ -17,8 +18,8 @@ class ClientProjectPresenter
             'status_label' => $this->statusLabels()[$project->status] ?? $project->status,
             'progress' => max(0, min(100, $project->progress)),
             'monthly_hour_limit_minutes' => $project->monthly_hour_limit_minutes,
-            'start_date' => $project->start_date?->format('Y/m/d'),
-            'end_date' => $project->end_date?->format('Y/m/d'),
+            'start_date' => PersianDate::date($project->start_date),
+            'end_date' => PersianDate::date($project->end_date),
         ];
     }
 

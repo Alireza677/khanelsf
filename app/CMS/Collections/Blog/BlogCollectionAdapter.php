@@ -11,6 +11,7 @@ use App\CMS\Collections\Data\CollectionPagination;
 use App\CMS\Collections\Data\CollectionPaginationLink;
 use App\CMS\Collections\Data\CollectionPresentation;
 use App\Models\Post;
+use App\Support\PersianDate;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 final class BlogCollectionAdapter
@@ -44,7 +45,7 @@ final class BlogCollectionAdapter
             excerpt: $this->text($post->excerpt),
             action: $url ? new CollectionAction('مشاهده نوشته', $url) : null,
             metaItems: $post->published_at
-                ? [new CollectionMetaItem('تاریخ انتشار', $post->published_at->toFormattedDateString())]
+                ? [new CollectionMetaItem('تاریخ انتشار', PersianDate::dateWithWeekday($post->published_at))]
                 : [],
             badges: $category ? [$category] : [],
         );

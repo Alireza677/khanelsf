@@ -11,6 +11,7 @@ use App\Models\Revision;
 use App\Services\EditorHistory\SessionHistory;
 use App\Services\Revisions\PageRevisionSnapshot;
 use App\Services\Revisions\RevisionService;
+use App\Support\PersianDate;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
@@ -195,8 +196,8 @@ class EditPage extends EditRecord
             'id' => $revision->getKey(),
             'number' => $revision->revision_number,
             'actor' => $revision->creator?->name ?? 'سیستم',
-            'relative' => $revision->created_at->diffForHumans(),
-            'date' => $revision->created_at->translatedFormat('Y/m/d H:i'),
+            'relative' => PersianDate::human($revision->created_at),
+            'date' => PersianDate::dateTime($revision->created_at),
             'current' => hash_equals($revision->checksum, $currentChecksum),
             'restored_from' => $revision->restoredFrom?->revision_number,
         ])->all();

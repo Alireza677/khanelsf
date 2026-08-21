@@ -177,7 +177,7 @@ class TemplateResource extends Resource
                     ->badge(),
                 Tables\Columns\IconColumn::make('is_default')->boolean()->label('Default')->sortable(),
                 Tables\Columns\TextColumn::make('priority')->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->options(Template::TYPES),
@@ -831,8 +831,7 @@ class TemplateResource extends Resource
         string $label = 'Heading tag',
         string $name = 'heading_tag',
         string $default = 'h2',
-    ): Forms\Components\Select
-    {
+    ): Forms\Components\Select {
         return HeadingLevel::field($name, $label, $default);
     }
 }

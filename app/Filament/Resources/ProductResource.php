@@ -285,7 +285,7 @@ class ProductResource extends Resource
                                     'published' => 'منتشرشده',
                                 ])
                                 ->default('draft'),
-                            Forms\Components\DateTimePicker::make('published_at')
+                            Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->seconds(false)
                                 ->helperText('برای انتشار فوری پس از انتخاب وضعیت «منتشرشده»، این فیلد را خالی بگذارید.'),
                             Forms\Components\Toggle::make('is_featured')
@@ -328,7 +328,7 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('stock_status')->badge()->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')->boolean()->label('ویژه')->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options([

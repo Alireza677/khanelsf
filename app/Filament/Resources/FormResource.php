@@ -38,13 +38,13 @@ class FormResource extends Resource
     {
         $childItems = [
             NavigationItem::make('نمایش همه فرم‌ها')
-                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName() . '.*'))
+                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName().'.*'))
                 ->url(static::getUrl('index')),
         ];
 
         if (FormSubmissionResource::canAccess()) {
             $childItems[] = NavigationItem::make(FormSubmissionResource::getNavigationLabel())
-                ->isActiveWhen(fn (): bool => request()->routeIs(FormSubmissionResource::getRouteBaseName() . '.*'))
+                ->isActiveWhen(fn (): bool => request()->routeIs(FormSubmissionResource::getRouteBaseName().'.*'))
                 ->url(FormSubmissionResource::getUrl('index'));
         }
 
@@ -54,8 +54,8 @@ class FormResource extends Resource
                 ->icon(static::getNavigationIcon())
                 ->activeIcon(static::getActiveNavigationIcon())
                 ->isActiveWhen(fn (): bool => request()->routeIs([
-                    static::getRouteBaseName() . '.*',
-                    FormSubmissionResource::getRouteBaseName() . '.*',
+                    static::getRouteBaseName().'.*',
+                    FormSubmissionResource::getRouteBaseName().'.*',
                 ]))
                 ->badge(static::getNavigationBadge(), color: static::getNavigationBadgeColor())
                 ->badgeTooltip(static::getNavigationBadgeTooltip())
@@ -593,7 +593,7 @@ class FormResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('submissions_count')->label('ورودی‌ها')->sortable(),
                 Tables\Columns\TextColumn::make('leads_count')->label('سرنخ‌ها')->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options([

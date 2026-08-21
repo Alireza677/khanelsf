@@ -36,7 +36,7 @@
                     <div><dt>Location</dt><dd>{{ $model->location }}</dd></div>
                 @endif
                 @if ($model->project_date)
-                    <div><dt>Date</dt><dd>{{ $model->project_date->toFormattedDateString() }}</dd></div>
+                    <div><dt>Date</dt><dd><x-persian-date :value="$model->project_date" format="weekday" /></dd></div>
                 @endif
                 @if (collect($model->services)->isNotEmpty())
                     <div><dt>Services</dt><dd>{{ collect($model->services)->map(fn ($service) => $service['name'] ?? $service)->filter()->implode(', ') }}</dd></div>
@@ -46,7 +46,7 @@
                     <div><dt>Category</dt><dd><a href="{{ route('blog.category', $model->category->slug) }}">{{ $model->category->title }}</a></dd></div>
                 @endif
                 @if ($model->published_at)
-                    <div><dt>Published</dt><dd>{{ $model->published_at->toFormattedDateString() }}</dd></div>
+                    <div><dt>Published</dt><dd><x-persian-date :value="$model->published_at" format="weekday" /></dd></div>
                 @endif
             @elseif ($type === 'gallery')
                 <div><dt>Type</dt><dd>{{ ucfirst($model->type) }}</dd></div>

@@ -93,8 +93,8 @@ class RedirectResource extends Resource
                 Tables\Columns\TextColumn::make('status_code')->badge()->sortable(),
                 Tables\Columns\IconColumn::make('is_active')->boolean()->label('Active')->sortable(),
                 Tables\Columns\TextColumn::make('hits_count')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('last_hit_at')->dateTime()->sortable()->toggleable(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('last_hit_at')->jalaliDateTime()->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_active')->label('Active'),

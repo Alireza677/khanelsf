@@ -3,8 +3,8 @@
     $project = ($context['model'] ?? null) instanceof \App\Models\Project ? $context['model'] : null;
     $settings = $data['settings'];
     $dateFormat = static fn ($date) => $settings['date_format'] === 'year'
-        ? $date?->format('Y')
-        : $date?->toFormattedDateString();
+        ? \App\Support\PersianDate::year($date)
+        : \App\Support\PersianDate::dateWithWeekday($date);
     $startedAt = $project?->project_started_at;
     $completedAt = $project?->project_completed_at;
     $legacyDate = ! $startedAt && ! $completedAt ? $project?->project_date : null;

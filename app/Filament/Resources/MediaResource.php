@@ -72,7 +72,7 @@ class MediaResource extends Resource
                     ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('زمان بارگذاری')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
             ])

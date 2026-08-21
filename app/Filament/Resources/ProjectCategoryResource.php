@@ -144,7 +144,7 @@ class ProjectCategoryResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین ویرایش')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(),
             ])

@@ -141,7 +141,7 @@ class PostResource extends Resource
                                     'archived' => 'Archived',
                                 ])
                                 ->default('draft'),
-                            Forms\Components\DateTimePicker::make('published_at')
+                            Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->seconds(false)
                                 ->helperText('Leave empty to publish immediately when status is Published. Public view actions are shown only for published records.'),
                         ])
@@ -170,10 +170,10 @@ class PostResource extends Resource
                     ->badge()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('published_at')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

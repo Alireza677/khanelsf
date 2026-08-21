@@ -80,7 +80,7 @@ class ContactMessageResource extends Resource
                     ])
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->jalaliDateTime()
                     ->sortable(),
             ])
             ->filters([

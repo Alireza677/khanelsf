@@ -7,7 +7,7 @@
     $cover = $media->first(fn ($item) => $item->collection_name === 'featured_image')
         ?? $media->first(fn ($item) => $item->collection_name === 'gallery');
     $formatDate = static fn ($date): ?string => ! $date ? null
-        : ($settings['date_format'] === 'year' ? $date->format('Y') : $date->toFormattedDateString());
+        : ($settings['date_format'] === 'year' ? \App\Support\PersianDate::year($date) : \App\Support\PersianDate::dateWithWeekday($date));
     $startedAt = $project?->project_started_at;
     $completedAt = $project?->project_completed_at;
     $legacyDate = ! $startedAt && ! $completedAt ? $project?->project_date : null;

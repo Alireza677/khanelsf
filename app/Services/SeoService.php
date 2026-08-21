@@ -101,6 +101,17 @@ class SeoService
         ]);
     }
 
+    public function forPublicSearch(string $query): SeoData
+    {
+        return $this->make([
+            'title' => 'نتایج جستجو برای '.$query,
+            'description' => 'جستجو در محتوای عمومی سایت.',
+            'canonical_url' => route('search.index', ['q' => $query]),
+            'robots_index' => false,
+            'robots_follow' => true,
+        ]);
+    }
+
     public function forProject(Project $project): SeoData
     {
         $description = $project->seo_description

@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\TemplateService;
+use App\Support\PersianDate;
 use Database\Seeders\BlogArchiveTemplateSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -79,7 +80,7 @@ class BlogArchiveTemplateTest extends TestCase
             ->assertSee('راهنمای رشد پایدار')
             ->assertSee('رشد دیجیتال')
             ->assertSee('تاریخ انتشار')
-            ->assertSee($post->published_at->toFormattedDateString())
+            ->assertSee(PersianDate::dateWithWeekday($post->published_at))
             ->assertSee('مطالعه مقاله')
             ->assertSee(route('blog.show', $post->slug, absolute: false), false);
     }
