@@ -39,6 +39,8 @@ class ActivityCreationWizardTest extends TestCase
             ->goToNextWizardStep('mountedActionForm')
             ->assertWizardCurrentStep(2, 'mountedActionForm')
             ->assertSee('filamentJalaliFormComponent', escape: false)
+            ->assertSee('x-load-src=', escape: false)
+            ->assertDontSee('ax-load-src=', escape: false)
             ->goToNextWizardStep('mountedActionForm')
             ->assertHasActionErrors(['title', 'duration_remainder_minutes'])
             ->assertWizardCurrentStep(2, 'mountedActionForm');
