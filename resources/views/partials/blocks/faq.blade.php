@@ -25,9 +25,7 @@
                     <summary>{{ $item['question'] }}</summary>
                 @endif
 
-                @if (! empty($item['answer']))
-                    <p>{{ $item['answer'] }}</p>
-                @endif
+                @include('partials.blocks._rich_text', ['content' => $item['answer'] ?? null])
             </details>
         @endforeach
     </div>

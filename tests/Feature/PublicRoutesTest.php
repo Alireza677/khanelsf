@@ -280,7 +280,7 @@ class PublicRoutesTest extends TestCase
 
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee('hero-template-2 hero-template-2--right', false)
+            ->assertSee('hero-template-2 block-configured-background', false)
             ->assertSee("They Won't Be This Age Twice")
             ->assertSee("I'm looking for...")
             ->assertSee('The Right Type of Pool')

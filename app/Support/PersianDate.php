@@ -20,6 +20,20 @@ final class PersianDate
         return self::format($value, 'Y/m/d - H:i');
     }
 
+    public static function dateTimeInTimezone(DateTimeInterface|string|null $value, string $timezone): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $zone = new \DateTimeZone($timezone);
+        $date = $value instanceof DateTimeInterface
+            ? CarbonImmutable::instance($value)
+            : CarbonImmutable::parse($value, $zone);
+
+        return self::digits(Jalalian::fromDateTime($date->setTimezone($zone), $zone)->format('Y/m/d - H:i'));
+    }
+
     public static function dateWithWeekday(DateTimeInterface|string|null $value): ?string
     {
         return self::format($value, 'l j F Y');

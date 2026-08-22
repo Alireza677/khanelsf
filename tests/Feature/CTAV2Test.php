@@ -34,6 +34,30 @@ class CTAV2Test extends TestCase
         $this->assertStringContainsString('href="/primary"', $html);
         $this->assertStringContainsString('href="/secondary"', $html);
         $this->assertStringContainsString('background.jpg', $html);
+        $this->assertStringContainsString('class="block-cta-image__inner"', $html);
+    }
+
+    public function test_image_cta_uses_a_viewport_surface_with_a_bounded_inner_container(): void
+    {
+        $html = $this->render($this->legacyCta('image'));
+        $css = file_get_contents(resource_path('css/app.css'));
+        preg_match('/\.block-cta-image \{(?<declarations>[^}]*)\}/s', $css, $ctaRule);
+
+        $this->assertMatchesRegularExpression(
+            '/<section[^>]*block-cta-image[^>]*>\s*<div class="block-cta-image__inner">\s*<div class="block-cta-image__content"/s',
+            $html,
+        );
+        $this->assertArrayHasKey('declarations', $ctaRule);
+        $this->assertStringContainsString('width: auto;', $ctaRule['declarations']);
+        $this->assertStringNotContainsString('width: 100vw;', $ctaRule['declarations']);
+        $this->assertStringContainsString('margin-inline: calc(50% - 50vw);', $ctaRule['declarations']);
+        $this->assertStringContainsString('max-width: var(--theme-container-width, 1200px);', $css);
+        $this->assertStringNotContainsString('transform:', $ctaRule['declarations']);
+        $this->assertStringNotContainsString('left:', $ctaRule['declarations']);
+        $this->assertMatchesRegularExpression(
+            '/<main>\s*<div class="container">\s*@yield\(\'content\'\)/s',
+            file_get_contents(resource_path('views/layouts/app.blade.php')),
+        );
     }
 
     public function test_page_editor_hydrates_legacy_cta_to_nested_v2_without_writing_on_open(): void

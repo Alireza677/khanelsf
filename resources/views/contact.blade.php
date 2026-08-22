@@ -5,7 +5,7 @@
         <h1>{{ $page?->title ?? 'تماس با ما' }}</h1>
 
         @if ($page?->content)
-            {!! $page->content !!}
+            {{ \App\Support\RichText::render($page->content) }}
         @endif
 
         @if (session('success'))
@@ -21,7 +21,7 @@
         <form class="form-card" method="post" action="{{ route('contact.store') }}">
             @csrf
 
-            <div style="left: -9999px; position: absolute;" aria-hidden="true">
+            <div class="form-honeypot" aria-hidden="true">
                 <label for="website">وب‌سایت</label>
                 <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
             </div>

@@ -265,6 +265,20 @@ class FormResource extends Resource
                             Forms\Components\TextInput::make('placeholder')
                                 ->label('متن راهنما')
                                 ->hidden(fn (Forms\Get $get): bool => in_array($get('type'), ['page', 'step'], true)),
+                            Forms\Components\Select::make('layout.span')
+                                ->label('عرض فیلد')
+                                ->options([
+                                    12 => 'تمام عرض (۱۰۰٪)',
+                                    9 => 'سه‌چهارم (۷۵٪)',
+                                    8 => 'دو‌سوم (۶۶٪)',
+                                    6 => 'نصف (۵۰٪)',
+                                    4 => 'یک‌سوم (۳۳٪)',
+                                    3 => 'یک‌چهارم (۲۵٪)',
+                                ])
+                                ->default(12)
+                                ->native(false)
+                                ->live()
+                                ->hidden(fn (Forms\Get $get): bool => in_array($get('type'), ['page', 'step'], true)),
                             Forms\Components\Textarea::make('description')
                                 ->label('توضیح مرحله')
                                 ->visible(fn (Forms\Get $get): bool => in_array($get('type'), ['page', 'step'], true))
@@ -356,6 +370,7 @@ class FormResource extends Resource
                                 'label' => static::fieldTypeLabels()[$type],
                                 'type' => $type,
                                 'required' => false,
+                                'layout' => ['span' => 12],
                             ];
 
                             if ($newUuid) {

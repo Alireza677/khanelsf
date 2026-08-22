@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\CMS\Actions\Filament\ActionPicker;
 use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\Support\HeadingLevel;
@@ -71,9 +72,6 @@ class PageResource extends Resource
                                     'landing' => 'لندینگ',
                                 ])
                                 ->default('default'),
-                            Forms\Components\RichEditor::make('content')
-                                ->label('متن محتوا')
-                                ->columnSpanFull(),
                         ])
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('بلوک‌ها')
@@ -95,9 +93,8 @@ class PageResource extends Resource
                                                 ->label('عنوان بخش')
                                                 ->maxLength(255),
                                             static::headingTagField(),
-                                            Forms\Components\Textarea::make('section_description')
+                                            Forms\Components\RichEditor::make('section_description')
                                                 ->label('توضیحات بخش')
-                                                ->rows(3)
                                                 ->columnSpanFull(),
                                             Forms\Components\TextInput::make('inner_width_percent')
                                                 ->label('عرض کانتینر داخلی')
@@ -150,10 +147,9 @@ class PageResource extends Resource
                                                         ->label('پرسش')
                                                         ->required()
                                                         ->maxLength(255),
-                                                    Forms\Components\Textarea::make('answer')
+                                                    Forms\Components\RichEditor::make('answer')
                                                         ->label('پاسخ')
-                                                        ->required()
-                                                        ->rows(3),
+                                                        ->required(),
                                                 ])
                                                 ->columnSpanFull()
                                                 ->reorderable(),
@@ -205,6 +201,7 @@ class PageResource extends Resource
                                                 ->schema([
                                                     Forms\Components\TextInput::make('name')
                                                         ->label('نام')
+                                                        ->live(onBlur: true)
                                                         ->required()
                                                         ->maxLength(255),
                                                     Forms\Components\TextInput::make('role')
@@ -218,15 +215,23 @@ class PageResource extends Resource
                                                         ])
                                                         ->helperText('تصویر پروفایل اختیاری.'),
                                                     ...static::imageSettingsFields('avatar'),
-                                                    Forms\Components\Textarea::make('quote')
+                                                    Forms\Components\RichEditor::make('quote')
                                                         ->label('متن نظر')
                                                         ->required()
-                                                        ->rows(3)
                                                         ->columnSpanFull(),
                                                 ])
                                                 ->columns(2)
                                                 ->columnSpanFull()
+                                                ->itemLabel(fn (array $state): string => filled($state['name'] ?? null) ? (string) $state['name'] : 'نظر جدید')
+                                                ->collapsible()
                                                 ->reorderable(),
+                                            Forms\Components\TextInput::make('cta_label')
+                                                ->label('متن دکمه اختیاری')
+                                                ->maxLength(255)
+                                                ->required(fn (Get $get): bool => filled($get('cta_action.type'))),
+                                            ActionPicker::make('cta_action')
+                                                ->label('مقصد دکمه اختیاری')
+                                                ->columnSpanFull(),
                                         ]),
                                     Forms\Components\Builder\Block::make('featured_projects')
                                         ->label('پروژه‌های ویژه')
@@ -239,9 +244,8 @@ class PageResource extends Resource
                                                 ->maxLength(255)
                                                 ->default('پروژه‌های ویژه'),
                                             static::headingTagField(),
-                                            Forms\Components\Textarea::make('section_description')
+                                            Forms\Components\RichEditor::make('section_description')
                                                 ->label('توضیحات بخش')
-                                                ->rows(3)
                                                 ->columnSpanFull(),
                                             Forms\Components\Select::make('source')
                                                 ->label('منبع نمایش')
@@ -289,9 +293,8 @@ class PageResource extends Resource
                                                 ->maxLength(255)
                                                 ->default('محصولات ویژه'),
                                             static::headingTagField(),
-                                            Forms\Components\Textarea::make('section_description')
+                                            Forms\Components\RichEditor::make('section_description')
                                                 ->label('توضیحات بخش')
-                                                ->rows(3)
                                                 ->columnSpanFull(),
                                             Forms\Components\Select::make('source')
                                                 ->label('منبع نمایش')
@@ -339,9 +342,8 @@ class PageResource extends Resource
                                                 ->maxLength(255)
                                                 ->default('گالری‌های ویژه'),
                                             static::headingTagField(),
-                                            Forms\Components\Textarea::make('section_description')
+                                            Forms\Components\RichEditor::make('section_description')
                                                 ->label('توضیحات بخش')
-                                                ->rows(3)
                                                 ->columnSpanFull(),
                                             Forms\Components\Select::make('source')
                                                 ->label('منبع نمایش')
@@ -412,7 +414,7 @@ class PageResource extends Resource
                                 ->collapsible()
                                 ->reorderable()
                                 ->columnSpanFull()
-                                ->helperText('بلوک‌ها اختیاری هستند. اگر بلوکی اضافه نشود، برگه از متن محتوای ویرایشگر استفاده می‌کند.'),
+                                ->helperText('محتوای برگه را با بلوک‌ها بسازید. برگه‌های قدیمی بدون بلوک همچنان از محتوای Legacy خود استفاده می‌کنند.'),
                         ]),
                     Forms\Components\Tabs\Tab::make('تصویر شاخص')
                         ->schema([

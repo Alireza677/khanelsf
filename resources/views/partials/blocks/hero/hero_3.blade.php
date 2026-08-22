@@ -25,11 +25,10 @@
             @if (! empty($content['title']))
                 @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
             @endif
-            @if (! empty($content['lead']))
-                <p class="hero-template-3__description">{{ $content['lead'] }}</p>
-            @elseif (! empty($content['description']))
-                <p class="hero-template-3__description">{{ $content['description'] }}</p>
-            @endif
+            @include('partials.blocks._rich_text', [
+                'content' => ! empty($content['lead']) ? $content['lead'] : ($content['description'] ?? null),
+                'class' => 'hero-template-3__description',
+            ])
             @if ((! empty($primaryCta['label']) && ! empty($primaryCta['url'])) || (! empty($secondaryCta['label']) && ! empty($secondaryCta['url'])))
                 <div class="hero-template-3__actions">
                     @if (! empty($primaryCta['label']) && ! empty($primaryCta['url']))<a class="button hero-template-3__primary" href="{{ $primaryCta['url'] }}">{{ $primaryCta['label'] }}</a>@endif

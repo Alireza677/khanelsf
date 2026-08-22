@@ -18,6 +18,8 @@ use App\Models\Service;
 use App\Models\Template;
 use App\Models\User;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\ViewField;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -44,8 +46,17 @@ class FeatureGridActionMigrationTest extends TestCase
                     && $component->getStatePath(false) === 'content.items');
             $picker = collect($items?->getChildComponents() ?? [])
                 ->first(fn ($component): bool => $component instanceof ActionPicker);
+            $description = collect($items?->getChildComponents() ?? [])
+                ->first(fn ($component): bool => $component instanceof RichEditor
+                    && $component->getStatePath(false) === 'description');
+            $image = collect($items?->getChildComponents() ?? [])
+                ->first(fn ($component): bool => $component instanceof ViewField
+                    && $component->getStatePath(false) === 'image');
 
             $this->assertInstanceOf(ActionPicker::class, $picker);
+            $this->assertInstanceOf(RichEditor::class, $description);
+            $this->assertInstanceOf(ViewField::class, $image);
+            $this->assertSame('full', $image->getColumnSpan('default'));
             $this->assertSame('action', $picker->getStatePath(false));
             $this->assertSame([
                 'custom_url',
@@ -101,6 +112,41 @@ class FeatureGridActionMigrationTest extends TestCase
         $this->assertSame('Edited Grid', $saved['content']['section_title']);
         $this->assertSame('/legacy-feature', $saved['content']['items'][0]['action']['value']);
         $this->assertArrayNotHasKey('button_url', $saved['content']['items'][0]);
+    }
+
+    public function test_item_rich_text_survives_page_save_reload_without_changing_shape_or_action(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $html = '<p>First paragraph</p><p><strong>Bold</strong> and <em>italic</em></p><ul><li>Item</li></ul><p><a href="/details">Details</a></p>';
+        $page = Page::factory()->create(['blocks' => [[
+            'type' => 'feature_grid',
+            'data' => $this->canonicalGrid([[
+                'title' => 'Rich card',
+                'description' => $html,
+                'button_label' => 'Card action',
+                'action' => ['type' => 'custom_url', 'value' => '/card-action'],
+            ]]),
+        ]]]);
+        $component = Livewire::test(EditPage::class, ['record' => $page->getRouteKey()]);
+        $blockKey = array_key_first($component->get('data.blocks'));
+        $itemKey = array_key_first($component->get("data.blocks.{$blockKey}.data.content.items"));
+
+        $component
+            ->assertSet("data.blocks.{$blockKey}.data.content.items.{$itemKey}.description", $html)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $saved = $page->fresh()->blocks[0]['data'];
+        $this->assertSame($html, $saved['content']['items'][0]['description']);
+        $this->assertSame('/card-action', $saved['content']['items'][0]['action']['value']);
+        $this->assertSame(1, $saved['schema_version']);
+        $reloaded = Livewire::test(EditPage::class, ['record' => $page->getRouteKey()]);
+        $reloadedBlockKey = array_key_first($reloaded->get('data.blocks'));
+        $reloadedItemKey = array_key_first($reloaded->get("data.blocks.{$reloadedBlockKey}.data.content.items"));
+        $this->assertSame(
+            $html,
+            $reloaded->get("data.blocks.{$reloadedBlockKey}.data.content.items.{$reloadedItemKey}.description"),
+        );
     }
 
     public function test_template_editor_has_the_same_hydration_and_save_contract(): void
@@ -230,6 +276,29 @@ class FeatureGridActionMigrationTest extends TestCase
         $this->assertStringContainsString('href="#"', $html);
         $this->assertStringContainsString('data-action-placeholder', $html);
         $this->assertStringContainsString('>Temporary feature action</a>', $html);
+    }
+
+    public function test_item_rich_text_and_legacy_text_use_shared_safe_renderer(): void
+    {
+        $rich = '<p>First paragraph</p><p>Second with <strong>bold</strong> and <em>italic</em>.</p><ol><li>One</li></ol><p><a href="/more">More</a></p><script>alert(1)</script>';
+        $data = $this->canonicalGrid([
+            ['title' => 'Rich', 'description' => $rich],
+            ['title' => 'Legacy', 'description' => "First line\nsecond line\n\nSecond paragraph"],
+            ['title' => 'Empty', 'description' => null],
+        ]);
+
+        $production = $this->render($data);
+        $preview = $this->render($data, isPreview: true);
+
+        foreach ([$production, $preview] as $html) {
+            $this->assertStringContainsString('<p>First paragraph</p><p>Second with <strong>bold</strong> and <em>italic</em>.</p>', $html);
+            $this->assertStringContainsString('<ol><li>One</li></ol>', $html);
+            $this->assertStringContainsString('<a href="/more">More</a>', $html);
+            $this->assertStringNotContainsString('<script', $html);
+            $this->assertMatchesRegularExpression('/<p>First line<br\s*\/?>(?:\r?\n)?second line<\/p>/', $html);
+            $this->assertStringContainsString('<p>Second paragraph</p>', $html);
+            $this->assertSame(2, substr_count($html, 'block-card__description'));
+        }
     }
 
     public function test_multiple_cards_preserve_new_tab_form_attribution_and_failure_isolation(): void

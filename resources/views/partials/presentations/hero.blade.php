@@ -23,7 +23,7 @@
                 @if (filled($hero['icon'] ?? null)) <span class="shared-hero__icon" aria-hidden="true">@include('partials.blocks._icon', ['icon' => $hero['icon']])</span> @endif
             @endif
             @include('partials.blocks._heading', ['title' => $title, 'tag' => $hero['heading_tag'] ?? 'h1'])
-            @if (filled($hero['description'] ?? null)) <p class="shared-hero__description">{{ $hero['description'] }}</p> @endif
+            @include('partials.blocks._rich_text', ['content' => $hero['description'] ?? null, 'class' => 'shared-hero__description'])
             @if ($actions !== [])
                 <div class="shared-hero__actions">
                     @foreach ($actions as $index => $action)

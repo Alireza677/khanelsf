@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\BackupStatus;
+use App\Models\Backup;
 use App\Models\Gallery;
 use App\Models\Page;
 use App\Models\Post;
@@ -150,8 +152,8 @@ class LaunchChecklist extends FilamentPage
             ],
             [
                 'label' => 'Backup plan',
-                'ok' => false,
-                'detail' => 'Confirm database, storage/app/public, uploaded media, and secure .env backups outside this application.',
+                'ok' => Backup::query()->where('status', BackupStatus::Completed->value)->whereNotNull('local_path')->exists(),
+                'detail' => 'Create a server-local backup from Maintenance > Backups, then download a copy for long-term storage.',
             ],
         ];
     }

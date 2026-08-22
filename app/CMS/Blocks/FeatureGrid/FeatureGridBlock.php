@@ -97,9 +97,8 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
                 ->required()
                 ->maxLength(255),
             HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
-            Forms\Components\Textarea::make('content.section_description')
+            Forms\Components\RichEditor::make('content.section_description')
                 ->label($page ? 'توضیحات بخش' : 'Section description')
-                ->rows(3)
                 ->columnSpanFull(),
             Forms\Components\Select::make('content.items_mode')
                 ->label($page ? 'نوع آیتم‌ها' : 'Items mode')
@@ -208,11 +207,11 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
                 ->viewData(fn (): array => ['images' => self::mediaLibraryImageItems()])
                 ->helperText($page
                     ? 'تصویر اختیاری برای این ویژگی.'
-                    : 'Optional image for this feature.'),
+                    : 'Optional image for this feature.')
+                ->columnSpanFull(),
             ...$this->imageSettingsFields($page),
-            Forms\Components\Textarea::make('description')
+            Forms\Components\RichEditor::make('description')
                 ->label($page ? 'توضیحات' : 'Description')
-                ->rows(3)
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('button_label')
                 ->label($page ? 'متن دکمه' : 'Button label')

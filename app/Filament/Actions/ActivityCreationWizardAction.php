@@ -124,7 +124,7 @@ class ActivityCreationWizardAction
                         ->content(fn (Get $get): string => ClientProjectActivityResource::serviceSummary($get('service_id')))
                         ->visible(fn (Get $get): bool => filled($get('service_id'))),
                     Forms\Components\TextInput::make('title')->label('عنوان فعالیت')->required()->maxLength(255)->autofocus(),
-                    Forms\Components\DatePicker::make('activity_date')->jalali()->label('تاریخ فعالیت')->default(today()),
+                    Forms\Components\DatePicker::make('activity_date')->jalali()->closeOnDateSelection()->label('تاریخ فعالیت')->default(today()),
                     Forms\Components\Grid::make(2)->schema([
                         Forms\Components\TextInput::make('duration_hours')->label('ساعت')->numeric()->minValue(0)->maxValue(24)->default(0)->required()->live(),
                         Forms\Components\TextInput::make('duration_remainder_minutes')->label('دقیقه')->numeric()->minValue(0)->maxValue(59)->default(0)->required()->live()

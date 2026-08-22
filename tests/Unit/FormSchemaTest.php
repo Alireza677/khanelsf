@@ -79,4 +79,22 @@ class FormSchemaTest extends TestCase
             array_map(fn (mixed $rule): string => is_object($rule) ? $rule::class : $rule, app(FormSchema::class)->validationRules($form)['building_type']),
         );
     }
+
+    public function test_it_canonicalizes_allowed_legacy_invalid_and_structural_column_spans(): void
+    {
+        $form = new Form([
+            'schema' => ['fields' => [
+                ['key' => 'legacy', 'type' => 'text'],
+                ['key' => 'quarter', 'type' => 'text', 'layout' => ['span' => 3]],
+                ['key' => 'third', 'type' => 'text', 'layout' => ['span' => '4']],
+                ['key' => 'invalid', 'type' => 'text', 'layout' => ['span' => 5]],
+                ['key' => 'step', 'type' => 'page', 'layout' => ['span' => 3]],
+            ]],
+        ]);
+
+        $fields = app(FormSchema::class)->fields($form);
+
+        $this->assertSame([12, 3, 4, 12, 12], array_column(array_column($fields, 'layout'), 'span'));
+        $this->assertSame($fields, app(FormSchema::class)->fields(new Form(['schema' => ['fields' => $fields]])));
+    }
 }

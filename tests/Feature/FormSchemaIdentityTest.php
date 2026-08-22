@@ -72,6 +72,7 @@ class FormSchemaIdentityTest extends TestCase
                 'label' => 'Method',
                 'type' => 'select',
                 'required' => true,
+                'layout' => ['span' => 6],
                 'options' => [[
                     'option_id' => self::OPTION_ID,
                     'value' => 'email',
@@ -95,6 +96,7 @@ class FormSchemaIdentityTest extends TestCase
         $this->assertCount(2, array_unique($fieldIds));
         $this->assertCount(2, array_unique(array_column($optionIds, 'option_id')));
         $this->assertSame(['email', 'email'], array_column($optionIds, 'value'));
+        $this->assertSame([6, 6], array_column(array_column($saved, 'layout'), 'span'));
 
         $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()]);
         $reversedKeys = array_reverse(array_keys($component->get('data')['schema']['fields']));
@@ -104,6 +106,7 @@ class FormSchemaIdentityTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertSame(array_reverse($fieldIds), array_column($form->fresh()->schema['fields'], 'field_id'));
+        $this->assertSame([6, 6], array_column(array_column($form->fresh()->schema['fields'], 'layout'), 'span'));
     }
 
     public function test_two_render_instances_of_same_form_have_unique_dom_ids_and_compatible_names(): void

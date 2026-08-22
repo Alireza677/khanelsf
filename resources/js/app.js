@@ -552,6 +552,131 @@ const initMultiStepForms = () => {
     });
 };
 
+const initFormSelects = () => {
+    document.querySelectorAll('[data-form-select]').forEach((root) => {
+        if (root.dataset.formSelectReady === 'true') {
+            return;
+        }
+
+        const native = root.querySelector('[data-form-select-native]');
+        const trigger = root.querySelector('[data-form-select-trigger]');
+        const value = root.querySelector('[data-form-select-value]');
+        const listbox = root.querySelector('[data-form-select-listbox]');
+        const options = Array.from(root.querySelectorAll('[data-form-select-option]'));
+
+        if (! native || ! trigger || ! value || ! listbox || options.length === 0) {
+            return;
+        }
+
+        root.dataset.formSelectReady = 'true';
+        root.classList.add('is-enhanced');
+        let activeIndex = Math.max(0, options.findIndex((option) => option.dataset.value === native.value));
+
+        const setActive = (index, focus = false) => {
+            activeIndex = (index + options.length) % options.length;
+            options.forEach((option, optionIndex) => option.classList.toggle('is-active', optionIndex === activeIndex));
+            trigger.setAttribute('aria-activedescendant', options[activeIndex].id);
+
+            if (focus) {
+                options[activeIndex].scrollIntoView({ block: 'nearest' });
+            }
+        };
+
+        const sync = () => {
+            const selected = options.find((option) => option.dataset.value === native.value) || options[0];
+            value.textContent = selected.textContent;
+            trigger.classList.toggle('is-placeholder', native.value === '');
+            options.forEach((option) => option.setAttribute('aria-selected', option === selected ? 'true' : 'false'));
+            setActive(Math.max(0, options.indexOf(selected)));
+        };
+
+        const close = (restoreFocus = false) => {
+            listbox.hidden = true;
+            root.classList.remove('is-open');
+            root.classList.remove('is-open-up');
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.removeAttribute('aria-activedescendant');
+
+            if (restoreFocus) {
+                trigger.focus();
+            }
+        };
+
+        const positionPanel = () => {
+            const triggerRect = trigger.getBoundingClientRect();
+            const viewportHeight = window.visualViewport?.height || window.innerHeight;
+            const availableBelow = Math.max(0, viewportHeight - triggerRect.bottom - 12);
+            const availableAbove = Math.max(0, triggerRect.top - 12);
+            const openAbove = availableBelow < Math.min(240, availableAbove) && availableAbove > availableBelow;
+            const available = openAbove ? availableAbove : availableBelow;
+
+            root.classList.toggle('is-open-up', openAbove);
+            listbox.style.maxHeight = `${Math.max(120, Math.min(256, available))}px`;
+        };
+
+        const open = () => {
+            window.dispatchEvent(new CustomEvent('form-select:opening', { detail: { root } }));
+            listbox.hidden = false;
+            root.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+            positionPanel();
+            setActive(Math.max(0, options.findIndex((option) => option.dataset.value === native.value)), true);
+        };
+
+        const choose = (option) => {
+            native.value = option.dataset.value || '';
+            native.dispatchEvent(new Event('input', { bubbles: true }));
+            native.dispatchEvent(new Event('change', { bubbles: true }));
+            sync();
+            close(true);
+        };
+
+        trigger.addEventListener('click', () => listbox.hidden ? open() : close());
+        trigger.addEventListener('keydown', (event) => {
+            if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
+                event.preventDefault();
+            }
+
+            if (event.key === 'ArrowDown') {
+                if (listbox.hidden) open();
+                else setActive(activeIndex + 1, true);
+            } else if (event.key === 'ArrowUp') {
+                if (listbox.hidden) open();
+                else setActive(activeIndex - 1, true);
+            } else if (event.key === 'Enter' || event.key === ' ') {
+                if (listbox.hidden) open();
+                else choose(options[activeIndex]);
+            } else if (event.key === 'Escape' && ! listbox.hidden) {
+                event.preventDefault();
+                close(true);
+            } else if (event.key === 'Tab') {
+                close();
+            }
+        });
+        options.forEach((option, index) => {
+            option.addEventListener('click', () => choose(option));
+            option.addEventListener('pointerenter', () => setActive(index));
+        });
+        native.addEventListener('change', sync);
+        native.addEventListener('invalid', (event) => {
+            event.preventDefault();
+            trigger.setAttribute('aria-invalid', 'true');
+            trigger.focus();
+        });
+        document.addEventListener('click', (event) => {
+            if (! root.contains(event.target)) close();
+        });
+        window.addEventListener('form-select:opening', (event) => {
+            if (event.detail.root !== root) close();
+        });
+        window.addEventListener('resize', () => {
+            if (! listbox.hidden) positionPanel();
+        });
+
+        sync();
+    });
+};
+
 const initCalculatorResultModals = () => {
     document.querySelectorAll('[data-calculator-result-modal]').forEach((modal) => {
         if (modal.dataset.resultModalReady === 'true') {
@@ -606,11 +731,13 @@ const initPublicInteractions = () => {
     initStatsCounters();
     initShopCategorySliders();
     initMultiStepForms();
+    initFormSelects();
     initCalculatorResultModals();
 };
 
 document.addEventListener('forms:rendered', () => {
     initMultiStepForms();
+    initFormSelects();
     initCalculatorResultModals();
 });
 

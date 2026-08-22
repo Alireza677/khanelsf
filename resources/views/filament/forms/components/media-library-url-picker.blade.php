@@ -12,6 +12,99 @@
     <script>
         window.__mediaLibraryImageItems = @js($images);
     </script>
+
+    <style>
+        .block-media-picker {
+            width: 100%;
+        }
+
+        .block-media-picker__trigger {
+            width: 100%;
+        }
+
+        .block-media-picker__preview {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+        }
+
+        .block-media-picker__empty {
+            min-height: 12rem;
+            width: 100%;
+        }
+
+        .block-media-picker__overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            background: rgba(0, 0, 0, .22);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease;
+        }
+
+        .block-media-picker__action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 0;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0 1rem;
+            background: rgba(0, 0, 0, .92);
+            color: #fff;
+            opacity: 0;
+            visibility: hidden;
+            transition: height 150ms ease, min-height 150ms ease, opacity 150ms ease, visibility 150ms ease;
+        }
+
+        .block-media-picker__remove {
+            position: absolute;
+            left: .75rem;
+            top: .75rem;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: .375rem;
+            background: rgba(0, 0, 0, .82) !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+            opacity: 0;
+            transition: opacity 150ms ease, background-color 150ms ease, transform 150ms ease;
+        }
+
+        .block-media-picker:hover .block-media-picker__overlay,
+        .block-media-picker:focus-within .block-media-picker__overlay,
+        .block-media-picker:hover .block-media-picker__remove,
+        .block-media-picker:focus-within .block-media-picker__remove {
+            opacity: 1;
+        }
+
+        .block-media-picker:hover .block-media-picker__action,
+        .block-media-picker:focus-within .block-media-picker__action {
+            height: 2.5rem;
+            min-height: 2.5rem;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .block-media-picker__remove:hover,
+        .block-media-picker__remove:focus-visible {
+            background: rgb(220, 38, 38) !important;
+            transform: scale(1.04);
+        }
+
+        @media (hover: none), (pointer: coarse) {
+            .block-media-picker__remove {
+                opacity: 1;
+            }
+        }
+    </style>
 @endonce
 
 <x-dynamic-component
@@ -64,6 +157,63 @@
     >
         <input type="hidden" {{ $applyStateBindingModifiers('wire:model') }}="{{ $statePath }}">
 
+        @if ($isBlockImageField)
+            <div
+                dir="rtl"
+                class="block-media-picker group relative w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+                data-block-media-picker
+            >
+                <button
+                    type="button"
+                    x-on:click="open = true"
+                    x-bind:aria-label="selectedUrl ? 'تغییر تصویر' : 'تصویر را انتخاب کنید'"
+                    class="block-media-picker__trigger relative flex w-full cursor-pointer flex-col overflow-hidden bg-gray-50 text-sm font-medium text-gray-700 outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:bg-gray-900 dark:text-gray-200"
+                    data-block-media-picker-trigger
+                >
+                    <template x-if="selectedUrl">
+                        <span class="flex w-full flex-col">
+                            <span class="block-media-picker__preview block overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                <img
+                                    x-bind:src="selectedUrl"
+                                    alt=""
+                                    class="absolute inset-0 h-full w-full object-cover"
+                                >
+                                <span
+                                    class="block-media-picker__overlay"
+                                    aria-hidden="true"
+                                ></span>
+                            </span>
+                            <span class="block-media-picker__action text-center text-sm font-medium">
+                                تصویر را انتخاب کنید
+                            </span>
+                        </span>
+                    </template>
+
+                    <template x-if="! selectedUrl">
+                        <span class="block-media-picker__empty relative z-10 flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+                            <span class="flex h-11 w-11 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-800 dark:text-gray-300 dark:ring-white/10">
+                                <x-heroicon-o-photo class="h-6 w-6" />
+                            </span>
+                            <span>تصویر را انتخاب کنید</span>
+                        </span>
+                    </template>
+
+                </button>
+
+                <button
+                    type="button"
+                    x-cloak
+                    x-show="selectedUrl"
+                    x-on:click.stop.prevent="clear()"
+                    class="block-media-picker__remove cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:ring-offset-2 dark:ring-offset-gray-900"
+                    aria-label="حذف انتخاب تصویر"
+                    title="حذف انتخاب تصویر"
+                    data-block-media-picker-remove
+                >
+                    <x-heroicon-o-trash class="h-4 w-4" />
+                </button>
+            </div>
+        @else
         <div dir="rtl" class="flex flex-wrap items-start gap-4">
             <div
                 style="width: 200px; max-width: 100%"
@@ -122,6 +272,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <template x-teleport="body">
             <div

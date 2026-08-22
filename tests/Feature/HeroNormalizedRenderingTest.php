@@ -64,8 +64,18 @@ class HeroNormalizedRenderingTest extends TestCase
         $this->assertStringContainsString('src="https://example.test/video.mp4"', $html);
         $this->assertStringContainsString('poster="https://example.test/poster.jpg"', $html);
         $this->assertStringContainsString('--hero-template-2-height: 540px', $html);
-        $this->assertStringContainsString('hero-template-2--right', $html);
+        $this->assertStringNotContainsString('hero-template-2--right', $html);
         $this->assertStringContainsString('value="/first"', $html);
+    }
+
+    public function test_hero_two_ignores_legacy_alignment_during_rendering(): void
+    {
+        $base = ['template' => 'hero_2', 'title' => 'Direction-aware hero'];
+
+        $this->assertSame(
+            $this->render([...$base, 'hero_2_alignment' => 'left']),
+            $this->render([...$base, 'hero_2_alignment' => 'right']),
+        );
     }
 
     public function test_all_hero_one_treatments_have_legacy_v2_parity(): void

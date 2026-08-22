@@ -34,6 +34,12 @@ final class FormSchemaIdentityManager
             );
             unset($field['name']);
 
+            $field['layout'] = [
+                'span' => in_array($field['type'] ?? null, ['page', 'step'], true)
+                    ? 12
+                    : FormSchema::normalizeColumnSpan(data_get($field, 'layout.span')),
+            ];
+
             if (is_array($field['options'] ?? null)) {
                 $field['options'] = $this->canonicalizeOptions($field['options'], $seenOptionIds);
             }

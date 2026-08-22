@@ -7,6 +7,8 @@ use Illuminate\Validation\Rule;
 
 final class FormSchema
 {
+    public const ALLOWED_COLUMN_SPANS = [3, 4, 6, 8, 9, 12];
+
     private const INPUT_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'image_choice', 'radio_card'];
 
     private const PAGE_TYPES = ['page', 'step'];
@@ -44,6 +46,7 @@ final class FormSchema
                     'label' => $this->label($field, 'مرحله جدید'),
                     'type' => $type,
                     'description' => is_string($field['description'] ?? null) ? $field['description'] : null,
+                    'layout' => ['span' => 12],
                 ];
 
                 continue;
@@ -64,6 +67,7 @@ final class FormSchema
                 'type' => $type,
                 'required' => filter_var($field['required'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'placeholder' => is_string($field['placeholder'] ?? null) ? $field['placeholder'] : null,
+                'layout' => ['span' => self::normalizeColumnSpan(data_get($field, 'layout.span'))],
             ];
 
             if (in_array($type, ['select', 'image_choice', 'radio_card'], true)) {
@@ -83,6 +87,13 @@ final class FormSchema
         }
 
         return $normalized;
+    }
+
+    public static function normalizeColumnSpan(mixed $span): int
+    {
+        $span = is_numeric($span) ? (int) $span : 12;
+
+        return in_array($span, self::ALLOWED_COLUMN_SPANS, true) ? $span : 12;
     }
 
     public function validationRules(Form $form): array

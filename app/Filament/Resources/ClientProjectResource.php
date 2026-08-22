@@ -43,7 +43,10 @@ class ClientProjectResource extends Resource
                                     $query->where('status', Customer::STATUS_ACTIVE);
 
                                     if ($record?->customer_id) {
-                                        $query->orWhereKey($record->customer_id);
+                                        $query->orWhere(
+                                            $query->getModel()->getQualifiedKeyName(),
+                                            $record->customer_id,
+                                        );
                                     }
                                 }),
                         )

@@ -7,6 +7,7 @@ use App\CMS\Blocks\CTA\CTABlock;
 use App\CMS\Blocks\FeatureGrid\FeatureGridBlock;
 use App\CMS\Blocks\FeatureGrid\FeatureGridRuntime;
 use App\CMS\Blocks\Form\FormBlock;
+use App\CMS\Blocks\Form\FormBlockRuntime;
 use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\Hero\HeroMediaResolver;
 use App\CMS\Blocks\Product\ProductDocumentsBlock;
@@ -46,6 +47,7 @@ class BlockServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(HeroMediaResolver::class);
+        $this->app->scoped(FormBlockRuntime::class);
 
         $this->app->singleton(BlockRegistry::class, fn ($app): BlockRegistry => new BlockRegistry(
             $app,
@@ -83,11 +85,27 @@ class BlockServiceProvider extends ServiceProvider
 
     public function boot(
         FeatureGridRuntime $featureGrids,
+        FormBlockRuntime $forms,
         SiteHeaderRuntime $siteHeaders,
         SiteHeaderTemplateResolver $headerTemplates,
         TemplateService $templates,
         PublicAccountNavigation $accounts,
     ): void {
+        View::composer(
+            'partials.blocks.form',
+            function (IlluminateView $view) use ($forms): void {
+                $viewData = $view->getData();
+                $data = is_array($viewData['data'] ?? null) ? $viewData['data'] : [];
+                $context = is_array($viewData['context'] ?? null) ? $viewData['context'] : [];
+
+                $view->with('formBlock', $forms->prepare(
+                    $data,
+                    $context,
+                    ! empty($viewData['isPreview']) || ! empty($context['preview']),
+                ));
+            },
+        );
+
         View::composer(
             'partials.blocks.feature_grid',
             function (IlluminateView $view) use ($featureGrids): void {

@@ -51,29 +51,29 @@
         class="content-block block-cta-image block-configured-background"
         @if ($imageStyle || $backgroundVariables) style="{!! trim($imageStyle.' '.$backgroundVariables, ' ;') !!}" @endif
     >
-        <div class="block-cta-image__content" @if ($contentWidth) style="max-width: {{ $contentWidth }}px" @endif>
-            @if (! empty($content['title']))
-                @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
-            @endif
+        <div class="block-cta-image__inner">
+            <div class="block-cta-image__content" @if ($contentWidth) style="max-width: {{ $contentWidth }}px" @endif>
+                @if (! empty($content['title']))
+                    @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
+                @endif
 
-            @if (! empty($content['description']))
-                <p>{{ $content['description'] }}</p>
-            @endif
+                @include('partials.blocks._rich_text', ['content' => $content['description'] ?? null])
 
-            @if (! empty($primaryCta['label']) || ! empty($secondaryCta['label']))
-                <div class="block-cta-image__actions">
-                    @include('partials.actions.render', [
-                        'label' => $primaryCta['label'],
-                        'class' => 'button block-cta-image__primary',
-                        'presentation' => $primaryPresentation,
-                    ])
-                    @include('partials.actions.render', [
-                        'label' => $secondaryCta['label'],
-                        'class' => 'button block-cta-image__secondary',
-                        'presentation' => $secondaryPresentation,
-                    ])
-                </div>
-            @endif
+                @if (! empty($primaryCta['label']) || ! empty($secondaryCta['label']))
+                    <div class="block-cta-image__actions">
+                        @include('partials.actions.render', [
+                            'label' => $primaryCta['label'],
+                            'class' => 'button block-cta-image__primary',
+                            'presentation' => $primaryPresentation,
+                        ])
+                        @include('partials.actions.render', [
+                            'label' => $secondaryCta['label'],
+                            'class' => 'button block-cta-image__secondary',
+                            'presentation' => $secondaryPresentation,
+                        ])
+                    </div>
+                @endif
+            </div>
         </div>
     </section>
 @elseif ($hasVisibleContent)
@@ -92,9 +92,7 @@
                 @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
             @endif
 
-            @if (! empty($content['description']))
-                <p>{{ $content['description'] }}</p>
-            @endif
+            @include('partials.blocks._rich_text', ['content' => $content['description'] ?? null])
         </div>
 
         @if (! empty($primaryCta['label']) || ! empty($secondaryCta['label']))

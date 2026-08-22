@@ -49,9 +49,9 @@ final class HeroV2EditorSchema
             Forms\Components\TextInput::make('content.title')->label($page ? 'عنوان' : 'Title')->required()->maxLength(255),
             Forms\Components\TextInput::make('content.title_secondary')->label($page ? 'خط دوم عنوان' : 'Title second line')->maxLength(255)->visible(fn (Get $get): bool => $templateIs($get, 'hero_1')),
             Forms\Components\TextInput::make('content.lead')->label($page ? 'زیرعنوان' : 'Lead')->maxLength(255),
-            Forms\Components\Textarea::make('content.description')->label($page ? 'توضیحات' : 'Description')->rows($page ? 4 : 3)->columnSpanFull(),
+            Forms\Components\RichEditor::make('content.description')->label($page ? 'توضیحات' : 'Description')->columnSpanFull(),
             HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
-            Forms\Components\Select::make('settings.alignment')->label($page ? 'چیدمان' : 'Alignment')->options(['left' => $page ? 'چپ' : 'Left', 'right' => $page ? 'راست' : 'Right', 'center' => $page ? 'وسط' : 'Center', 'start' => 'Start', 'end' => 'End'])->default('left'),
+            Forms\Components\Select::make('settings.alignment')->label($page ? 'چیدمان' : 'Alignment')->options(['left' => $page ? 'چپ' : 'Left', 'right' => $page ? 'راست' : 'Right', 'center' => $page ? 'وسط' : 'Center', 'start' => 'Start', 'end' => 'End'])->default('left')->visible(fn (Get $get): bool => ! $templateIs($get, 'hero_2')),
             Forms\Components\Select::make('settings.color_mode')->label($page ? 'حالت رنگ' : 'Color mode')->options(['default' => $page ? 'پیش‌فرض' : 'Default', 'muted' => $page ? 'ملایم' : 'Muted', 'dark' => $page ? 'تیره' : 'Dark'])->default('default'),
 
             Forms\Components\TextInput::make('content.primary_cta.label')->label($page ? 'متن دکمه اصلی' : 'Primary button label')->maxLength(255),

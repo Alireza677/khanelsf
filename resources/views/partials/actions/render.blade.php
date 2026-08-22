@@ -20,6 +20,9 @@
             <input type="hidden" name="_context_page_id" value="{{ data_get($presentation, 'context.page_id') }}">
             <input type="hidden" name="_context_page_url" value="{{ data_get($presentation, 'context.page_url') }}">
             <input type="hidden" name="_context_block_id" value="{{ data_get($presentation, 'context.block_id') }}">
+            @if (filled(data_get($presentation, 'context.block_id')))
+                <input type="hidden" name="_form_instance" value="action-{{ strtolower(data_get($presentation, 'context.block_id')) }}">
+            @endif
             <button
                 class="{{ $class }}"
                 type="submit"

@@ -7,4 +7,5 @@
     'form' => $form,
     'fields' => $fields,
     'displayMode' => 'modal',
+    'instanceToken' => $instanceToken ?? null,
 ])

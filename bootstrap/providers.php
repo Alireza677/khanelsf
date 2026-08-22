@@ -14,6 +14,7 @@ use App\Providers\ProjectServiceProvider;
 use App\Providers\ServiceServiceProvider;
 use App\Providers\ShopServiceProvider;
 use App\Providers\TemplateRecipeServiceProvider;
+use App\Providers\TestingDatabaseSafetyServiceProvider;
 
 return [
     AdminLoginServiceProvider::class,
@@ -29,5 +30,6 @@ return [
     ServiceServiceProvider::class,
     FormServiceProvider::class,
     TemplateRecipeServiceProvider::class,
+    TestingDatabaseSafetyServiceProvider::class,
     AdminPanelProvider::class,
 ];

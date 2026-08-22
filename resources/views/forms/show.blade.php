@@ -4,6 +4,6 @@
     <section class="contact-page">
         <h1>{{ $form->name }}</h1>
 
-        @include('forms._form', ['form' => $form, 'fields' => $fields])
+        @include('forms._form', ['form' => $form, 'fields' => $fields, 'instanceToken' => $instanceToken ?? null])
     </section>
 @endsection

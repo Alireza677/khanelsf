@@ -5,7 +5,6 @@
     $primaryCta = $content['primary_cta'];
     $secondaryCta = $content['secondary_cta'];
     $selector = $content['selector'];
-    $alignment = $settings['alignment'] === 'right' ? 'right' : 'left';
     $videoUrl = trim((string) ($media['video_url'] ?? ''));
     $videoPoster = trim((string) ($media['poster_url'] ?? ''));
     $usesVideo = $settings['background_treatment'] === 'video' && filled($videoUrl);
@@ -24,7 +23,7 @@
 
 @include('partials.blocks._image_control_styles')
 
-<section class="content-block hero-template-2 hero-template-2--{{ $alignment }}{{ $heightClass }} block-configured-background" @if ($sectionStyle) style="{!! $sectionStyle !!}" @endif>
+<section class="content-block hero-template-2{{ $heightClass }} block-configured-background" @if ($sectionStyle) style="{!! $sectionStyle !!}" @endif>
     @if ($usesVideo)
         <video class="hero-template-2__background-video" muted loop playsinline preload="none" poster="{{ $videoPoster ?: ($media['url'] ?? '') }}" aria-hidden="true" data-hero-template-2-video>
             <source src="{{ $videoUrl }}">
@@ -36,11 +35,10 @@
             @if (! empty($content['title']))
                 @include('partials.blocks._heading', ['title' => $content['title'], 'tag' => $settings['heading_tag']])
             @endif
-            @if (! empty($content['lead']))
-                <p class="hero-template-2__description">{{ $content['lead'] }}</p>
-            @elseif (! empty($content['description']))
-                <p class="hero-template-2__description">{{ $content['description'] }}</p>
-            @endif
+            @include('partials.blocks._rich_text', [
+                'content' => ! empty($content['lead']) ? $content['lead'] : ($content['description'] ?? null),
+                'class' => 'hero-template-2__description',
+            ])
 
             @if ($selectorItems->isNotEmpty())
                 <div class="hero-template-2__selector" data-hero-template-2>

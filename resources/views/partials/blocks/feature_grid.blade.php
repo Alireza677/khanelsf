@@ -21,9 +21,7 @@
             @include('partials.blocks._heading', ['title' => $content['section_title'], 'tag' => $settings['heading_tag']])
         @endif
 
-        @if (! empty($content['section_description']))
-            <p>{{ $content['section_description'] }}</p>
-        @endif
+        @include('partials.blocks._rich_text', ['content' => $content['section_description'] ?? null])
     </div>
 
     <div @class(['block-grid', 'block-grid--dynamic' => $grid['dynamic']]) @if ($grid['grid_style']) style="{{ $grid['grid_style'] }}" @endif>
@@ -46,9 +44,10 @@
                     <h3>{{ $item['title'] }}</h3>
                 @endif
 
-                @if (! empty($item['description']))
-                    <p>{{ $item['description'] }}</p>
-                @endif
+                @include('partials.blocks._rich_text', [
+                    'content' => $item['description'] ?? null,
+                    'class' => 'block-card__description',
+                ])
 
                 @include('partials.actions.render', [
                     'label' => $item['button_label'] ?? null,

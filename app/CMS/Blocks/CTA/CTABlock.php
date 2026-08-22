@@ -97,7 +97,7 @@ final class CTABlock extends AbstractBlock
                 ->helperText($page ? null : 'Optional in templates; an empty CTA block does not render.')
                 ->maxLength(255),
             HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
-            Forms\Components\Textarea::make('content.description')->label($page ? 'توضیحات' : 'Description')->rows(3)->columnSpanFull(),
+            Forms\Components\RichEditor::make('content.description')->label($page ? 'توضیحات' : 'Description')->columnSpanFull(),
             ...$this->actionFields('primary_cta', $page, false),
             ...$this->actionFields('secondary_cta', $page, true),
         ];

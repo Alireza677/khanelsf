@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\ClientProjectResource\Pages\CreateClientProject;
+use App\Filament\Resources\ClientProjectResource\Pages\EditClientProject;
 use App\Models\ClientProject;
 use App\Models\Customer;
 use App\Models\Project;
@@ -16,6 +17,18 @@ use Tests\TestCase;
 class ClientProjectManagementFoundationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_can_open_the_edit_form_when_the_current_customer_is_inactive(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = Customer::factory()->create(['status' => Customer::STATUS_INACTIVE]);
+        $project = ClientProject::factory()->for($customer)->create();
+        $this->actingAs($admin);
+
+        Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
+            ->assertOk()
+            ->assertFormSet(['customer_id' => $customer->getKey()]);
+    }
 
     public function test_admin_can_create_a_project_for_the_correct_customer(): void
     {

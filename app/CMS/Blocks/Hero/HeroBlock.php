@@ -227,7 +227,6 @@ final class HeroBlock extends AbstractBlock
         $videoVisible = fn (Get $get): bool => ! $imageVisible($get);
 
         return [
-            Forms\Components\Select::make('hero_2_alignment')->label($this->text($context, 'چیدمان محتوا', 'Alignment'))->options($context === self::CONTEXT_PAGE ? ['left' => 'چپ', 'right' => 'راست'] : ['left' => 'Left', 'right' => 'Right'])->default('left')->helperText($context === self::CONTEXT_PAGE ? 'فقط برای هیرو ۲. مشخص می‌کند محتوا در کدام سمت قرار بگیرد.' : null)->visible(fn (Get $get): bool => $get('template') === 'hero_2'),
             Forms\Components\TextInput::make('hero_2_height')->label($this->text($context, 'ارتفاع بلوک', 'Block height'))->numeric()->minValue(0)->suffix('px')->placeholder($this->text($context, 'مثلا 560', 'Example: 560'))->helperText($context === self::CONTEXT_PAGE ? 'فقط برای هیرو ۲. اگر خالی باشد ارتفاع پیش‌فرض استفاده می‌شود.' : null)->visible(fn (Get $get): bool => $get('template') === 'hero_2')->columnSpan(1),
             Forms\Components\Section::make($this->text($context, 'پس‌زمینه هیرو ۲', 'Hero 2 background'))
                 ->schema([
@@ -257,7 +256,7 @@ final class HeroBlock extends AbstractBlock
             Forms\Components\TextInput::make('title')->label($this->text($context, 'عنوان', 'Title'))->required()->maxLength(255),
             HeadingLevel::field('heading_tag', $this->text($context, 'تگ عنوان', 'Heading tag')),
             Forms\Components\TextInput::make('subtitle')->label($this->text($context, 'زیرعنوان', 'Subtitle'))->maxLength(255),
-            Forms\Components\Textarea::make('description')->label($this->text($context, 'توضیحات', 'Description'))->rows($context === self::CONTEXT_PAGE ? 4 : 3)->columnSpanFull(),
+            Forms\Components\RichEditor::make('description')->label($this->text($context, 'توضیحات', 'Description'))->columnSpanFull(),
             Forms\Components\TextInput::make('primary_button_label')->label($this->text($context, 'متن دکمه اصلی', 'Primary button label'))->maxLength(255),
             Forms\Components\TextInput::make('primary_button_url')->label($this->text($context, 'لینک دکمه اصلی', 'Primary button URL'))->maxLength(255),
             Forms\Components\TextInput::make('secondary_button_label')->label($this->text($context, 'متن دکمه دوم', 'Secondary button label'))->maxLength(255),

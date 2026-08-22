@@ -169,7 +169,6 @@ class BlockFoundationTest extends TestCase
             'secondary_button_label',
             'secondary_button_url',
             'hero_1_theme',
-            'hero_2_alignment',
             'hero_3_alignment',
             'image',
             'stats',
@@ -206,7 +205,7 @@ class BlockFoundationTest extends TestCase
 
         $this->assertSame('default', $fields['template']->getDefaultState());
         $this->assertSame('image', $fields['hero_1_theme']->getDefaultState());
-        $this->assertSame('left', $fields['hero_2_alignment']->getDefaultState());
+        $this->assertArrayNotHasKey('hero_2_alignment', $fields);
         $this->assertSame('right', $fields['hero_3_alignment']->getDefaultState());
         $this->assertTrue($fields['title']->isRequired());
     }

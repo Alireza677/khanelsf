@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BackupDownloadController;
 use App\Http\Controllers\Admin\ContactMessageExportController;
 use App\Http\Controllers\Admin\InternalLinkSearchController;
 use App\Http\Controllers\Admin\OrderExportController;
@@ -148,6 +149,13 @@ Route::middleware('auth')
     ->name('admin.')
     ->group(function (): void {
         Route::get('/internal-links/search', InternalLinkSearchController::class)->name('internal-links.search');
+    });
+
+Route::middleware(['auth', 'throttle:10,1'])
+    ->prefix('admin/system/backups')
+    ->name('admin.backups.')
+    ->group(function (): void {
+        Route::get('/{backup}/download', BackupDownloadController::class)->name('download');
     });
 
 Route::middleware('auth')

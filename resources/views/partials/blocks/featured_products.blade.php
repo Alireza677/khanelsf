@@ -33,9 +33,7 @@
                 @include('partials.blocks._heading', ['title' => $data['section_title'], 'tag' => $data['heading_tag'] ?? 'h2'])
             @endif
 
-            @if (! empty($data['section_description']))
-                <p>{{ $data['section_description'] }}</p>
-            @endif
+            @include('partials.blocks._rich_text', ['content' => $data['section_description'] ?? null])
         </div>
 
         <div class="block-grid">

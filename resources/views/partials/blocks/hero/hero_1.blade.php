@@ -148,9 +148,7 @@
             </{{ $headingTag }}>
         @endif
 
-        @if (! empty($description))
-            <p class="hero-template-1__description">{{ $description }}</p>
-        @endif
+        @include('partials.blocks._rich_text', ['content' => $description, 'class' => 'hero-template-1__description'])
 
         @if ((! empty($primaryCta['label']) && ! empty($primaryCta['url'])) || (! empty($secondaryCta['label']) && ! empty($secondaryCta['url'])))
             <div class="hero-template-1__actions">

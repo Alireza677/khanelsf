@@ -163,6 +163,8 @@
                             $type = $itemState['type'] ?? 'text';
                             $label = filled($itemState['label'] ?? null) ? $itemState['label'] : ($fieldTypeLabels[$type] ?? 'فیلد بدون عنوان');
                             $isStructural = in_array($type, ['page', 'step'], true);
+                            $span = $isStructural ? 12 : \App\Services\FormSchema::normalizeColumnSpan(data_get($itemState, 'layout.span'));
+                            $widthLabel = [12 => '۱۰۰٪', 9 => '۷۵٪', 8 => '۶۶٪', 6 => '۵۰٪', 4 => '۳۳٪', 3 => '۲۵٪'][$span];
                             $optionLabels = collect($itemState['options'] ?? [])
                                 ->map(fn ($option): ?string => is_string($option) ? $option : data_get($option, 'label'))
                                 ->filter()
@@ -181,6 +183,7 @@
                             @class([
                                 'form-builder-card',
                                 'is-structural' => $isStructural,
+                                "form-builder-card--span-{$span}",
                             ])
                         >
                             @if ($isStructural)
@@ -204,7 +207,7 @@
                                         @if (filter_var($itemState['required'] ?? false, FILTER_VALIDATE_BOOLEAN))
                                             <span class="is-required">الزامی</span>
                                         @endif
-                                        <span>{{ $itemState['width'] ?? 100 }}٪</span>
+                                        <span>{{ $widthLabel }}</span>
                                     </div>
                                 </div>
 

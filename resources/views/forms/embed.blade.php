@@ -5,11 +5,16 @@
     @endif
 
     @if (filled($description ?? null))
-        <p class="embedded-form__description">{{ $description }}</p>
+        @include('partials.blocks._rich_text', [
+            'content' => $description,
+            'class' => 'embedded-form__description',
+        ])
     @endif
 
     @include('forms._form', [
         'form' => $form,
+        'fields' => $fields ?? null,
         'attributionContext' => $attributionContext ?? [],
+        'instanceToken' => $instanceToken ?? null,
     ])
 </div>

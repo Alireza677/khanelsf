@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\CMS\Actions\Filament\ActionPicker;
 use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\Support\HeadingLevel;
@@ -542,13 +543,22 @@ class TemplateResource extends Resource
                     static::headingTagField(),
                     Forms\Components\Repeater::make('items')
                         ->schema([
-                            Forms\Components\TextInput::make('name')->required()->maxLength(255),
+                            Forms\Components\TextInput::make('name')->live(onBlur: true)->required()->maxLength(255),
                             Forms\Components\TextInput::make('role')->maxLength(255),
-                            Forms\Components\Textarea::make('quote')->required()->rows(3),
+                            Forms\Components\RichEditor::make('quote')->required()->columnSpanFull(),
                             Forms\Components\ViewField::make('avatar')
                                 ->view('filament.forms.components.media-library-url-picker')
                                 ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()]),
                         ])
+                        ->columnSpanFull()
+                        ->itemLabel(fn (array $state): string => filled($state['name'] ?? null) ? (string) $state['name'] : 'نظر جدید')
+                        ->collapsible(),
+                    Forms\Components\TextInput::make('cta_label')
+                        ->label('Optional button label')
+                        ->maxLength(255)
+                        ->required(fn (Get $get): bool => filled($get('cta_action.type'))),
+                    ActionPicker::make('cta_action')
+                        ->label('Optional button destination')
                         ->columnSpanFull(),
                 ])),
             Forms\Components\Builder\Block::make('template_archive_header')

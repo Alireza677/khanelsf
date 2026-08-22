@@ -41,6 +41,7 @@ class ActivityCreationWizardTest extends TestCase
             ->assertSee('filamentJalaliFormComponent', escape: false)
             ->assertSee('x-load-src=', escape: false)
             ->assertDontSee('ax-load-src=', escape: false)
+            ->assertSee('shouldCloseOnDateSelection: true', escape: false)
             ->goToNextWizardStep('mountedActionForm')
             ->assertHasActionErrors(['title', 'duration_remainder_minutes'])
             ->assertWizardCurrentStep(2, 'mountedActionForm');
@@ -79,6 +80,7 @@ class ActivityCreationWizardTest extends TestCase
 
         $activity = ClientProjectActivity::query()->where('title', 'جلسه برنامه‌ریزی')->firstOrFail();
         $this->assertSame($project->id, $activity->client_project_id);
+        $this->assertSame('2026-08-07', $activity->activity_date->toDateString());
         $this->assertSame(105, $activity->duration_minutes);
         $this->assertSame($admin->id, $activity->performed_by);
         $this->assertSame(ClientProjectActivity::VISIBILITY_INTERNAL, $activity->visibility);

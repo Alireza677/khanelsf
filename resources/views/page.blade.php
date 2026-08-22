@@ -4,7 +4,11 @@
     @if ($page?->hasBlocks())
         @include('partials.page-blocks', [
             'blocks' => $page->blocks,
-            'context' => ['page_id' => $page->getKey(), 'page_url' => request()->getRequestUri()],
+            'context' => [
+                'page_id' => $page->getKey(),
+                'page_url' => request()->getRequestUri(),
+                'preview' => ! empty($isPreview),
+            ],
         ])
     @else
         <article>
@@ -14,7 +18,7 @@
                 <img src="{{ $page->featuredImageUrl() }}" alt="{{ $page->title }}">
             @endif
 
-            {!! $page?->content ?? '<p>Welcome to the starter CMS.</p>' !!}
+            {{ \App\Support\RichText::render($page?->content ?? '<p>Welcome to the starter CMS.</p>') }}
         </article>
     @endif
 @endsection

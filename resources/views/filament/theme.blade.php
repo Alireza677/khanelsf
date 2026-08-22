@@ -683,9 +683,17 @@
     .form-builder-canvas__items {
         display: grid;
         gap: .55rem;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
         min-height: 24rem;
         align-content: start;
     }
+
+    .form-builder-card--span-12 { grid-column: span 12; }
+    .form-builder-card--span-9 { grid-column: span 9; }
+    .form-builder-card--span-8 { grid-column: span 8; }
+    .form-builder-card--span-6 { grid-column: span 6; }
+    .form-builder-card--span-4 { grid-column: span 4; }
+    .form-builder-card--span-3 { grid-column: span 3; }
 
     .form-builder-card {
         position: relative;
@@ -1607,6 +1615,10 @@
         .form-builder-card__topline {
             align-items: flex-start;
             flex-wrap: wrap;
+        }
+
+        .form-builder-card[class*="form-builder-card--span-"] {
+            grid-column: 1 / -1;
         }
     }
 
