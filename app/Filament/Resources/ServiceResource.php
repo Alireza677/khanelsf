@@ -167,8 +167,7 @@ class ServiceResource extends Resource
                                 ->afterStateHydrated(function (Set $set, ?Service $record): void {
                                     $set(
                                         'featured_media_id',
-                                        $record?->featuredImage()?->getCustomProperty('source_media_id')
-                                            ?: ($record?->featuredImage() ? '__keep_existing__' : null),
+                                        static::mediaLibraryFeaturedState($record),
                                     );
                                 })
                                 ->helperText('یک تصویر موجود را از کتابخانه رسانه انتخاب کنید.'),
@@ -204,9 +203,9 @@ class ServiceResource extends Resource
                         ]),
                     Forms\Components\Tabs\Tab::make('قیمت و ارائه خدمت')
                         ->schema([
-                            Forms\Components\Toggle::make('available_for_activities')
+                            Forms\Components\Toggle::make('operational_enabled')
                                 ->label('قابل استفاده در فعالیت‌های مشتریان')
-                                ->default(false)
+                                ->default(true)
                                 ->live(),
                             Forms\Components\Placeholder::make('activity_catalog_note')
                                 ->label('کاتالوگ فعالیت')
@@ -258,7 +257,6 @@ class ServiceResource extends Resource
                                     ->length(3)
                                     ->rules(['nullable', 'regex:/^[A-Z]{3}$/']),
                             ])
-                                ->hidden(fn (): bool => ! static::serviceSettings()->pricingEnabled())
                                 ->columns(2)
                                 ->columnSpanFull(),
                         ])
@@ -423,6 +421,7 @@ class ServiceResource extends Resource
             ServicePricingMode::PerUnit->value => array_diff_key($options, [
                 ServiceUnit::Hour->value => true,
                 ServiceUnit::Fixed->value => true,
+                ServiceUnit::Custom->value => true,
             ]),
             default => $options,
         };

@@ -17,10 +17,9 @@ class EditClientProjectActivity extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        return ClientProjectActivityResource::applyCommercialFormState(
-            ClientProjectActivityResource::applyDurationFormState($data),
-            $this->record,
-        );
+        $data = ClientProjectActivityResource::applyDurationFormState($data);
+
+        return ClientProjectActivityResource::applyCommercialFormState(ClientProjectActivityResource::applyCycleFormState($data, $this->record), $this->record);
     }
 
     protected function getHeaderActions(): array

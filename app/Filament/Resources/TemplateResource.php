@@ -489,6 +489,12 @@ class TemplateResource extends Resource
             app(BlockRegistry::class)->find('form')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
         ];
 
+        if (app(\App\Services\ModuleService::class)->businessNetworkEnabled()
+            && in_array($target, [null, '', 'page'], true)) {
+            $commonBlocks[] = app(BlockRegistry::class)
+                ->find('business_network_map')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE);
+        }
+
         if ($target === 'service_single') {
             return [
                 ...$commonBlocks,

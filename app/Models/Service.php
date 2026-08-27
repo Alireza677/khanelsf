@@ -35,6 +35,7 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
 
     protected $attributes = [
         'available_for_activities' => false,
+        'operational_enabled' => true,
     ];
 
     protected $fillable = [
@@ -52,6 +53,7 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
         'seo_description',
         'icon',
         'available_for_activities',
+        'operational_enabled',
         'pricing_mode',
         'unit',
         'custom_unit_label',
@@ -67,6 +69,7 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
             'deliverables' => 'array',
             'published_at' => 'datetime',
             'available_for_activities' => 'boolean',
+            'operational_enabled' => 'boolean',
             'pricing_mode' => ServicePricingMode::class,
             'unit' => ServiceUnit::class,
             'default_unit_price' => 'decimal:4',
@@ -177,7 +180,7 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
 
     public function scopeAvailableForActivities(Builder $query): Builder
     {
-        return $query->where('available_for_activities', true);
+        return $query->where('operational_enabled', true);
     }
 
     public function isPublished(): bool
@@ -231,7 +234,9 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
 
     public function galleryImages()
     {
-        return $this->getMedia('gallery');
+        $shared = $this->sharedMedia('gallery');
+
+        return $shared->isNotEmpty() ? $shared : $this->getMedia('gallery');
     }
 
     /**

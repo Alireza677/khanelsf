@@ -7,12 +7,64 @@ use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\CustomerMembershipManager;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PublicAccountServiceConvergenceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_services_dashboard_renders_clickable_project_rows_and_timeline_states_without_removed_boxes(): void
+    {
+        CarbonImmutable::setTestNow('2026-08-27 12:00:00');
+
+        try {
+            $user = User::factory()->client()->create();
+            $customer = Customer::factory()->create();
+            app(CustomerMembershipManager::class)->assign($customer, $user, 'member');
+
+            $running = ClientProject::factory()->for($customer)->create([
+                'title' => 'پروژه در حال اجرا',
+                'start_date' => '2026-08-01',
+                'end_date' => '2026-09-30',
+                'monthly_hour_limit_minutes' => 600,
+            ]);
+            ClientProject::factory()->for($customer)->create([
+                'title' => 'پروژه آینده',
+                'start_date' => '2026-10-01',
+                'end_date' => '2026-12-01',
+            ]);
+            ClientProject::factory()->for($customer)->create([
+                'title' => 'پروژه دیرکرد',
+                'start_date' => '2026-06-01',
+                'end_date' => '2026-08-01',
+            ]);
+            ClientProject::factory()->for($customer)->create([
+                'title' => 'پروژه تکمیل‌شده',
+                'status' => ClientProject::STATUS_COMPLETED,
+                'start_date' => '2026-06-01',
+                'end_date' => '2026-08-01',
+            ]);
+
+            $this->actingAs($user, 'client')
+                ->get(route('account.services.index', ['customer' => $customer->id]))
+                ->assertOk()
+                ->assertSee('سقف خدمات هر ماه')
+                ->assertSee('وضعیت پرداخت')
+                ->assertSee('بدون صورتحساب')
+                ->assertSee('در حال اجرا')
+                ->assertSee('هنوز شروع نشده')
+                ->assertSee('از موعد گذشته')
+                ->assertSee('تکمیل‌شده')
+                ->assertSee(route('account.projects.show', ['project' => $running, 'customer' => $customer->id]), false)
+                ->assertDontSee('services-customer-card', false)
+                ->assertDontSee('services-quick-links', false)
+                ->assertDontSee('نمای کلی');
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
 
     public function test_service_capability_requires_an_active_customer_membership(): void
     {

@@ -53,6 +53,7 @@ class ActivityCreationWizardAction
                 abort_unless($project, 422);
 
                 $data = ClientProjectActivityResource::applyDurationFormState($data);
+                $data = ClientProjectActivityResource::applyCycleFormState($data);
                 $data = ClientProjectActivityResource::applyCommercialFormState($data);
                 $activity = $project->activities()->create([
                     'performed_by' => auth()->id(),
@@ -64,7 +65,7 @@ class ActivityCreationWizardAction
                     'visibility' => $data['visibility'] ?? ClientProjectActivity::VISIBILITY_INTERNAL,
                     'status' => $data['activity_status'] ?? ClientProjectActivity::STATUS_DRAFT,
                     ...Arr::only($data, [
-                        'service_id', 'service_name_snapshot', 'service_unit_snapshot', 'service_unit_label_snapshot',
+                        'client_project_cycle_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot', 'service_unit_label_snapshot',
                         'pricing_mode_snapshot', 'currency_snapshot', 'unit_price_snapshot', 'quantity', 'total_amount',
                     ]),
                 ]);

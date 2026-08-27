@@ -8,6 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Some existing installations created this table before the migration
+        // history entry was persisted. Preserve those historical revisions and
+        // let Laravel record this migration as applied.
+        if (Schema::hasTable('revisions')) {
+            return;
+        }
+
         Schema::create('revisions', function (Blueprint $table): void {
             $table->id();
             $table->morphs('revisionable');

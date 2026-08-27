@@ -95,6 +95,7 @@ class ManageSiteSettings extends Page implements HasForms
         'service_form_media_enabled' => ['services', 'boolean'],
         'service_form_related_projects_enabled' => ['services', 'boolean'],
         'projects_enabled' => ['projects', 'boolean'],
+        'business_network_enabled' => ['business_network', 'boolean'],
         'projects_label' => ['projects', 'text'],
         'projects_index_title' => ['projects', 'text'],
         'projects_index_description' => ['projects', 'textarea'],
@@ -155,8 +156,8 @@ class ManageSiteSettings extends Page implements HasForms
         $state = $settings->many(array_keys($this->settingsMeta))->all();
         $state['admin_login_path'] = app(AdminLoginPath::class)->current();
         $state['public_services_enabled'] ??= true;
-        $state['service_activity_catalog_enabled'] ??= false;
-        $state['service_pricing_enabled'] ??= false;
+        $state['service_activity_catalog_enabled'] ??= true;
+        $state['service_pricing_enabled'] ??= true;
         $state['default_service_currency'] ??= 'IRT';
         $state['service_allowed_units'] = is_string($state['service_allowed_units'] ?? null)
             ? json_decode($state['service_allowed_units'], true)
@@ -353,9 +354,9 @@ class ManageSiteSettings extends Page implements HasForms
                                 ]),
                                 Forms\Components\Section::make('کاتالوگ خدمات و فعالیت مشتری')->schema([
                                     Forms\Components\Toggle::make('service_activity_catalog_enabled')
-                                        ->label('استفاده از خدمات در فعالیت‌های مشتریان')->default(false)->live(),
+                                        ->label('استفاده از خدمات در فعالیت‌های مشتریان')->default(true)->live(),
                                     Forms\Components\Toggle::make('service_pricing_enabled')
-                                        ->label('فعال بودن قیمت‌گذاری خدمات')->default(false)->live(),
+                                        ->label('فعال بودن قیمت‌گذاری خدمات')->default(true)->live(),
                                     Forms\Components\TextInput::make('default_service_currency')
                                         ->label('ارز پیش‌فرض خدمات')->default('IRT')->length(3)
                                         ->rules(['required', 'regex:/^[A-Z]{3}$/']),
@@ -370,6 +371,15 @@ class ManageSiteSettings extends Page implements HasForms
                                     Forms\Components\Toggle::make('service_form_media_enabled')->label('رسانه و گالری')->default(true),
                                     Forms\Components\Toggle::make('service_form_related_projects_enabled')->label('پروژه‌های مرتبط')->default(true),
                                 ])->columns(2),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('شبکه کسب‌وکار')
+                            ->schema([
+                                Forms\Components\Placeholder::make('business_network_note')
+                                    ->label('نمایش ماژول')
+                                    ->content('خاموش کردن ماژول فقط دسترسی و نمایش را غیرفعال می‌کند؛ مکان‌ها و بلوک‌های ذخیره‌شده حفظ می‌شوند.'),
+                                Forms\Components\Toggle::make('business_network_enabled')
+                                    ->label('فعال‌سازی شبکه کسب‌وکار')
+                                    ->default(false),
                             ]),
                         Forms\Components\Tabs\Tab::make('پروژه‌ها')
                             ->schema([

@@ -71,22 +71,7 @@ final class HeroBlock extends AbstractBlock
     {
         $this->guardContext($context);
 
-        if (config('cms.hero_v2_editor_runtime') ?? config('cms.hero_v2_editor', false)) {
-            return app(HeroV2EditorSchema::class)->schema($context, $this->templates());
-        }
-
-        return [
-            $this->templateSelector($context),
-            ...$this->defaultTemplateFields($context),
-            ...$this->heroOneFields($context),
-            ...$this->heroTwoFields($context),
-            ...$this->heroThreeFields($context),
-            ...$this->commonContentFields($context),
-            ...$this->selectorFields($context),
-            ...$this->statsFields($context),
-            ...$this->heroOneFooterFields($context),
-            ...$this->mediaFields($context),
-        ];
+        return app(HeroV2EditorSchema::class)->schema($context, $this->templates());
     }
 
     private function templateSelector(string $context): Forms\Components\Select

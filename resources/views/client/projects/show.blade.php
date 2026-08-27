@@ -6,10 +6,24 @@
     <div class="portal-page-heading">
         <div><p class="portal-eyebrow">جزئیات پروژه</p><h1>{{ $project['title'] }}</h1></div>
         <div class="portal-actions">
-            <form method="GET" action="{{ route($serviceRoutes['project'], ['project' => $project['id']]) }}" class="portal-field">
+            <form method="GET" action="{{ route($serviceRoutes['project'], ['project' => $project['id']]) }}" class="portal-field portal-month-filter" data-jalali-month-filter dir="rtl">
                 <input type="hidden" name="customer" value="{{ $portalCustomer->id }}">
-                <label for="month">ماه</label>
-                <input id="month" type="month" name="month" value="{{ $summary['month'] }}" min="2000-01" max="2100-12" onchange="this.form.submit()">
+                <input type="hidden" name="month" value="{{ $summary['month'] }}" data-jalali-month-value>
+                <span>ماه</span>
+                <div class="portal-month-filter__selects">
+                    <label class="sr-only" for="jalali-month">ماه شمسی</label>
+                    <select id="jalali-month" class="portal-select" data-jalali-month>
+                        @foreach (['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'] as $number => $name)
+                            <option value="{{ sprintf('%02d', $number + 1) }}" @selected($summary['jalali_month'] === $number + 1)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                    <label class="sr-only" for="jalali-year">سال شمسی</label>
+                    <select id="jalali-year" class="portal-select" data-jalali-year>
+                        @foreach (range(1500, 1350) as $year)
+                            <option value="{{ $year }}" @selected($summary['jalali_year'] === $year)>{{ \App\Support\PersianDate::digits($year) }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </form>
             <a class="portal-button portal-button--secondary" href="{{ route($serviceRoutes['projects'], ['customer' => $portalCustomer->id]) }}">بازگشت به پروژه‌ها</a>
         </div>

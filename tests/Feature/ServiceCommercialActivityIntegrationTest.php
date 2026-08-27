@@ -39,11 +39,12 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
         $legacy = Service::query()->create(['name' => 'قدیمی', 'slug' => 'legacy']);
         $operational = Service::query()->create([
             'name' => 'عملیاتی', 'slug' => 'operational', 'status' => Service::STATUS_DRAFT,
-            'available_for_activities' => true,
+            'operational_enabled' => true,
         ]);
 
         $this->assertNull($legacy->pricing_mode);
         $this->assertFalse($legacy->available_for_activities);
+        $this->assertTrue($legacy->operational_enabled);
         $this->assertFalse($operational->isPublished());
         $this->assertTrue(Service::query()->availableForActivities()->whereKey($operational)->exists());
     }
@@ -98,12 +99,12 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
         $this->assertSame(ServiceUnit::Meter, $service->unit);
     }
 
-    public function test_disabled_global_pricing_keeps_delivery_snapshot_but_does_not_create_money_snapshot(): void
+    public function test_pricing_snapshot_is_not_suppressed_by_the_legacy_ui_toggle(): void
     {
         app(SettingsService::class)->set('service_activity_catalog_enabled', true, 'services', 'boolean');
         app(SettingsService::class)->set('service_pricing_enabled', false, 'services', 'boolean');
         $service = $this->service([
-            'available_for_activities' => true, 'pricing_mode' => 'per_unit',
+            'operational_enabled' => true, 'pricing_mode' => 'per_unit',
             'unit' => 'count', 'default_unit_price' => '500', 'currency_code' => 'IRT',
         ]);
 
@@ -112,9 +113,9 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
         ]);
 
         $this->assertSame('2.0000', $snapshot['quantity']);
-        $this->assertNull($snapshot['unit_price_snapshot']);
-        $this->assertNull($snapshot['currency_snapshot']);
-        $this->assertNull($snapshot['total_amount']);
+        $this->assertSame('500.0000', $snapshot['unit_price_snapshot']);
+        $this->assertSame('IRT', $snapshot['currency_snapshot']);
+        $this->assertSame('1000.00', $snapshot['total_amount']);
     }
 
     public function test_full_form_creates_hourly_activity_with_immutable_snapshot(): void
@@ -123,7 +124,7 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
         $this->actingAs(User::factory()->admin()->create());
         $project = ClientProject::factory()->create();
         $service = $this->service([
-            'name' => 'توسعه Laravel', 'available_for_activities' => true,
+            'name' => 'توسعه Laravel', 'operational_enabled' => true,
             'pricing_mode' => 'hourly', 'unit' => 'hour', 'default_unit_price' => '1500000', 'currency_code' => 'IRT',
         ]);
 
@@ -164,8 +165,8 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
     public function test_snapshot_does_not_refresh_unless_service_is_explicitly_changed(): void
     {
         $this->enableCatalog();
-        $first = $this->service(['name' => 'اول', 'available_for_activities' => true, 'pricing_mode' => 'fixed', 'unit' => 'fixed', 'default_unit_price' => '100']);
-        $second = $this->service(['name' => 'دوم', 'available_for_activities' => true, 'pricing_mode' => 'fixed', 'unit' => 'fixed', 'default_unit_price' => '250']);
+        $first = $this->service(['name' => 'اول', 'operational_enabled' => true, 'pricing_mode' => 'fixed', 'unit' => 'fixed', 'default_unit_price' => '100']);
+        $second = $this->service(['name' => 'دوم', 'operational_enabled' => true, 'pricing_mode' => 'fixed', 'unit' => 'fixed', 'default_unit_price' => '250']);
         $activity = ClientProjectActivity::factory()->create(ClientProjectActivityResource::applyCommercialFormState([
             'service_id' => $first->id, 'duration_minutes' => 60,
         ]));
@@ -196,7 +197,7 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
     public function test_deleting_service_nulls_relation_but_keeps_snapshot(): void
     {
         $this->enableCatalog();
-        $service = $this->service(['name' => 'حفظ تاریخچه', 'available_for_activities' => true]);
+        $service = $this->service(['name' => 'حفظ تاریخچه', 'operational_enabled' => true]);
         $activity = ClientProjectActivity::factory()->create(ClientProjectActivityResource::applyCommercialFormState([
             'service_id' => $service->id, 'duration_minutes' => 30,
         ]));
@@ -217,7 +218,7 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
     {
         $this->enableCatalog();
         $service = $this->service([
-            'available_for_activities' => true, 'pricing_mode' => 'per_unit',
+            'operational_enabled' => true, 'pricing_mode' => 'per_unit',
             'unit' => 'square_meter', 'default_unit_price' => '1250000',
         ]);
 
@@ -230,13 +231,78 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
         $this->assertSame(600, $data['duration_minutes']);
     }
 
+    public function test_operationally_disabled_service_cannot_be_attached_to_a_new_activity(): void
+    {
+        $this->enableCatalog();
+        $service = $this->service([
+            'operational_enabled' => false,
+            'pricing_mode' => 'fixed',
+            'unit' => 'fixed',
+            'default_unit_price' => '100',
+        ]);
+
+        $this->assertArrayNotHasKey($service->id, app(ServiceActivityCatalog::class)->options());
+
+        $this->expectException(ValidationException::class);
+        ClientProjectActivityResource::applyCommercialFormState([
+            'service_id' => $service->id,
+            'duration_minutes' => 30,
+        ]);
+    }
+
+    public function test_hourly_duration_change_recalculates_total_without_refreshing_service_snapshot(): void
+    {
+        $this->enableCatalog();
+        $service = $this->service([
+            'name' => 'ساعتی تاریخی',
+            'pricing_mode' => 'hourly',
+            'unit' => 'hour',
+            'default_unit_price' => '1200',
+        ]);
+        $activity = ClientProjectActivity::factory()->create(ClientProjectActivityResource::applyCommercialFormState([
+            'service_id' => $service->id,
+            'duration_minutes' => 30,
+        ]));
+
+        $service->update(['name' => 'نام جدید', 'default_unit_price' => '9999']);
+        $activity->update(ClientProjectActivityResource::applyCommercialFormState([
+            'service_id' => $service->id,
+            'duration_minutes' => 90,
+        ], $activity));
+
+        $activity->refresh();
+        $this->assertSame('ساعتی تاریخی', $activity->service_name_snapshot);
+        $this->assertSame('1200.0000', $activity->unit_price_snapshot);
+        $this->assertNull($activity->quantity);
+        $this->assertSame('1800.00', $activity->total_amount);
+    }
+
+    public function test_fixed_mode_discards_irrelevant_quantity_state(): void
+    {
+        $this->enableCatalog();
+        $service = $this->service([
+            'pricing_mode' => 'fixed',
+            'unit' => 'fixed',
+            'default_unit_price' => '750',
+        ]);
+
+        $snapshot = ClientProjectActivityResource::applyCommercialFormState([
+            'service_id' => $service->id,
+            'duration_minutes' => 15,
+            'quantity' => '999',
+        ]);
+
+        $this->assertNull($snapshot['quantity']);
+        $this->assertSame('750.00', $snapshot['total_amount']);
+    }
+
     public function test_wizard_and_full_form_share_snapshot_calculation(): void
     {
         $this->enableCatalog();
         $this->actingAs(User::factory()->admin()->create());
         $project = ClientProject::factory()->create();
         $service = $this->service([
-            'available_for_activities' => true, 'pricing_mode' => 'hourly',
+            'operational_enabled' => true, 'pricing_mode' => 'hourly',
             'unit' => 'hour', 'default_unit_price' => '1000',
         ]);
 
@@ -273,7 +339,7 @@ class ServiceCommercialActivityIntegrationTest extends TestCase
         $settings = app(SettingsService::class);
         $settings->set('public_services_enabled', false, 'services', 'boolean');
         $settings->set('service_activity_catalog_enabled', true, 'services', 'boolean');
-        $service = $this->service(['available_for_activities' => true, 'status' => Service::STATUS_ACTIVE]);
+        $service = $this->service(['operational_enabled' => true, 'status' => Service::STATUS_ACTIVE]);
 
         $this->get(route('services.index'))->assertNotFound();
         $this->get(route('services.show', $service->slug))->assertNotFound();

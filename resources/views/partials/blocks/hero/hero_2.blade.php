@@ -15,8 +15,10 @@
     $heightVariable = $blockHeight ? "--hero-template-2-height: {$blockHeight}px;" : null;
     $heightClass = $blockHeight ? ' hero-template-2--fixed-height' : '';
     $sectionStyle = collect([$backgroundImage, $backgroundVariables, $heightVariable])->filter()->map(fn (string $style): string => trim($style, ' ;'))->implode('; ');
-    $selectorItems = collect($selector['items'] ?? [])->filter(fn ($item) => filled($item['label'] ?? null) && filled($item['url'] ?? null))->values();
+    $selectorItems = collect($selector['items'] ?? [])->filter(fn ($item) => filled($item['label'] ?? null))->values();
     $selectorPlaceholder = $selector['placeholder'] ?? null;
+    $defaultIndex = is_numeric($selector['default_index'] ?? null) ? (int) $selector['default_index'] : null;
+    $hasValidDefault = $defaultIndex !== null && is_array(data_get($selectorItems, "{$defaultIndex}.presentation"));
     $buttonLabel = $primaryCta['label'] ?? 'Get Started';
     $selectId = 'hero-template-2-select-'.substr(md5(json_encode($hero)), 0, 10);
 @endphp
@@ -44,17 +46,26 @@
                 <div class="hero-template-2__selector" data-hero-template-2>
                     <label class="sr-only" for="{{ $selectId }}">{{ $selectorPlaceholder ?? 'من به دنبال...' }}</label>
                     <select id="{{ $selectId }}" data-hero-template-2-select>
-                        <option value="">{{ $selectorPlaceholder ?? 'من به دنبال ...' }}</option>
-                        @foreach ($selectorItems as $item)<option value="{{ $item['url'] }}">{{ $item['label'] }}</option>@endforeach
+                        <option value="" @selected(! $hasValidDefault)>{{ $selectorPlaceholder ?? 'من به دنبال ...' }}</option>
+                        @foreach ($selectorItems as $item)<option value="{{ $loop->index }}" @selected($hasValidDefault && $defaultIndex === $loop->index)>{{ $item['label'] }}</option>@endforeach
                     </select>
-                    <a class="button hero-template-2__button" href="#" aria-disabled="true" data-hero-template-2-button>{{ $buttonLabel }}</a>
+                    <div class="hero-template-2__actions" data-hero-template-2-action-slot data-button-label="{{ $buttonLabel }}">
+                        <button class="button hero-template-2__button" type="button" disabled data-hero-template-2-button>{{ $buttonLabel }}</button>
+                    </div>
+                    @foreach ($selectorItems as $item)
+                        @if (is_array($item['presentation'] ?? null))
+                            <template data-hero-template-2-action="{{ $loop->index }}">
+                                @include('partials.actions.render', ['label' => $buttonLabel, 'class' => 'button hero-template-2__button', 'presentation' => $item['presentation']])
+                            </template>
+                        @endif
+                    @endforeach
                 </div>
-            @elseif (! empty($primaryCta['url']))
-                <a class="button hero-template-2__button" href="{{ $primaryCta['url'] }}">{{ $buttonLabel }}</a>
+            @else
+                <button class="button hero-template-2__button" type="button" disabled data-hero-template-2-button>{{ $buttonLabel }}</button>
             @endif
 
-            @if (! empty($secondaryCta['label']) && ! empty($secondaryCta['url']))
-                <p class="hero-template-2__helper"><a href="{{ $secondaryCta['url'] }}">{{ $secondaryCta['label'] }}</a></p>
+            @if (! empty($secondaryCta['label']) && ! empty($secondaryCta['presentation']))
+                <div class="hero-template-2__helper">@include('partials.actions.render', ['label' => $secondaryCta['label'], 'class' => '', 'presentation' => $secondaryCta['presentation']])</div>
             @endif
         </div>
     </div>

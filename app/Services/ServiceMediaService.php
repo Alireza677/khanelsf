@@ -15,9 +15,9 @@ final class ServiceMediaService
     {
         $service->loadMissing('media');
 
-        $featured = $service->getFirstMedia('featured_image');
+        $featured = $service->featuredImage();
         $featuredKey = $featured ? $this->uniqueKey($featured) : null;
-        $gallery = $service->getMedia('gallery')
+        $gallery = $service->galleryImages()
             ->unique(fn (Media $media): string => $this->uniqueKey($media))
             ->reject(fn (Media $media): bool => $featuredKey !== null
                 && $this->uniqueKey($media) === $featuredKey)

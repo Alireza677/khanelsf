@@ -24,6 +24,11 @@ class ModuleService
         return filter_var($this->settings->get('galleries_enabled', true), FILTER_VALIDATE_BOOLEAN);
     }
 
+    public function businessNetworkEnabled(): bool
+    {
+        return filter_var($this->settings->get('business_network_enabled', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
     public function publicServicesEnabled(): bool
     {
         return $this->serviceSettings->publicEnabled();

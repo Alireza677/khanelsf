@@ -44,16 +44,18 @@ class CTAV2Test extends TestCase
         preg_match('/\.block-cta-image \{(?<declarations>[^}]*)\}/s', $css, $ctaRule);
 
         $this->assertMatchesRegularExpression(
-            '/<section[^>]*block-cta-image[^>]*>\s*<div class="block-cta-image__inner">\s*<div class="block-cta-image__content"/s',
+            '/<section[^>]*block-cta-image[^>]*>\s*<div[^>]*block-cta-image__background[^>]*><\/div>\s*<div class="block-cta-image__inner">\s*<div class="block-cta-image__content"/s',
             $html,
         );
         $this->assertArrayHasKey('declarations', $ctaRule);
-        $this->assertStringContainsString('width: auto;', $ctaRule['declarations']);
-        $this->assertStringNotContainsString('width: 100vw;', $ctaRule['declarations']);
-        $this->assertStringContainsString('margin-inline: calc(50% - 50vw);', $ctaRule['declarations']);
+        $this->assertStringContainsString('width: 100%;', $ctaRule['declarations']);
+        $this->assertStringContainsString('margin-inline: 0;', $ctaRule['declarations']);
         $this->assertStringContainsString('max-width: var(--theme-container-width, 1200px);', $css);
         $this->assertStringNotContainsString('transform:', $ctaRule['declarations']);
         $this->assertStringNotContainsString('left:', $ctaRule['declarations']);
+        $this->assertMatchesRegularExpression('/\.block-cta-image__background\s*\{[^}]*left:\s*50%[^}]*position:\s*absolute[^}]*transform:\s*translateX\(-50%\)[^}]*width:\s*100vw/s', $css);
+        $this->assertMatchesRegularExpression('/\.block-cta-image \.block-cta-image__background\s*\{[^}]*background-position:\s*left center !important/s', $css);
+        $this->assertStringContainsString('background-position: center !important;', file_get_contents(resource_path('views/partials/blocks/_image_control_styles.blade.php')));
         $this->assertMatchesRegularExpression(
             '/<main>\s*<div class="container">\s*@yield\(\'content\'\)/s',
             file_get_contents(resource_path('views/layouts/app.blade.php')),

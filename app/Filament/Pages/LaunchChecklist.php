@@ -165,7 +165,7 @@ class LaunchChecklist extends FilamentPage
             'Files: back up storage/app/public, including uploaded Media Library files.',
             'Symlink target: confirm public/storage points to storage/app/public after deployment.',
             '.env: keep a secure manual backup outside git and outside public web directories.',
-            'Exports: use CSV exports for orders, contact messages, and redirects when handing data to a client.',
+            'Exports: use CSV exports for orders and redirects when handing data to a client.',
         ];
     }
 

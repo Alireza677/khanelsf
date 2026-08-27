@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
@@ -59,6 +60,7 @@ class UploadMedia extends Page implements HasForms
                         'image/webp',
                         'image/gif',
                         'image/svg+xml',
+                        'application/pdf',
                         'video/mp4',
                         'video/webm',
                         'video/quicktime',
@@ -95,20 +97,21 @@ class UploadMedia extends Page implements HasForms
             }
 
             $uploadedCount = 0;
-            $usedFileNames = Media::query()
-                ->pluck('file_name')
-                ->mapWithKeys(fn (string $fileName): array => [mb_strtolower($fileName) => true])
-                ->all();
-
             foreach ($files as $file) {
                 if ($file instanceof TemporaryUploadedFile) {
                     $originalFileName = $file->getClientOriginalName();
-                    $fileName = $this->uniqueFileName($originalFileName, $usedFileNames);
+                    $assetKey = (string) Str::ulid();
+                    $fileName = $this->canonicalFileName($assetKey, $originalFileName, $file->getMimeType());
 
                     $user
                         ->addMedia($file->getRealPath())
-                        ->usingName(pathinfo($fileName, PATHINFO_FILENAME))
+                        ->usingName(pathinfo($originalFileName, PATHINFO_FILENAME))
                         ->usingFileName($fileName)
+                        ->withProperties([
+                            'asset_key' => $assetKey,
+                            'original_filename' => $originalFileName,
+                            'checksum_sha256' => hash_file('sha256', $file->getRealPath()),
+                        ])
                         ->toMediaCollection('media_library', 'public');
 
                     $file->delete();
@@ -119,12 +122,23 @@ class UploadMedia extends Page implements HasForms
 
                 if (is_string($file) && Storage::disk('public')->exists($file)) {
                     $originalFileName = basename($file);
-                    $fileName = $this->uniqueFileName($originalFileName, $usedFileNames);
+                    $assetKey = (string) Str::ulid();
+                    $fileName = $this->canonicalFileName(
+                        $assetKey,
+                        $originalFileName,
+                        Storage::disk('public')->mimeType($file),
+                    );
+                    $absolutePath = Storage::disk('public')->path($file);
 
                     $user
                         ->addMediaFromDisk($file, 'public')
-                        ->usingName(pathinfo($fileName, PATHINFO_FILENAME))
+                        ->usingName(pathinfo($originalFileName, PATHINFO_FILENAME))
                         ->usingFileName($fileName)
+                        ->withProperties([
+                            'asset_key' => $assetKey,
+                            'original_filename' => $originalFileName,
+                            'checksum_sha256' => hash_file('sha256', $absolutePath),
+                        ])
                         ->toMediaCollection('media_library', 'public');
 
                     Storage::disk('public')->delete($file);
@@ -178,14 +192,19 @@ class UploadMedia extends Page implements HasForms
             ->countBy();
 
         $existingFileNames = Media::query()
-            ->whereIn('file_name', $fileNames->all())
-            ->pluck('file_name')
+            ->where(function ($query) use ($fileNames): void {
+                $query->whereIn('original_filename', $fileNames->all())
+                    ->orWhere(function ($legacyQuery) use ($fileNames): void {
+                        $legacyQuery->whereNull('original_filename')->whereIn('file_name', $fileNames->all());
+                    });
+            })
+            ->get(['file_name', 'original_filename'])
+            ->map(fn (Media $media): string => $media->original_filename ?: $media->file_name)
             ->map(fn (string $fileName): string => mb_strtolower($fileName))
             ->flip();
 
         $this->duplicateFileNames = $fileNames
-            ->filter(fn (string $fileName): bool =>
-                $existingFileNames->has(mb_strtolower($fileName)) ||
+            ->filter(fn (string $fileName): bool => $existingFileNames->has(mb_strtolower($fileName)) ||
                 $selectedCounts->get(mb_strtolower($fileName), 0) > 1
             )
             ->unique(fn (string $fileName): string => mb_strtolower($fileName))
@@ -196,28 +215,26 @@ class UploadMedia extends Page implements HasForms
     /**
      * @param  array<string, bool>  $usedFileNames
      */
-    private function uniqueFileName(string $fileName, array &$usedFileNames): string
+    private function canonicalFileName(string $assetKey, string $originalFileName, ?string $mimeType): string
     {
-        $normalizedFileName = mb_strtolower($fileName);
+        $mimeExtensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'image/svg+xml' => 'svg',
+            'video/mp4' => 'mp4',
+            'video/webm' => 'webm',
+            'video/quicktime' => 'mov',
+            'application/pdf' => 'pdf',
+        ];
+        $originalExtension = strtolower(pathinfo($originalFileName, PATHINFO_EXTENSION));
+        $safeOriginalExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'mp4', 'webm', 'mov', 'pdf'];
+        $extension = in_array($originalExtension, $safeOriginalExtensions, true)
+            ? $originalExtension
+            : ($mimeExtensions[$mimeType ?? ''] ?? '');
 
-        if (! isset($usedFileNames[$normalizedFileName])) {
-            $usedFileNames[$normalizedFileName] = true;
-
-            return $fileName;
-        }
-
-        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $name = pathinfo($fileName, PATHINFO_FILENAME);
-        $suffix = 1;
-
-        do {
-            $candidate = $name.'-'.$suffix.($extension !== '' ? '.'.$extension : '');
-            $suffix++;
-        } while (isset($usedFileNames[mb_strtolower($candidate)]));
-
-        $usedFileNames[mb_strtolower($candidate)] = true;
-
-        return $candidate;
+        return $assetKey.($extension !== '' ? '.'.$extension : '');
     }
 
     protected function getHeaderActions(): array

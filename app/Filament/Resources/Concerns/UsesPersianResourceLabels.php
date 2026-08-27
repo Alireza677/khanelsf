@@ -6,7 +6,6 @@ trait UsesPersianResourceLabels
 {
     protected static array $persianLabels = [
         'CategoryResource' => ['دسته نوشته', 'دسته‌های نوشته', 'محتوای وب‌سایت'],
-        'ContactMessageResource' => ['پیام تماس', 'پیام‌های تماس', 'فروش و ارتباط با مشتری'],
         'CustomerResource' => ['مشتری', 'مشتریان پرتال', 'پرتال مشتریان'],
         'ClientProjectResource' => ['پروژه مشتری', 'پروژه‌های مشتریان', 'پرتال مشتریان'],
         'ClientProjectActivityResource' => ['فعالیت', 'فعالیت‌ها', 'پرتال مشتریان'],
@@ -16,7 +15,7 @@ trait UsesPersianResourceLabels
         'SiteUserResource' => ['کاربر سایت', 'کاربران سایت', 'فروش و ارتباط با مشتری'],
         'GalleryCategoryResource' => ['دسته گالری', 'دسته‌های گالری', 'نمونه‌کار و گالری'],
         'GalleryResource' => ['گالری', 'گالری پروژه‌ها', 'نمونه‌کار و گالری'],
-        'MediaResource' => ['رسانه', 'رسانه‌ها', 'ساختار و طراحی وب‌سایت'],
+        'MediaResource' => ['رسانه', 'رسانه‌ها', 'محتوای وب‌سایت'],
         'MenuItemResource' => ['آیتم منو', 'آیتم‌های منو', 'ساختار و طراحی وب‌سایت'],
         'MenuResource' => ['منو', 'منوها', 'ساختار و طراحی وب‌سایت'],
         'OrderResource' => ['سفارش', 'سفارش‌ها', 'خدمات و فروش'],
@@ -24,8 +23,8 @@ trait UsesPersianResourceLabels
         'PostResource' => ['نوشته', 'نوشته‌ها', 'محتوای وب‌سایت'],
         'ProductCategoryResource' => ['دسته محصول', 'دسته‌های محصول', 'خدمات و فروش'],
         'ProductResource' => ['محصول', 'محصولات', 'خدمات و فروش'],
-        'ProjectCategoryResource' => ['دسته پروژه', 'دسته‌های پروژه', 'نمونه‌کار و گالری'],
-        'ProjectResource' => ['پروژه', 'پروژه‌های عمومی', 'نمونه‌کار و گالری'],
+        'ProjectCategoryResource' => ['دسته پروژه', 'دسته‌بندی نمونه کار', 'نمونه‌کار و گالری'],
+        'ProjectResource' => ['پروژه', 'نمونه کارها', 'نمونه‌کار و گالری'],
         'ProjectDiscoveryVocabularyResource' => ['فیلتر گالری', 'فیلترهای گالری', 'نمونه‌کار و گالری'],
         'RedirectResource' => ['ریدایرکت', 'ریدایرکت‌ها', 'نگهداری سیستم'],
         'ServiceResource' => ['خدمت', 'خدمات', 'خدمات و فروش'],

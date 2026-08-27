@@ -11,9 +11,48 @@
     @if ($customer)
         @php($monthly = $servicesDashboard['monthly'])
         <div class="services-dashboard">
+            <section class="services-project-list" aria-labelledby="customer-projects-title">
+                <div class="services-section-heading">
+                    <div><span class="services-kicker">پروژه‌های مشتری</span><h2 id="customer-projects-title">پروژه‌های من</h2></div>
+                    <div class="services-project-list__actions"><span class="services-project-count">{{ \App\Support\PersianDate::digits($servicesDashboard['projects']->count()) }} پروژه</span><a href="{{ route($serviceRoutes['projects'], ['customer' => $customer->id]) }}">مشاهده همه پروژه‌ها ←</a></div>
+                </div>
+                @if ($servicesDashboard['projects']->isEmpty())
+                    <x-client.empty-state title="پروژه‌ها" message="هنوز پروژه‌ای برای شما ثبت نشده است." />
+                @else
+                    <div class="services-project-table" role="table" aria-label="فهرست پروژه‌ها">
+                        <div class="services-project-table__head" role="row">
+                            <span role="columnheader">نام پروژه</span><span role="columnheader">نوع پروژه</span><span role="columnheader">وضعیت پروژه</span><span role="columnheader">سقف خدمات هر ماه</span><span role="columnheader">مصرف این ماه</span><span role="columnheader">وضعیت پرداخت</span>
+                        </div>
+                        <div class="services-project-table__body">
+                            @foreach ($servicesDashboard['projects'] as $project)
+                                <a class="services-project-row services-project-row--{{ $project['timeline']['state'] }}" role="row" href="{{ route($serviceRoutes['project_show'], ['project' => $project['id'], 'customer' => $customer->id]) }}" aria-label="مشاهده پروژه {{ $project['title'] }}">
+                                    <div class="services-project-row__summary">
+                                        <div class="services-project-name" role="cell"><strong>{{ $project['title'] }}</strong><small>مشاهده جزئیات پروژه ←</small></div>
+                                        <div role="cell"><small>نوع پروژه</small><span>{{ $project['type'] ?: 'پروژه خدماتی' }}</span></div>
+                                        <div role="cell"><small>وضعیت پروژه</small><span class="portal-badge">{{ $project['status_label'] }}</span></div>
+                                        <div role="cell"><small>سقف خدمات هر ماه</small><strong>{{ $project['limit_time'] ?? 'تعیین نشده' }}</strong></div>
+                                        <div role="cell"><small>مصرف این ماه</small><strong>{{ $project['used_time'] }}</strong></div>
+                                        <div role="cell"><small>وضعیت پرداخت</small><span class="services-payment services-payment--{{ $project['payment']['state'] }}">{{ $project['payment']['label'] }}</span></div>
+                                    </div>
+                                    <div class="services-project-timeline">
+                                        <div class="services-timeline-date"><small>شروع پروژه</small><strong>{{ $project['start_date'] ?: 'تعیین نشده' }}</strong></div>
+                                        <div class="services-timeline-track" style="--timeline-progress: {{ $project['timeline']['percentage'] }}%; --today-position: {{ $project['timeline']['today_percentage'] ?? 0 }}%">
+                                            <span class="services-timeline-track__base"></span><span class="services-timeline-track__progress"></span><i class="is-start"></i><i class="is-end"></i>
+                                            @if ($project['timeline']['today_percentage'] !== null && $project['timeline']['state'] === 'active')<b class="services-timeline-today"><span>امروز</span></b>@endif
+                                        </div>
+                                        <div class="services-timeline-date services-timeline-date--end"><small>تحویل پروژه</small><strong>{{ $project['end_date'] ?: 'تعیین نشده' }}</strong></div>
+                                        <p class="services-timeline-status"><span>{{ $project['timeline']['label'] }}</span>{{ $project['timeline']['detail'] }}</p>
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </section>
+
             <section class="services-hero-card" aria-labelledby="monthly-time-title">
                 <div class="services-hero-card__heading">
-                    <div><span class="services-kicker">وضعیت خدمات این ماه</span><h2 id="monthly-time-title">زمان مصرف‌شده پروژه در این ماه</h2></div>
+                    <div><span class="services-kicker">وضعیت خدمات این ماه</span><h2 id="monthly-time-title">زمان مصرف‌شده پروژه ها در این ماه</h2></div>
                     <span class="services-month"><x-persian-date :value="now()" format="month-year" /></span>
                 </div>
                 <div class="services-time-layout">
@@ -40,25 +79,8 @@
                 @endforeach
             </section>
 
-            <div class="services-content-grid">
+            <div class="services-content-grid services-content-grid--single">
                 <main class="services-main-column">
-                    <section class="services-panel">
-                        <div class="services-section-heading"><div><span class="services-kicker">نمای کلی</span><h2>پروژه‌های من</h2></div><a href="{{ route($serviceRoutes['projects'], ['customer' => $customer->id]) }}">مشاهده همه پروژه‌ها ←</a></div>
-                        @if ($servicesDashboard['projects']->isEmpty())
-                            <x-client.empty-state title="پروژه‌ها" message="هنوز پروژه‌ای برای شما ثبت نشده است." />
-                        @else
-                            <div class="services-project-grid">
-                                @foreach ($servicesDashboard['projects']->take(4) as $project)
-                                    <a class="services-project-card" href="{{ route($serviceRoutes['project_show'], ['project' => $project['id'], 'customer' => $customer->id]) }}">
-                                        <div><span class="portal-badge">{{ $project['status_label'] }}</span><small>{{ $project['type'] ?: 'پروژه خدماتی' }}</small></div>
-                                        <h3>{{ $project['title'] }}</h3>
-                                        <dl><div><dt>مصرف این ماه</dt><dd>{{ $project['used_time'] }}</dd></div><div><dt>سقف ماهانه</dt><dd>{{ $project['limit_time'] ?? 'تعیین نشده' }}</dd></div></dl>
-                                    </a>
-                                @endforeach
-                            </div>
-                        @endif
-                    </section>
-
                     <section class="services-panel" id="recent-activities">
                         <div class="services-section-heading"><div><span class="services-kicker">گزارش کار</span><h2>فعالیت‌های اخیر</h2></div></div>
                         <form class="services-filters" method="get" action="{{ route($serviceRoutes['home']) }}">
@@ -88,10 +110,6 @@
                     </section>
                 </main>
 
-                <aside class="services-sidebar">
-                    <section class="services-customer-card"><span class="services-avatar">{{ Str::upper(Str::substr($portalUser->name, 0, 1)) }}</span><div><small>حساب مشتری</small><h2>{{ $customer->display_name }}</h2>@if($customer->company_name)<p>{{ $customer->company_name }}</p>@endif<span class="portal-badge">فعال</span></div></section>
-                    <section class="services-panel"><h2>دسترسی سریع</h2><div class="services-quick-links"><a href="{{ route($serviceRoutes['projects'], ['customer' => $customer->id]) }}">مشاهده همه پروژه‌ها <span>←</span></a><a href="{{ route('account.profile.edit') }}">ویرایش پروفایل <span>←</span></a></div></section>
-                </aside>
             </div>
         </div>
         <script>document.querySelectorAll('[data-activity-open]').forEach((button) => button.addEventListener('click', () => document.getElementById(button.dataset.activityOpen)?.showModal()));</script>

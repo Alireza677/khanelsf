@@ -176,7 +176,9 @@ class Project extends Model implements HasMedia, ResolvesNavigationUrl
 
     public function galleryImages()
     {
-        return $this->getMedia('gallery');
+        $shared = $this->sharedMedia('gallery');
+
+        return $shared->isNotEmpty() ? $shared : $this->getMedia('gallery');
     }
 
     public function coverImage(): ?Media

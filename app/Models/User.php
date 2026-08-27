@@ -90,6 +90,7 @@ class User extends Authenticatable implements FilamentUser, HasMedia
                 'image/webp',
                 'image/gif',
                 'image/svg+xml',
+                'application/pdf',
                 'video/mp4',
                 'video/webm',
                 'video/quicktime',

@@ -3,13 +3,18 @@
 namespace App\CMS\Blocks\Hero;
 
 use App\CMS\Blocks\Contracts\BlockNormalizer;
+use App\CMS\Blocks\CTA\CTALegacyActionAdapter;
 use App\CMS\Blocks\Support\HeadingLevel;
+use Illuminate\Support\Arr;
 
 final class HeroDataNormalizer implements BlockNormalizer
 {
     public const SCHEMA_VERSION = 2;
 
-    public function __construct(private readonly HeroMediaResolver $mediaResolver) {}
+    public function __construct(
+        private readonly HeroMediaResolver $mediaResolver,
+        private readonly ?CTALegacyActionAdapter $legacyActionAdapter = null,
+    ) {}
 
     public function isLegacy(array $data): bool
     {
@@ -35,7 +40,7 @@ final class HeroDataNormalizer implements BlockNormalizer
             ? 'video'
             : 'image';
 
-        return [
+        $normalized = [
             'block_id' => $this->stringOrNull($data['block_id'] ?? null),
             'schema_version' => self::SCHEMA_VERSION,
             'template' => $template,
@@ -57,17 +62,11 @@ final class HeroDataNormalizer implements BlockNormalizer
                     'poster_source_id' => $this->mediaResolver->resolveSourceId($posterUrl),
                     'poster_url' => $posterUrl,
                 ],
-                'primary_cta' => [
-                    'label' => $this->valueOrNull($data, 'primary_button_label'),
-                    'url' => $this->valueOrNull($data, 'primary_button_url'),
-                ],
-                'secondary_cta' => [
-                    'label' => $this->valueOrNull($data, 'secondary_button_label'),
-                    'url' => $this->valueOrNull($data, 'secondary_button_url'),
-                ],
+                'primary_cta' => $this->legacyCta($data, 'primary_button_label', 'primary_button_url'),
+                'secondary_cta' => $this->legacyCta($data, 'secondary_button_label', 'secondary_button_url'),
                 'selector' => $this->selector($data),
                 'stats' => $this->arrayOrEmpty($data['stats'] ?? null),
-                'social_links' => $this->arrayOrEmpty($data['hero_1_social_links'] ?? null),
+                'social_links' => $this->canonicalActionItems($this->arrayOrEmpty($data['hero_1_social_links'] ?? null)),
                 'scroll_label' => $this->valueOrNull($data, 'hero_1_scroll_label'),
             ],
             'settings' => [
@@ -86,6 +85,10 @@ final class HeroDataNormalizer implements BlockNormalizer
                 'eyebrow_icon_size' => $this->valueOrNull($data, 'hero_1_eyebrow_icon_size'),
             ],
         ];
+
+        $this->inferHeroOneFeatures($normalized, []);
+
+        return $normalized;
     }
 
     private function normalizeV2(array $data): array
@@ -96,6 +99,15 @@ final class HeroDataNormalizer implements BlockNormalizer
         $normalized['settings']['heading_tag'] = HeadingLevel::normalize(
             $normalized['settings']['heading_tag'] ?? null,
         );
+        $normalized['settings']['background_treatment'] = $this->stringOrDefault(
+            $normalized['settings']['background_treatment'] ?? null,
+            'image',
+        );
+        $normalized['content']['primary_cta'] = $this->canonicalCta($data, 'primary_cta', $normalized['content']['primary_cta']);
+        $normalized['content']['secondary_cta'] = $this->canonicalCta($data, 'secondary_cta', $normalized['content']['secondary_cta']);
+        $normalized['content']['selector'] = $this->canonicalSelector($normalized['content']['selector']);
+        $normalized['content']['social_links'] = $this->canonicalActionItems($normalized['content']['social_links']);
+        $this->inferHeroOneFeatures($normalized, $data);
 
         return $normalized;
     }
@@ -110,8 +122,8 @@ final class HeroDataNormalizer implements BlockNormalizer
                 'eyebrow' => ['text' => null, 'icon' => null],
                 'title' => null, 'title_secondary' => null, 'lead' => null, 'description' => null,
                 'media' => ['kind' => 'image', 'source_id' => null, 'url' => null, 'alt' => null, 'video_url' => null, 'poster_source_id' => null, 'poster_url' => null],
-                'primary_cta' => ['label' => null, 'url' => null],
-                'secondary_cta' => ['label' => null, 'url' => null],
+                'primary_cta' => ['enabled' => false, 'label' => null, 'action' => null],
+                'secondary_cta' => ['enabled' => false, 'label' => null, 'action' => null],
                 'selector' => null, 'stats' => [], 'social_links' => [], 'scroll_label' => null,
             ],
             'settings' => [
@@ -125,12 +137,109 @@ final class HeroDataNormalizer implements BlockNormalizer
         ];
     }
 
+    private function legacyCta(array $data, string $labelKey, string $urlKey): array
+    {
+        $label = $this->valueOrNull($data, $labelKey);
+        $action = $this->adaptAction(['url' => $this->valueOrNull($data, $urlKey)]);
+
+        return ['enabled' => filled($label) || $action !== null, 'label' => $label, 'action' => $action];
+    }
+
+    private function canonicalCta(array $source, string $name, array $cta): array
+    {
+        $action = data_get($source, "content.{$name}.action");
+
+        if (! is_array($action)) {
+            $action = $this->adaptAction(['url' => data_get($source, "content.{$name}.url")]);
+        } else {
+            $action = $this->adaptAction($action);
+        }
+
+        return ['enabled' => (bool) ($cta['enabled'] ?? false), 'label' => $this->stringOrNull($cta['label'] ?? null), 'action' => $action];
+    }
+
+    private function adaptAction(array $data): ?array
+    {
+        $destination = ($this->legacyActionAdapter ?? app(CTALegacyActionAdapter::class))->adapt($data);
+
+        return $destination->type === null ? null : $destination->toArray();
+    }
+
+    private function inferHeroOneFeatures(array &$normalized, array $source): void
+    {
+        if (($normalized['template'] ?? null) !== 'hero_1') {
+            return;
+        }
+
+        $content = &$normalized['content'];
+        if (! Arr::has($source, 'content.eyebrow.enabled')) {
+            $content['eyebrow']['enabled'] = filled($content['eyebrow']['text'] ?? null) || filled($content['eyebrow']['icon'] ?? null);
+        }
+        if (! Arr::has($source, 'content.title_secondary_enabled')) {
+            $content['title_secondary_enabled'] = filled($content['title_secondary'] ?? null)
+                || ($normalized['settings']['title_decoration'] ?? 'none') === 'underline';
+        }
+        if (! Arr::has($source, 'content.title_secondary_underline')) {
+            $content['title_secondary_underline'] = ($normalized['settings']['title_decoration'] ?? 'none') === 'underline';
+        }
+
+        foreach (['primary_cta', 'secondary_cta'] as $name) {
+            if (! Arr::has($source, "content.{$name}.enabled")) {
+                $content[$name]['enabled'] = filled($content[$name]['label'] ?? null) || is_array($content[$name]['action'] ?? null);
+            }
+        }
+        if (! Arr::has($source, 'content.ctas_enabled')) {
+            $content['ctas_enabled'] = $content['primary_cta']['enabled'] || $content['secondary_cta']['enabled'];
+        }
+    }
+
     private function selector(array $data): ?array
     {
         $items = $this->arrayOrEmpty($data['selector_items'] ?? null);
         $placeholder = $this->valueOrNull($data, 'selector_placeholder');
+        $defaultIndex = $this->selectorDefaultIndex($data['selector_default_index'] ?? null, count($items));
 
-        return $items === [] && $placeholder === null ? null : ['placeholder' => $placeholder, 'items' => $items];
+        return $items === [] && $placeholder === null ? null : ['placeholder' => $placeholder, 'default_index' => $defaultIndex, 'items' => $this->canonicalActionItems($items)];
+    }
+
+    private function canonicalSelector(mixed $selector): ?array
+    {
+        if (! is_array($selector)) {
+            return null;
+        }
+
+        return [
+            'placeholder' => $this->stringOrNull($selector['placeholder'] ?? null),
+            'default_index' => $this->selectorDefaultIndex($selector['default_index'] ?? null, count($selector['items'] ?? [])),
+            'items' => $this->canonicalActionItems($this->arrayOrEmpty($selector['items'] ?? null)),
+        ];
+    }
+
+    private function selectorDefaultIndex(mixed $value, int $itemCount): ?int
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $index = (int) $value;
+
+        return $index >= 0 && $index < $itemCount ? $index : null;
+    }
+
+    /** @param array<int, mixed> $items @return array<int, array<string, mixed>> */
+    private function canonicalActionItems(array $items): array
+    {
+        return collect($items)->filter(fn (mixed $item): bool => is_array($item))->map(function (array $item): array {
+            $action = is_array($item['action'] ?? null)
+                ? $this->adaptAction($item['action'])
+                : $this->adaptAction(['url' => $this->firstPresent($item, ['url', 'link', 'button_url', 'cta_url'])]);
+
+            unset($item['url'], $item['link'], $item['button_url'], $item['cta_url']);
+            $item['label'] = $this->stringOrNull($item['label'] ?? null);
+            $item['action'] = $action;
+
+            return $item;
+        })->values()->all();
     }
 
     private function alignment(array $data, string $template): string

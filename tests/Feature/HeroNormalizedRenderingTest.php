@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\CMS\Blocks\Hero\HeroDataNormalizer;
+use App\Models\Form;
 use App\Models\User;
+use App\Models\Page;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -65,7 +67,8 @@ class HeroNormalizedRenderingTest extends TestCase
         $this->assertStringContainsString('poster="https://example.test/poster.jpg"', $html);
         $this->assertStringContainsString('--hero-template-2-height: 540px', $html);
         $this->assertStringNotContainsString('hero-template-2--right', $html);
-        $this->assertStringContainsString('value="/first"', $html);
+        $this->assertStringContainsString('data-hero-template-2-action="0"', $html);
+        $this->assertStringContainsString('href="/first"', $html);
     }
 
     public function test_hero_two_ignores_legacy_alignment_during_rendering(): void
@@ -76,6 +79,179 @@ class HeroNormalizedRenderingTest extends TestCase
             $this->render([...$base, 'hero_2_alignment' => 'left']),
             $this->render([...$base, 'hero_2_alignment' => 'right']),
         );
+    }
+
+    public function test_hero_two_selector_resolves_page_references_after_slug_changes_and_skips_invalid_items(): void
+    {
+        $page = Page::factory()->published()->create(['slug' => 'first-page']);
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_2',
+            'content' => [
+                'title' => 'Canonical selector',
+                'primary_cta' => ['label' => 'Continue'],
+                'selector' => ['items' => [
+                    ['label' => 'Internal', 'action' => ['type' => 'page', 'reference_id' => $page->id]],
+                    ['label' => 'Custom', 'action' => ['type' => 'custom_url', 'value' => 'https://example.test/path']],
+                    ['label' => 'Broken', 'action' => ['type' => 'page', 'reference_id' => 999999]],
+                ]],
+            ],
+        ]);
+
+        $page->update(['slug' => 'renamed-page']);
+        $html = $this->render($hero);
+
+        $this->assertStringContainsString('href="/renamed-page"', $html);
+        $this->assertStringContainsString('href="https://example.test/path"', $html);
+        $this->assertStringContainsString('>Broken</option>', $html);
+        $this->assertStringNotContainsString('data-hero-template-2-action="2"', $html);
+        $this->assertStringContainsString('Canonical selector', $html);
+    }
+
+    public function test_hero_two_primary_cta_never_uses_its_legacy_independent_action(): void
+    {
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_2',
+            'content' => [
+                'title' => 'Selector authority',
+                'primary_cta' => [
+                    'label' => 'Continue',
+                    'action' => ['type' => 'custom_url', 'value' => '/wrong-legacy-destination'],
+                ],
+                'selector' => ['items' => []],
+            ],
+        ]);
+
+        $html = $this->render($hero);
+
+        $this->assertStringNotContainsString('/wrong-legacy-destination', $html);
+        $this->assertStringNotContainsString('href="#"', $html);
+        $this->assertStringContainsString('type="button" disabled', $html);
+        $this->assertStringContainsString('data-hero-template-2-button', $html);
+    }
+
+    public function test_hero_two_renders_one_disabled_trigger_and_canonical_action_for_each_valid_option(): void
+    {
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_2',
+            'content' => [
+                'title' => 'Three choices',
+                'primary_cta' => ['label' => 'Start'],
+                'selector' => ['items' => [
+                    ['label' => 'Option A', 'action' => ['type' => 'custom_url', 'value' => '/action-a']],
+                    ['label' => 'Option B', 'action' => ['type' => 'custom_url', 'value' => '/action-b']],
+                    ['label' => 'Option C', 'action' => ['type' => 'email', 'value' => 'hello@example.test']],
+                ]],
+            ],
+        ]);
+
+        $html = $this->render($hero);
+
+        $this->assertSame(3, substr_count($html, 'data-hero-template-2-action='));
+        $this->assertStringContainsString('data-hero-template-2-action-slot', $html);
+        $this->assertStringContainsString('href="/action-a"', $html);
+        $this->assertStringContainsString('href="/action-b"', $html);
+        $this->assertStringContainsString('href="mailto:hello@example.test"', $html);
+    }
+
+    public function test_hero_two_selected_options_preserve_form_page_and_modal_presentations(): void
+    {
+        $pageForm = Form::query()->create([
+            'name' => 'Hero page form', 'slug' => 'hero-page-form', 'status' => 'published', 'display_mode' => 'page',
+        ]);
+        $modalForm = Form::query()->create([
+            'name' => 'Hero modal form', 'slug' => 'hero-modal-form', 'status' => 'published', 'display_mode' => 'modal',
+        ]);
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_2',
+            'block_id' => '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+            'content' => [
+                'title' => 'Form choices',
+                'primary_cta' => ['label' => 'Continue'],
+                'selector' => ['items' => [
+                    ['label' => 'Page form', 'action' => ['type' => 'form', 'reference_id' => $pageForm->id, 'display' => 'page']],
+                    ['label' => 'Modal form', 'action' => ['type' => 'form', 'reference_id' => $modalForm->id, 'display' => 'modal']],
+                ]],
+            ],
+        ]);
+
+        $html = view('partials.blocks.hero', [
+            'data' => $hero,
+            'context' => ['page_url' => '/hero-source'],
+        ])->render();
+
+        $this->assertStringContainsString(route('forms.context', $pageForm->slug), $html);
+        $this->assertStringContainsString('data-form-action-modal-url="'.route('forms.modal', $modalForm->slug).'"', $html);
+        $this->assertStringContainsString('name="_context_page_url" value="/hero-source"', $html);
+        $this->assertSame(2, substr_count($html, '<form'));
+    }
+
+    public function test_hero_two_valid_default_option_is_selected_for_initial_sync(): void
+    {
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_2',
+            'content' => [
+                'title' => 'Default choice',
+                'primary_cta' => ['label' => 'Continue'],
+                'selector' => [
+                    'default_index' => 1,
+                    'items' => [
+                        ['label' => 'First', 'action' => ['type' => 'custom_url', 'value' => '/first']],
+                        ['label' => 'Second', 'action' => ['type' => 'custom_url', 'value' => '/second', 'open_in_new_tab' => true]],
+                    ],
+                ],
+            ],
+        ]);
+
+        $html = $this->render($hero);
+
+        $this->assertMatchesRegularExpression('/<option value="1" selected(?:="selected")?>Second<\/option>/', $html);
+        $this->assertStringContainsString('href="/second"', $html);
+        $this->assertStringContainsString('target="_blank"', $html);
+        $this->assertStringContainsString('rel="noopener noreferrer"', $html);
+    }
+
+    public function test_hero_two_keeps_invalid_option_selectable_but_emits_no_action_template(): void
+    {
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_2',
+            'content' => [
+                'title' => 'Invalid choice',
+                'primary_cta' => ['label' => 'Continue'],
+                'selector' => ['items' => [
+                    ['label' => 'Valid', 'action' => ['type' => 'custom_url', 'value' => '/valid']],
+                    ['label' => 'Invalid', 'action' => ['type' => 'page', 'reference_id' => 999999]],
+                ]],
+            ],
+        ]);
+
+        $html = $this->render($hero);
+
+        $this->assertMatchesRegularExpression('/<option value="1"[^>]*>Invalid<\/option>/', $html);
+        $this->assertStringNotContainsString('data-hero-template-2-action="1"', $html);
+    }
+
+    public function test_hero_two_javascript_maps_string_action_keys_via_the_exact_data_attribute(): void
+    {
+        foreach ([
+            resource_path('js/app.js'),
+            resource_path('views/layouts/app.blade.php'),
+        ] as $path) {
+            $javascript = file_get_contents($path);
+
+            $this->assertStringContainsString(
+                "template.getAttribute('data-hero-template-2-action')",
+                $javascript,
+            );
+            $this->assertStringNotContainsString('template.dataset.heroTemplate2Action', $javascript);
+            $this->assertStringContainsString('actions.get(select.value)', $javascript);
+            $this->assertStringContainsString('actionSlot.replaceChildren()', $javascript);
+        }
     }
 
     public function test_all_hero_one_treatments_have_legacy_v2_parity(): void
@@ -162,6 +338,28 @@ class HeroNormalizedRenderingTest extends TestCase
             $source = file_get_contents(resource_path("views/partials/blocks/hero/{$template}.blade.php"));
             $this->assertStringNotContainsString('$data[', $source, "{$template} still reads legacy data.");
         }
+    }
+
+    public function test_hero_one_feature_toggles_and_mode_are_runtime_authorities(): void
+    {
+        $hero = app(HeroDataNormalizer::class)->normalize([
+            'template' => 'hero_1', 'title' => 'Visible title', 'eyebrow' => 'Hidden eyebrow',
+            'hero_1_title_second_line' => 'Hidden second line', 'hero_1_show_underline' => true,
+            'primary_button_label' => 'Hidden CTA', 'primary_button_url' => '/hidden',
+            'hero_1_theme' => 'animated_dotted_surface',
+        ]);
+        $hero['content']['eyebrow']['enabled'] = false;
+        $hero['content']['title_secondary_enabled'] = false;
+        $hero['content']['ctas_enabled'] = false;
+        $hero['settings']['background_treatment'] = 'image';
+
+        $html = $this->render($hero);
+
+        $this->assertStringNotContainsString('Hidden eyebrow', $html);
+        $this->assertStringNotContainsString('Hidden second line', $html);
+        $this->assertStringNotContainsString('Hidden CTA', $html);
+        $this->assertStringNotContainsString('data-hero-dotted-surface', $html);
+        $this->assertStringNotContainsString('data-hero-animated-paths', $html);
     }
 
     private function assertLegacyAndV2Parity(array $legacy): string

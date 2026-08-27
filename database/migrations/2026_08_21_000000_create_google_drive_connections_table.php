@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('google_drive_connections')) {
+            return;
+        }
+
         Schema::create('google_drive_connections', function (Blueprint $table): void {
             $table->id();
             $table->string('provider')->default('google');

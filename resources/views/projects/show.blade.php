@@ -91,7 +91,7 @@
             @if ($project->galleryImages()->isNotEmpty())
                 <div class="block-gallery">
                     @foreach ($project->galleryImages() as $image)
-                        <img src="{{ $image->getUrl() }}" alt="{{ $image->name }}">
+                        <img src="{{ $image->getUrl() }}" alt="{{ $image->altText() ?: $image->displayTitle() }}">
                     @endforeach
                 </div>
             @else

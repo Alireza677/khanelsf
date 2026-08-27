@@ -32,8 +32,8 @@
 
         <div class="block-gallery">
             @foreach ($images as $image)
-                <button class="gallery-lightbox-trigger" type="button" data-gallery-lightbox-src="{{ $image->getUrl() }}" data-gallery-lightbox-alt="{{ $image->name }}">
-                    <img src="{{ $image->getUrl() }}" alt="{{ $image->name }}">
+                <button class="gallery-lightbox-trigger" type="button" data-gallery-lightbox-src="{{ $image->getUrl() }}" data-gallery-lightbox-alt="{{ $image->altText() ?: $image->displayTitle() }}">
+                    <img src="{{ $image->getUrl() }}" alt="{{ $image->altText() ?: $image->displayTitle() }}">
                 </button>
             @endforeach
         </div>

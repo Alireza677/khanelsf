@@ -7,6 +7,8 @@ use App\Filament\Resources\FormResource\Pages\CreateForm;
 use App\Filament\Resources\FormResource\Pages\EditForm;
 use App\Models\Form;
 use App\Models\User;
+use App\Services\FormSchema;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -14,6 +16,28 @@ use Tests\TestCase;
 class FormBuilderEditorTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_palette_settings_and_schema_supported_field_types_stay_in_sync(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $component = Livewire::test(CreateForm::class);
+        $settingsType = collect($component->instance()->form->getFlatComponents(withHidden: true))
+            ->filter(fn ($field): bool => $field instanceof Select && $field->getName() === 'type')
+            ->first(fn (Select $field): bool => array_key_exists('date', $field->getOptions()));
+
+        $this->assertInstanceOf(Select::class, $settingsType);
+        $this->assertSame('انتخاب تاریخ', $settingsType->getOptions()['date']);
+
+        $paletteTypes = array_keys(FormResource::fieldTypeLabels());
+        $settingsTypes = array_keys($settingsType->getOptions());
+        $schemaTypes = FormSchema::supportedTypes();
+        sort($paletteTypes);
+        sort($settingsTypes);
+        sort($schemaTypes);
+
+        $this->assertSame($paletteTypes, $settingsTypes);
+        $this->assertSame($paletteTypes, $schemaTypes);
+    }
 
     public function test_editor_renders_two_panel_canvas_palette_and_compact_structural_items(): void
     {
@@ -33,8 +57,25 @@ class FormBuilderEditorTest extends TestCase
             ->assertSeeHtml('class="form-builder-inspector"')
             ->assertSeeHtml('class="form-builder-canvas"')
             ->assertSeeHtml('is-structural')
+            ->assertDontSeeHtml('form-builder-card__preview')
             ->assertDontSee('مدیریت گزینه‌ها')
             ->assertDontSee('امتیازها');
+    }
+
+    public function test_field_cards_keep_builder_controls_without_rendering_visual_field_previews(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $form = $this->choiceForm();
+
+        Livewire::test(EditForm::class, ['record' => $form->getRouteKey()])
+            ->assertOk()
+            ->assertSeeHtml('x-sortable-item=')
+            ->assertSeeHtml('x-sortable-handle')
+            ->assertSeeHtml('form-builder-card__actions')
+            ->assertSeeHtml('form-builder-card__meta')
+            ->assertSeeHtml('is-required')
+            ->assertSee('۱۰۰٪')
+            ->assertDontSeeHtml('form-builder-card__preview');
     }
 
     public function test_palette_add_uses_the_existing_repeater_state_and_action(): void
@@ -171,7 +212,6 @@ class FormBuilderEditorTest extends TestCase
             ->assertSee('مدیریت گزینه‌ها')
             ->assertSee('ویرایش انتخاب‌ها')
             ->assertSee('افزودن گزینه')
-            ->assertSee('گزینه اول')
             ->assertSeeHtml('class="form-builder-choices-drawer"')
             ->assertSeeHtml('class="form-builder-choice-row"')
             ->assertSeeHtml('x-sortable-item=');
@@ -189,7 +229,6 @@ class FormBuilderEditorTest extends TestCase
 
         $component
             ->set("data.{$optionsPath}.{$optionKey}.label", 'عنوان ویرایش‌شده')
-            ->assertSee('عنوان ویرایش‌شده')
             ->callFormComponentAction($optionsPath, 'add')
             ->assertHasNoFormComponentActionErrors();
 

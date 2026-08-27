@@ -95,6 +95,7 @@ class FormResource extends Resource
                 'fields' => [
                     'email' => ['label' => 'ایمیل', 'icon' => 'heroicon-o-envelope'],
                     'tel' => ['label' => 'تلفن', 'icon' => 'heroicon-o-phone'],
+                    'date' => ['label' => 'انتخاب تاریخ', 'icon' => 'heroicon-o-calendar-days'],
                 ],
             ],
         ];
@@ -123,6 +124,10 @@ class FormResource extends Resource
         }
 
         foreach ($fields as $index => $field) {
+            if (is_array($field) && ($field['type'] ?? null) === 'date' && ! array_key_exists('date_range_enabled', $field)) {
+                $fields[$index]['date_range_enabled'] = filled($field['min_date'] ?? null) || filled($field['max_date'] ?? null);
+            }
+
             if (! is_array($field) || ! in_array($field['type'] ?? null, ['select', 'image_choice', 'radio_card'], true)) {
                 continue;
             }
@@ -167,6 +172,14 @@ class FormResource extends Resource
         }
 
         foreach ($fields as $fieldIndex => $field) {
+            if (($field['type'] ?? null) === 'date') {
+                $fields[$fieldIndex]['min_date'] = \App\Services\FormSchema::normalizeIsoDate($field['min_date'] ?? null);
+                $fields[$fieldIndex]['max_date'] = \App\Services\FormSchema::normalizeIsoDate($field['max_date'] ?? null);
+                $fields[$fieldIndex]['date_range_enabled'] = array_key_exists('date_range_enabled', $field)
+                    ? filter_var($field['date_range_enabled'], FILTER_VALIDATE_BOOLEAN)
+                    : $fields[$fieldIndex]['min_date'] !== null || $fields[$fieldIndex]['max_date'] !== null;
+            }
+
             foreach (is_array($field['options'] ?? null) ? $field['options'] : [] as $optionIndex => $option) {
                 if ($isCalculator || array_key_exists('scores', $option)) {
                     $fields[$fieldIndex]['options'][$optionIndex]['scores'] = static::scoresForStorage($option['scores'] ?? []);
@@ -228,7 +241,7 @@ class FormResource extends Resource
                 ])
                 ->columns(2),
             Forms\Components\Section::make('فیلدها')
-                ->description('ترتیب فیلدها همان ترتیب نمایش است. با «شروع مرحله» فرم را به چند صفحه تقسیم کنید.')
+                ->description('ترتیب فیلدها همان ترتیب نمایش است. با «شروع مرحله / صفحه» فرم را به چند صفحه تقسیم کنید.')
                 ->schema([
                     Repeater::make('schema.fields')
                         ->label('فیلدهای فرم')
@@ -244,17 +257,7 @@ class FormResource extends Resource
                             Forms\Components\Select::make('type')
                                 ->label('نوع')
                                 ->live()
-                                ->options([
-                                    'text' => 'متن',
-                                    'email' => 'ایمیل',
-                                    'tel' => 'تلفن',
-                                    'textarea' => 'متن چندخطی',
-                                    'select' => 'فهرست انتخاب',
-                                    'image_choice' => 'انتخاب تصویری',
-                                    'radio_card' => 'کارت انتخابی',
-                                    'page' => 'شروع مرحله / صفحه',
-                                    'step' => 'شروع مرحله (نام جایگزین)',
-                                ])
+                                ->options(static::fieldTypeLabels())
                                 ->required()
                                 ->default('text'),
                             Forms\Components\Toggle::make('required')
@@ -265,6 +268,29 @@ class FormResource extends Resource
                             Forms\Components\TextInput::make('placeholder')
                                 ->label('متن راهنما')
                                 ->hidden(fn (Forms\Get $get): bool => in_array($get('type'), ['page', 'step'], true)),
+                            Forms\Components\Toggle::make('date_range_enabled')
+                                ->label('تعیین محدوده تاریخ')
+                                ->default(false)
+                                ->live()
+                                ->dehydratedWhenHidden()
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'date'),
+                            Forms\Components\DatePicker::make('min_date')
+                                ->label('حداقل تاریخ')
+                                ->jalali()
+                                ->format('Y-m-d')
+                                ->native(false)
+                                ->closeOnDateSelection()
+                                ->dehydratedWhenHidden()
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'date' && (bool) $get('date_range_enabled')),
+                            Forms\Components\DatePicker::make('max_date')
+                                ->label('حداکثر تاریخ')
+                                ->jalali()
+                                ->format('Y-m-d')
+                                ->native(false)
+                                ->closeOnDateSelection()
+                                ->afterOrEqual('min_date')
+                                ->dehydratedWhenHidden()
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'date' && (bool) $get('date_range_enabled')),
                             Forms\Components\Select::make('layout.span')
                                 ->label('عرض فیلد')
                                 ->options([
@@ -370,6 +396,7 @@ class FormResource extends Resource
                                 'label' => static::fieldTypeLabels()[$type],
                                 'type' => $type,
                                 'required' => false,
+                                'date_range_enabled' => false,
                                 'layout' => ['span' => 12],
                             ];
 

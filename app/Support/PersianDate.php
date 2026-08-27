@@ -103,7 +103,7 @@ final class PersianDate
         return $date->setTimezone(self::timezone());
     }
 
-    private static function latinDigits(string $value): string
+    public static function latinDigits(string $value): string
     {
         return strtr($value, [
             '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',

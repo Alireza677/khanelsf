@@ -15,12 +15,12 @@ final class ServiceSettings
 
     public function activityCatalogEnabled(): bool
     {
-        return $this->boolean('service_activity_catalog_enabled', false);
+        return $this->boolean('service_activity_catalog_enabled', true);
     }
 
     public function pricingEnabled(): bool
     {
-        return $this->boolean('service_pricing_enabled', false);
+        return $this->boolean('service_pricing_enabled', true);
     }
 
     public function formSectionEnabled(string $section): bool

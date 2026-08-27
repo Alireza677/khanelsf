@@ -49,7 +49,7 @@ class BlockEditorSaveManagerTest extends TestCase
         $this->assertSame('Canonical', $hero['content']['title']);
         $this->assertNull($hero['content']['media']['source_id']);
         $this->assertSame(42, $hero['content']['media']['poster_source_id']);
-        $this->assertSame(['label' => 'Only label', 'url' => null], $hero['content']['primary_cta']);
+        $this->assertSame(['enabled' => false, 'label' => 'Only label', 'action' => null], $hero['content']['primary_cta']);
         $this->assertSame(2, $hero['settings']['background_effect']['settings']['line_width']);
         $this->assertArrayNotHasKey('title', $hero);
         $this->assertSame($blocks[1], $result[1]);

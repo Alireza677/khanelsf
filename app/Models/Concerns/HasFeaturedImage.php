@@ -6,6 +6,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 trait HasFeaturedImage
 {
+    use HasSharedMediaUsages;
+
     public function registerMediaCollections(): void
     {
         $this->registerFeaturedImageMediaCollection();
@@ -36,13 +38,20 @@ trait HasFeaturedImage
 
     public function featuredImage(): ?Media
     {
-        return $this->getFirstMedia('featured_image');
+        return $this->firstSharedMedia('featured_image')
+            ?: $this->getFirstMedia('featured_image');
     }
 
     public function featuredImageUrl(?string $conversionName = null): ?string
     {
-        $url = $this->getFirstMediaUrl('featured_image', $conversionName ?? '');
+        $media = $this->featuredImage();
 
-        return $url ?: null;
+        if (! $media) {
+            return null;
+        }
+
+        return filled($conversionName) && $media->hasGeneratedConversion($conversionName)
+            ? $media->getUrl($conversionName)
+            : $media->getUrl();
     }
 }

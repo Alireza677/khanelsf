@@ -5,15 +5,18 @@ namespace App\Filament\Resources;
 use App\Enums\ServicePricingMode;
 use App\Filament\Resources\ClientProjectActivityResource\Pages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
+use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\ClientProjectCycleResolver;
+use App\Services\ClientProjectCycleUsage;
 use App\Services\DurationFormatter;
 use App\Services\ServiceActivityCatalog;
 use App\Services\ServiceActivitySnapshot;
-use App\Services\ServiceSettings;
 use App\Services\SettingsService;
+use App\Support\PersianDate;
 use Carbon\CarbonImmutable;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -46,7 +49,8 @@ class ClientProjectActivityResource extends Resource
                     ->label('پروژه مشتری')
                     ->relationship('project', 'title', modifyQueryUsing: fn (Builder $query): Builder => $query
                         ->whereHas('customer', fn (Builder $query): Builder => $query->where('status', Customer::STATUS_ACTIVE)))
-                    ->searchable()->preload()->required(),
+                    ->searchable()->preload()->live()->required(),
+                Forms\Components\Placeholder::make('cycle_context')->label('دوره تعهد زمانی')->content(fn (Forms\Get $get) => self::cycleSummary($get('client_project_id'))),
                 Forms\Components\Select::make('service_id')
                     ->label('خدمت')
                     ->options(fn (): array => app(ServiceActivityCatalog::class)->options())
@@ -97,6 +101,7 @@ class ClientProjectActivityResource extends Resource
             Tables\Columns\TextColumn::make('project.title')->label('پروژه')->searchable(),
             Tables\Columns\TextColumn::make('project.customer.display_name')->label('مشتری')->searchable(),
             Tables\Columns\TextColumn::make('duration_minutes')->label('مدت')->formatStateUsing(fn (int $state): string => app(DurationFormatter::class)->format($state)),
+            Tables\Columns\TextColumn::make('invoiceItems.invoice.invoice_number')->label('فاکتور')->placeholder('—')->badge(),
             Tables\Columns\TextColumn::make('visibility')->label('نمایش')->badge()->formatStateUsing(fn (string $state): string => self::visibilityOptions()[$state] ?? $state),
             Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge()->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
         ])->filters([
@@ -123,6 +128,7 @@ class ClientProjectActivityResource extends Resource
                 Infolists\Components\TextEntry::make('title')->label('عنوان'),
                 Infolists\Components\TextEntry::make('duration_minutes')->label('مدت')->formatStateUsing(fn (int $state): string => app(DurationFormatter::class)->format($state)),
                 Infolists\Components\TextEntry::make('performedBy.name')->label('اجراکننده')->placeholder('—'),
+                Infolists\Components\TextEntry::make('invoiceItems.invoice.invoice_number')->label('ثبت‌شده در فاکتور')->placeholder('—')->badge(),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات مشتری')->placeholder('—')->columnSpanFull(),
                 Infolists\Components\TextEntry::make('internal_notes')->label('یادداشت داخلی — خصوصی')->placeholder('—')->columnSpanFull(),
             ])->columns(2),
@@ -192,6 +198,31 @@ class ClientProjectActivityResource extends Resource
         )];
     }
 
+    public static function applyCycleFormState(array $data, ?ClientProjectActivity $activity = null): array
+    {
+        if ($activity?->client_project_cycle_id && (int) $activity->client_project_id === (int) ($data['client_project_id'] ?? 0)) {
+            $data['client_project_cycle_id'] = $activity->client_project_cycle_id;
+
+            return $data;
+        }
+        $project = ClientProject::findOrFail($data['client_project_id']);
+        $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse($data['activity_date']), (int) $data['duration_minutes']);
+        $data['client_project_cycle_id'] = $cycle?->id;
+
+        return $data;
+    }
+
+    public static function cycleSummary(int|string|null $projectId): string
+    {
+        $cycle = ClientProject::find($projectId)?->cycles()->whereIn('status', ['active', 'overdue'])->oldest('starts_at')->first();
+        if (! $cycle) {
+            return 'پس از ثبت فعالیت، دوره مناسب براساس تعهد پروژه ساخته یا انتخاب می‌شود.';
+        }
+        $usage = app(ClientProjectCycleUsage::class)->summary($cycle);
+
+        return PersianDate::date($cycle->starts_at).' تا '.PersianDate::date($cycle->ends_at).' · تعهد: '.app(DurationFormatter::class)->format($cycle->allocated_minutes).' · مصرف: '.app(DurationFormatter::class)->format($usage['consumed_minutes']).' · باقی‌مانده: '.app(DurationFormatter::class)->format($usage['remaining_minutes']).($cycle->status->value === 'overdue' ? ' · عقب‌افتاده' : '');
+    }
+
     public static function serviceSummary(int|string|null $serviceId): string
     {
         $service = app(ServiceActivityCatalog::class)->find($serviceId);
@@ -200,10 +231,6 @@ class ClientProjectActivityResource extends Resource
         }
 
         $unit = $service->unit?->label() ?? 'بدون واحد';
-        if (! app(ServiceSettings::class)->pricingEnabled()) {
-            return "{$service->name} · واحد: {$unit}";
-        }
-
         $price = $service->default_unit_price ?? 'بدون قیمت';
         $currency = $service->currency_code ?: app(SettingsService::class)->get('default_service_currency', 'IRT');
 

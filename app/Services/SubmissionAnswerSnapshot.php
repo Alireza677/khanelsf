@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Form;
+use App\Support\PersianDate;
 
 final class SubmissionAnswerSnapshot
 {
@@ -82,6 +83,10 @@ final class SubmissionAnswerSnapshot
 
     private function displayValue(array $field, mixed $value): mixed
     {
+        if (($field['type'] ?? null) === 'date' && is_string($value)) {
+            return PersianDate::date($value) ?? $value;
+        }
+
         if (($field['type'] ?? null) === 'select') {
             $options = is_array($field['options'] ?? null) ? $field['options'] : [];
 

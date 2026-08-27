@@ -17,11 +17,9 @@ final class ServiceActivitySnapshot
     {
         $pricingMode = $service->pricing_mode?->value;
         $unitValue = $service->unit?->value;
-        $pricingEnabled = $this->settings->get('service_pricing_enabled', false);
-        $pricingEnabled = filter_var($pricingEnabled, FILTER_VALIDATE_BOOLEAN);
         $pricing = $this->calculator->calculate(
             (string) $pricingMode,
-            $pricingEnabled ? $service->default_unit_price : null,
+            $service->default_unit_price,
             $durationMinutes,
             $quantity,
         );
@@ -33,10 +31,10 @@ final class ServiceActivitySnapshot
             'service_unit_snapshot' => $unitValue,
             'service_unit_label_snapshot' => $unit === ServiceUnit::Custom ? $service->custom_unit_label : $unit?->label(),
             'pricing_mode_snapshot' => $pricingMode,
-            'currency_snapshot' => $pricingEnabled
+            'currency_snapshot' => $pricingMode !== null
                 ? ($service->currency_code ?: strtoupper((string) $this->settings->get('default_service_currency', 'IRT')))
                 : null,
-            'unit_price_snapshot' => $pricingEnabled ? $service->default_unit_price : null,
+            'unit_price_snapshot' => $service->default_unit_price,
             'quantity' => $pricing['quantity'],
             'total_amount' => $pricing['total_amount'],
         ];

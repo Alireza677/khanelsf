@@ -116,6 +116,28 @@ class FormSelectPresentationTest extends TestCase
         $this->assertStringContainsString("scrollIntoView({ block: 'nearest' })", $script);
     }
 
+    public function test_selects_fill_every_supported_grid_span(): void
+    {
+        $fields = collect([12, 6, 4, 3])->map(
+            fn (int $span): array => $this->selectField("select_{$span}", "انتخاب {$span}", ['one' => 'گزینه'], $span),
+        )->all();
+        $form = $this->formWithFields($fields);
+
+        $html = $this->get(route('forms.show', $form->slug))->assertOk()->getContent();
+
+        foreach ([12, 6, 4, 3] as $span) {
+            $this->assertMatchesRegularExpression(
+                '/class="form-field form-field--span-'.$span.'"[\s\S]*?class="form-select"/u',
+                $html,
+            );
+        }
+
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertMatchesRegularExpression('/\.form-select\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/s', $css);
+        $this->assertMatchesRegularExpression('/\.form-select__trigger\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/s', $css);
+        $this->assertMatchesRegularExpression('/\.form-select__panel\s*\{[^}]*width:\s*100%;/s', $css);
+    }
+
     private function form(bool $twoSelects = false): Form
     {
         $fields = [$this->selectField('city', 'شهر', ['tehran' => 'تهران', 'shiraz' => 'شیراز'])];
@@ -136,18 +158,33 @@ class FormSelectPresentationTest extends TestCase
         ]);
     }
 
-    private function selectField(string $key, string $label, array $options): array
+    private function selectField(string $key, string $label, array $options, int $span = 12): array
     {
         return [
             'key' => $key,
             'label' => $label,
             'type' => 'select',
             'required' => true,
+            'layout' => ['span' => $span],
             'options' => collect($options)->map(fn (string $label, string $value): array => [
                 'value' => $value,
                 'label' => $label,
             ])->values()->all(),
         ];
+    }
+
+    private function formWithFields(array $fields): Form
+    {
+        return Form::query()->create([
+            'name' => 'فرم عرض انتخاب',
+            'slug' => 'select-width-form-'.Form::query()->count(),
+            'status' => 'published',
+            'display_mode' => 'page',
+            'type' => 'normal',
+            'schema_version' => 2,
+            'schema' => ['fields' => $fields],
+            'settings' => [],
+        ]);
     }
 
     private function block(Form $form, string $blockId): array

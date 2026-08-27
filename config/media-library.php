@@ -1,6 +1,13 @@
 <?php
 
+use App\Media\CanonicalMediaPathGenerator;
+use App\Models\Media;
+
 return [
+    'media_model' => Media::class,
+
+    'path_generator' => CanonicalMediaPathGenerator::class,
+
     /*
     |--------------------------------------------------------------------------
     | Media disk

@@ -11,8 +11,8 @@ class CreateClientProjectActivity extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return ClientProjectActivityResource::applyCommercialFormState(
-            ClientProjectActivityResource::applyDurationFormState($data),
-        );
+        $data = ClientProjectActivityResource::applyDurationFormState($data);
+
+        return ClientProjectActivityResource::applyCommercialFormState(ClientProjectActivityResource::applyCycleFormState($data));
     }
 }

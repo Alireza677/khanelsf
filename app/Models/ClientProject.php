@@ -54,6 +54,11 @@ class ClientProject extends Model
         return $this->hasMany(ClientProjectActivity::class);
     }
 
+    public function cycles(): HasMany
+    {
+        return $this->hasMany(ClientProjectCycle::class);
+    }
+
     public function scopeForCustomer(Builder $query, Customer|int $customer): Builder
     {
         return $query->where('customer_id', $customer instanceof Customer ? $customer->getKey() : $customer);

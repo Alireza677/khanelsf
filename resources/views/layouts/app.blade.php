@@ -558,29 +558,42 @@
 
             const initHeroTemplateSelectors = function () {
                 document.querySelectorAll('[data-hero-template-2]').forEach(function (root) {
-                    const select = root.querySelector('[data-hero-template-2-select]')
-                    const button = root.querySelector('[data-hero-template-2-button]')
+                    if (root.dataset.heroTemplate2Initialized === 'true') {
+                        return
+                    }
 
-                    if (! select || ! button) {
+                    root.dataset.heroTemplate2Initialized = 'true'
+
+                    const select = root.querySelector('[data-hero-template-2-select]')
+                    const actionSlot = root.querySelector('[data-hero-template-2-action-slot]')
+                    const actions = new Map(Array.from(root.querySelectorAll('template[data-hero-template-2-action]')).map(function (template) {
+                        return [template.getAttribute('data-hero-template-2-action'), template]
+                    }))
+
+                    if (! select || ! actionSlot) {
                         return
                     }
 
                     const sync = function () {
-                        if (select.value) {
-                            button.setAttribute('href', select.value)
-                            button.setAttribute('aria-disabled', 'false')
-                        } else {
-                            button.setAttribute('href', '#')
-                            button.setAttribute('aria-disabled', 'true')
+                        const action = actions.get(select.value)
+                        actionSlot.replaceChildren()
+
+                        if (action) {
+                            actionSlot.append(action.content.cloneNode(true))
+
+                            return
                         }
+
+                        const button = document.createElement('button')
+                        button.className = 'button hero-template-2__button'
+                        button.type = 'button'
+                        button.disabled = true
+                        button.dataset.heroTemplate2Button = ''
+                        button.textContent = actionSlot.dataset.buttonLabel || ''
+                        actionSlot.append(button)
                     }
 
                     select.addEventListener('change', sync)
-                    button.addEventListener('click', function (event) {
-                        if (button.getAttribute('aria-disabled') === 'true') {
-                            event.preventDefault()
-                        }
-                    })
                     sync()
                 })
             }

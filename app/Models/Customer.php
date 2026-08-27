@@ -39,6 +39,11 @@ class Customer extends Model
         return $this->hasMany(ClientProject::class);
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
     public function primaryUser(): ?User
     {
         return $this->users->first(fn (User $user): bool => (bool) $user->pivot->is_primary);

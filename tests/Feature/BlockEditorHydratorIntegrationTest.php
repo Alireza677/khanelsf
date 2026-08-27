@@ -37,8 +37,9 @@ class BlockEditorHydratorIntegrationTest extends TestCase
             $uuid = array_key_first($blocks);
             $this->assertIsString($uuid);
             $this->assertMatchesRegularExpression('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/', $blocks[$uuid]['data']['block_id']);
-            $this->assertArrayNotHasKey('content', $blocks[$uuid]['data']);
-            $this->assertArrayNotHasKey('settings', $blocks[$uuid]['data']);
+            $this->assertSame(2, $blocks[$uuid]['data']['schema_version']);
+            $this->assertArrayHasKey('content', $blocks[$uuid]['data']);
+            $this->assertArrayHasKey('settings', $blocks[$uuid]['data']);
         }
 
         $this->assertSame($pageBefore, $page->fresh()->blocks);
@@ -84,7 +85,7 @@ class BlockEditorHydratorIntegrationTest extends TestCase
                 'slug' => 'identity-page',
                 'template' => 'default',
                 'status' => 'draft',
-                'blocks' => [$this->legacyHero('Page')],
+                'blocks' => [$this->canonicalHero('Page')],
             ])
             ->call('create')
             ->assertHasNoFormErrors();
@@ -95,7 +96,7 @@ class BlockEditorHydratorIntegrationTest extends TestCase
                 'slug' => 'identity-template',
                 'type' => 'page',
                 'status' => 'draft',
-                'blocks' => [$this->legacyHero('Template')],
+                'blocks' => [$this->canonicalHero('Template')],
             ])
             ->call('create')
             ->assertHasNoFormErrors();
@@ -105,8 +106,8 @@ class BlockEditorHydratorIntegrationTest extends TestCase
             Template::query()->where('slug', 'identity-template')->firstOrFail()->blocks,
         ] as $blocks) {
             $this->assertMatchesRegularExpression('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/', $blocks[0]['data']['block_id']);
-            $this->assertArrayNotHasKey('schema_version', $blocks[0]['data']);
-            $this->assertArrayNotHasKey('content', $blocks[0]['data']);
+            $this->assertSame(2, $blocks[0]['data']['schema_version']);
+            $this->assertArrayHasKey('content', $blocks[0]['data']);
         }
     }
 
@@ -128,7 +129,7 @@ class BlockEditorHydratorIntegrationTest extends TestCase
 
         $this->assertSame($id, $ids[0]);
         $this->assertCount(4, array_unique($ids));
-        $this->assertSame(['Original', 'Clone 1', 'Clone 2', 'Clone 3'], array_column(array_column($saved, 'data'), 'title'));
+        $this->assertSame(['Original', 'Clone 1', 'Clone 2', 'Clone 3'], array_map(fn (array $block): mixed => data_get($block, 'data.content.title'), $saved));
 
         $reloaded = Livewire::test(EditPage::class, ['record' => $page->getRouteKey()]);
         $state = $reloaded->get('data')['blocks'];
@@ -179,7 +180,7 @@ class BlockEditorHydratorIntegrationTest extends TestCase
         $this->assertSame('V2 title', $raw['content']['title']);
         $this->assertSame(37, $raw['settings']['overlay_opacity']);
         $this->assertSame(80, $raw['settings']['media']['desktop']['width']['value']);
-        $this->assertSame('/social', array_values($raw['content']['social_links'])[0]['url']);
+        $this->assertSame('/social', array_values($raw['content']['social_links'])[0]['action']['value']);
         $this->assertFalse(array_key_exists('title', $raw));
         $this->assertSame(2, $raw['schema_version']);
         $component->call('save')->assertHasNoFormErrors();
@@ -187,7 +188,7 @@ class BlockEditorHydratorIntegrationTest extends TestCase
 
         $this->assertNotSame($before, $saved);
         $this->assertMatchesRegularExpression('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/', $saved[0]['data']['block_id']);
-        $this->assertSame('/social', $saved[0]['data']['content']['social_links'][0]['url']);
+        $this->assertSame('/social', $saved[0]['data']['content']['social_links'][0]['action']['value']);
         $this->assertSame([], $saved[0]['data']['settings']['background_effect']['settings']);
         Livewire::test(EditTemplate::class, ['record' => $template->getRouteKey()])->call('save')->assertHasNoFormErrors();
         $this->assertSame($saved, $template->fresh()->blocks);
@@ -201,5 +202,10 @@ class BlockEditorHydratorIntegrationTest extends TestCase
             'selector_items' => [['label' => 'A', 'url' => '/a']],
             'hero_1_social_links' => [['label' => 'Social', 'url' => '/social']],
         ], fn ($value): bool => $value !== null)];
+    }
+
+    private function canonicalHero(string $title): array
+    {
+        return ['type' => 'hero', 'data' => app(HeroDataNormalizer::class)->normalize($this->legacyHero($title)['data'])];
     }
 }

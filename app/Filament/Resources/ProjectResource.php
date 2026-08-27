@@ -234,8 +234,7 @@ class ProjectResource extends Resource
                                 ->afterStateHydrated(function (Set $set, ?Project $record): void {
                                     $set(
                                         'featured_media_id',
-                                        $record?->featuredImage()?->getCustomProperty('source_media_id')
-                                            ?: ($record?->featuredImage() ? '__keep_existing__' : null),
+                                        static::mediaLibraryFeaturedState($record),
                                     );
                                 })
                                 ->helperText('یک تصویر از کتابخانه رسانه انتخاب کنید. برای افزودن تصویر جدید، ابتدا از بخش «رسانه ← بارگذاری رسانه» استفاده کنید.'),

@@ -31,14 +31,14 @@ class HeroV2EditorTest extends TestCase
         config()->set('cms.hero_v2_editor_runtime', null);
     }
 
-    public function test_flag_off_keeps_legacy_schema_and_hydration(): void
+    public function test_action_editor_is_canonical_even_when_legacy_flag_is_off(): void
     {
         config()->set('cms.hero_v2_editor', false);
         $schema = app(HeroBlock::class)->filamentSchema(HeroBlock::CONTEXT_PAGE);
 
-        $this->assertSame('template', $schema[0]->getName());
-        $this->assertContains('title', collect($schema)->map(fn ($field) => method_exists($field, 'getName') ? $field->getName() : null)->all());
-        $this->assertNotContains('content.title', collect($schema)->map(fn ($field) => method_exists($field, 'getName') ? $field->getName() : null)->all());
+        $this->assertSame('block_id', $schema[0]->getName());
+        $this->assertContains('content.title', collect($schema)->map(fn ($field) => method_exists($field, 'getName') ? $field->getName() : null)->all());
+        $this->assertNotContains('title', collect($schema)->map(fn ($field) => method_exists($field, 'getName') ? $field->getName() : null)->all());
     }
 
     public function test_all_legacy_templates_hydrate_to_unmixed_v2_state(): void
@@ -107,6 +107,39 @@ class HeroV2EditorTest extends TestCase
         $this->assertSame(['One', 'Two'], array_column($data['content']['stats'], 'label'));
     }
 
+    public function test_hero_one_appearance_transitions_show_only_the_active_mode_and_preserve_effect_state(): void
+    {
+        $v2 = app(BlockEditorHydrator::class)->hydrateV2([$this->legacyHero('hero_1')]);
+        $component = Livewire::test(HeroV2EditorLifecycleComponent::class, ['blocks' => $v2]);
+        $uuid = array_key_first($component->get('data')['blocks']);
+        $path = "data.blocks.{$uuid}.data";
+
+        $component
+            ->set("{$path}.settings.background_treatment", 'image')
+            ->assertSee('تصویر تیره، نمای پیش‌فرض Hero 1 است.')
+            ->assertDontSee('تنظیمات مسیرهای متحرک')
+            ->set("{$path}.settings.background_treatment", 'animated_paths')
+            ->assertSee('تنظیمات مسیرهای متحرک')
+            ->assertSee('ضخامت خطوط')
+            ->assertDontSee('واکنش به موس')
+            ->set("{$path}.settings.background_effect.settings.line_width", 1.7)
+            ->set("{$path}.settings.background_treatment", 'animated_dotted_surface')
+            ->assertSee('تنظیمات پس‌زمینه نقطه‌ای متحرک')
+            ->assertSee('واکنش به موس')
+            ->assertDontSee('ضخامت خطوط')
+            ->set("{$path}.settings.background_effect.density", 'high')
+            ->set("{$path}.settings.background_treatment", 'light_grid')
+            ->assertSee('پس‌زمینه روشن شبکه‌ای؛ تنظیم اختصاصی دیگری ندارد.')
+            ->assertDontSee('تنظیمات پس‌زمینه نقطه‌ای متحرک')
+            ->assertDontSee('تنظیمات مسیرهای متحرک')
+            ->set("{$path}.settings.background_treatment", 'image')
+            ->assertSee('تصویر تیره، نمای پیش‌فرض Hero 1 است.')
+            ->set("{$path}.settings.background_treatment", 'animated_paths')
+            ->assertSet("{$path}.settings.background_effect.settings.line_width", 1.7)
+            ->set("{$path}.settings.background_treatment", 'animated_dotted_surface')
+            ->assertSet("{$path}.settings.background_effect.density", 'high');
+    }
+
     public function test_each_template_round_trips_to_v2_without_flat_keys(): void
     {
         foreach (['default', 'hero_1', 'hero_2', 'hero_3'] as $template) {
@@ -149,6 +182,24 @@ class HeroV2EditorTest extends TestCase
 
         $this->assertSame($beforePage, $page->fresh()->blocks);
         $this->assertSame($beforeTemplate, $template->fresh()->blocks);
+    }
+
+    public function test_hero_two_hides_independent_primary_destination_in_page_and_template_editors(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $page = Page::factory()->create(['blocks' => [$this->legacyHero('hero_2')]]);
+        $template = Template::query()->create([
+            'title' => 'Hero 2 Template', 'slug' => 'hero-2-editor-fields', 'type' => 'page', 'status' => 'draft',
+            'blocks' => [$this->legacyHero('hero_2')],
+        ]);
+
+        Livewire::test(EditPage::class, ['record' => $page->getRouteKey()])
+            ->assertSee('مقصد گزینه')
+            ->assertDontSee('مقصد دکمه اصلی');
+
+        Livewire::test(EditTemplate::class, ['record' => $template->getRouteKey()])
+            ->assertSee('Destination')
+            ->assertDontSee('Primary button destination');
     }
 
     public function test_nested_required_fields_report_nested_validation_paths(): void
@@ -216,7 +267,7 @@ class HeroV2EditorTest extends TestCase
         $this->assertArrayNotHasKey('title', $saved);
     }
 
-    public function test_flag_off_keeps_legacy_record_legacy_on_save(): void
+    public function test_flag_off_hydrates_legacy_record_and_saves_canonical_contract(): void
     {
         config()->set('cms.hero_v2_editor', false);
         $this->actingAs(User::factory()->create());
@@ -225,9 +276,9 @@ class HeroV2EditorTest extends TestCase
         Livewire::test(EditPage::class, ['record' => $page->getRouteKey()])->call('save')->assertHasNoFormErrors();
 
         $saved = $page->fresh()->blocks[0]['data'];
-        $this->assertSame('Title', $saved['title']);
-        $this->assertArrayNotHasKey('schema_version', $saved);
-        $this->assertArrayNotHasKey('content', $saved);
+        $this->assertSame(2, $saved['schema_version']);
+        $this->assertSame('Title', $saved['content']['title']);
+        $this->assertArrayNotHasKey('title', $saved);
     }
 
     public function test_create_page_and_template_persist_v2_contract(): void

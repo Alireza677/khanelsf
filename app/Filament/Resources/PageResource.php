@@ -16,6 +16,7 @@ use App\Models\Page;
 use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
+use App\Services\ModuleService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -84,6 +85,9 @@ class PageResource extends Resource
                                     app(BlockRegistry::class)->find('cta')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     app(BlockRegistry::class)->find('form')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     app(BlockRegistry::class)->find('feature_grid')->filamentBlock(HeroBlock::CONTEXT_PAGE),
+                                    ...(app(ModuleService::class)->businessNetworkEnabled() ? [
+                                        app(BlockRegistry::class)->find('business_network_map')->filamentBlock(HeroBlock::CONTEXT_PAGE),
+                                    ] : []),
                                     Forms\Components\Builder\Block::make('stats_section')
                                         ->label('بخش آمار')
                                         ->icon('heroicon-o-chart-bar')
@@ -428,8 +432,7 @@ class PageResource extends Resource
                                 ->afterStateHydrated(function (Set $set, ?Page $record): void {
                                     $set(
                                         'featured_media_id',
-                                        $record?->featuredImage()?->getCustomProperty('source_media_id')
-                                            ?: ($record?->featuredImage() ? '__keep_existing__' : null),
+                                        static::mediaLibraryFeaturedState($record),
                                     );
                                 })
                                 ->helperText('یک تصویر موجود از کتابخانه رسانه انتخاب کنید. برای تصویر جدید ابتدا از بخش رسانه، تصویر را بارگذاری کنید.'),

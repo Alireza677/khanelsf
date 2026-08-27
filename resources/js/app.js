@@ -1,6 +1,26 @@
 import './bootstrap';
 import { initIndustrialStickyHeader } from './components/industrial-sticky-header';
 import { initHeaderOverlays } from './components/header-overlays';
+import { initFormDatePickers } from './components/form-date-pickers';
+
+const initJalaliMonthFilters = () => {
+    document.querySelectorAll('[data-jalali-month-filter]').forEach((form) => {
+        if (form.dataset.jalaliMonthReady === 'true') return;
+
+        const value = form.querySelector('[data-jalali-month-value]');
+        const year = form.querySelector('[data-jalali-year]');
+        const month = form.querySelector('[data-jalali-month]');
+        if (! value || ! year || ! month) return;
+
+        form.dataset.jalaliMonthReady = 'true';
+        const submit = () => {
+            value.value = `${year.value}-${month.value}`;
+            form.submit();
+        };
+        year.addEventListener('change', submit);
+        month.addEventListener('change', submit);
+    });
+};
 
 if (document.querySelector('[data-hero-dotted-surface]')) {
     import('./components/hero-dotted-surface');
@@ -259,30 +279,36 @@ const initHeroTemplateSelectors = () => {
         root.dataset.heroTemplate2Initialized = 'true';
 
         const select = root.querySelector('[data-hero-template-2-select]');
-        const button = root.querySelector('[data-hero-template-2-button]');
+        const actionSlot = root.querySelector('[data-hero-template-2-action-slot]');
+        const actions = new Map(Array.from(root.querySelectorAll('template[data-hero-template-2-action]')).map((template) => [
+            template.getAttribute('data-hero-template-2-action'),
+            template,
+        ]));
 
-        if (! select || ! button) {
+        if (! select || ! actionSlot) {
             return;
         }
 
         const sync = () => {
-            const url = select.value;
+            const action = actions.get(select.value);
+            actionSlot.replaceChildren();
 
-            if (url) {
-                button.setAttribute('href', url);
-                button.setAttribute('aria-disabled', 'false');
-            } else {
-                button.setAttribute('href', '#');
-                button.setAttribute('aria-disabled', 'true');
+            if (action) {
+                actionSlot.append(action.content.cloneNode(true));
+
+                return;
             }
+
+            const button = document.createElement('button');
+            button.className = 'button hero-template-2__button';
+            button.type = 'button';
+            button.disabled = true;
+            button.dataset.heroTemplate2Button = '';
+            button.textContent = actionSlot.dataset.buttonLabel || '';
+            actionSlot.append(button);
         };
 
         select.addEventListener('change', sync);
-        button.addEventListener('click', (event) => {
-            if (button.getAttribute('aria-disabled') === 'true') {
-                event.preventDefault();
-            }
-        });
 
         sync();
     });
@@ -720,6 +746,7 @@ const initCalculatorResultModals = () => {
 };
 
 const initPublicInteractions = () => {
+    initJalaliMonthFilters();
     initMobileHeader();
     initIndustrialStickyHeader();
     initHeaderOverlays();
@@ -732,12 +759,14 @@ const initPublicInteractions = () => {
     initShopCategorySliders();
     initMultiStepForms();
     initFormSelects();
+    initFormDatePickers();
     initCalculatorResultModals();
 };
 
 document.addEventListener('forms:rendered', () => {
     initMultiStepForms();
     initFormSelects();
+    initFormDatePickers();
     initCalculatorResultModals();
 });
 

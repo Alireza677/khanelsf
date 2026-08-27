@@ -17,11 +17,11 @@ final class ProductMediaService
             'documents',
         ]);
 
-        $featured = $product->getFirstMedia('featured_image');
+        $featured = $product->featuredImage();
 
         return [
             'featured' => $featured ? $this->mediaItem($featured) : null,
-            'gallery' => $product->getMedia('gallery')
+            'gallery' => $product->galleryImages()
                 ->map(fn (Media $media): array => $this->mediaItem($media))
                 ->values(),
             'documents' => $product->documents

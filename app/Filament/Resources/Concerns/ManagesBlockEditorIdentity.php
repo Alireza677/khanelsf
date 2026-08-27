@@ -17,14 +17,11 @@ trait ManagesBlockEditorIdentity
     protected function mutateFormDataBeforeFill(array $data): array
     {
         if (is_array($data['blocks'] ?? null)) {
-            $this->heroV2EditorActive = config('cms.hero_v2_editor', false)
-                || $this->containsV2Hero($data['blocks']);
+            $this->heroV2EditorActive = true;
             config()->set('cms.hero_v2_editor_runtime', $this->heroV2EditorActive);
 
             $hydrator = app(BlockEditorHydrator::class);
-            $data['blocks'] = $this->heroV2EditorActive
-                ? $hydrator->hydrateV2($data['blocks'])
-                : $hydrator->hydrate($data['blocks']);
+            $data['blocks'] = $hydrator->hydrateV2($data['blocks']);
         }
 
         return $data;
@@ -54,7 +51,7 @@ trait ManagesBlockEditorIdentity
 
     protected function usesHeroV2Editor(): bool
     {
-        return $this->heroV2EditorActive || config('cms.hero_v2_editor', false);
+        return true;
     }
 
     private function containsV2Hero(array $blocks): bool

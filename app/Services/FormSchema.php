@@ -9,9 +9,16 @@ final class FormSchema
 {
     public const ALLOWED_COLUMN_SPANS = [3, 4, 6, 8, 9, 12];
 
-    private const INPUT_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'image_choice', 'radio_card'];
+    public const DATE_GLOBAL_MIN = '1971-03-21';
 
-    private const PAGE_TYPES = ['page', 'step'];
+    private const INPUT_TYPES = ['text', 'email', 'tel', 'date', 'textarea', 'select', 'image_choice', 'radio_card'];
+
+    private const STRUCTURAL_TYPES = ['page', 'step'];
+
+    public static function supportedTypes(): array
+    {
+        return [...self::INPUT_TYPES, ...self::STRUCTURAL_TYPES];
+    }
 
     public function __construct(private readonly FormSchemaIdentityManager $identity) {}
 
@@ -36,7 +43,7 @@ final class FormSchema
             $key = $field['key'] ?? null;
             $type = $field['type'] ?? 'text';
 
-            if (in_array($type, self::PAGE_TYPES, true)) {
+            if (in_array($type, self::STRUCTURAL_TYPES, true)) {
                 $normalized[] = [
                     'field_id' => $field['field_id'],
                     'key' => $key,
@@ -70,6 +77,14 @@ final class FormSchema
                 'layout' => ['span' => self::normalizeColumnSpan(data_get($field, 'layout.span'))],
             ];
 
+            if ($type === 'date') {
+                $normalizedField['min_date'] = self::normalizeIsoDate($field['min_date'] ?? null);
+                $normalizedField['max_date'] = self::normalizeIsoDate($field['max_date'] ?? null);
+                $normalizedField['date_range_enabled'] = array_key_exists('date_range_enabled', $field)
+                    ? filter_var($field['date_range_enabled'], FILTER_VALIDATE_BOOLEAN)
+                    : $normalizedField['min_date'] !== null || $normalizedField['max_date'] !== null;
+            }
+
             if (in_array($type, ['select', 'image_choice', 'radio_card'], true)) {
                 $options = $this->options($field['options'] ?? []);
 
@@ -101,7 +116,7 @@ final class FormSchema
         $rules = [];
 
         foreach ($this->fields($form) as $field) {
-            if (in_array($field['type'], self::PAGE_TYPES, true)) {
+            if (in_array($field['type'], self::STRUCTURAL_TYPES, true)) {
                 continue;
             }
 
@@ -110,6 +125,19 @@ final class FormSchema
 
             if ($field['type'] === 'email') {
                 $fieldRules[] = 'email:rfc';
+            }
+
+            if ($field['type'] === 'date') {
+                $fieldRules[] = 'date_format:Y-m-d';
+                $fieldRules[] = 'after_or_equal:'.self::DATE_GLOBAL_MIN;
+
+                if ($field['date_range_enabled'] && $field['min_date'] !== null) {
+                    $fieldRules[] = 'after_or_equal:'.$field['min_date'];
+                }
+
+                if ($field['date_range_enabled'] && $field['max_date'] !== null) {
+                    $fieldRules[] = 'before_or_equal:'.$field['max_date'];
+                }
             }
 
             if (in_array($field['type'], ['select', 'image_choice', 'radio_card'], true)) {
@@ -130,6 +158,25 @@ final class FormSchema
         return is_string($field['label'] ?? null) && trim($field['label']) !== ''
             ? trim($field['label'])
             : $default;
+    }
+
+    public static function normalizeIsoDate(mixed $value): ?string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_string($value) && preg_match('/^(\d{4}-\d{2}-\d{2})(?:\s.*)?$/', $value, $matches) === 1) {
+            $value = $matches[1];
+        }
+
+        if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        return \DateTimeImmutable::createFromFormat('!Y-m-d', $value)?->format('Y-m-d') === $value
+            ? $value
+            : null;
     }
 
     private function options(mixed $options): array

@@ -38,6 +38,7 @@ class BlockFoundationTest extends TestCase
             'cta',
             'form',
             'feature_grid',
+            'business_network_map',
             'site_header',
             'project_header',
             'project_overview',

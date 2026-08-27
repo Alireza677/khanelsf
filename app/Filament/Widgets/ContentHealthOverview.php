@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\ContactMessage;
 use App\Models\Gallery;
 use App\Models\Page;
 use App\Models\Post;
@@ -25,10 +24,6 @@ class ContentHealthOverview extends BaseWidget
                 ->description('محتوای منتشرشده یا پیش‌نویس بدون توضیح سئوی اختصاصی')
                 ->icon('heroicon-o-magnifying-glass')
                 ->color('danger'),
-            Stat::make('پیام‌های تماس جدید', ContactMessage::query()->where('status', 'new')->count())
-                ->description('پیام‌های خوانده‌نشده')
-                ->icon('heroicon-o-inbox')
-                ->color('info'),
         ];
     }
 

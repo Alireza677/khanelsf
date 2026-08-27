@@ -9,9 +9,9 @@ use Illuminate\Support\Collection;
 
 class ClientProjectMonthlyTimeService
 {
-    public function summarize(ClientProject $project, CarbonImmutable $month): array
+    public function summarize(ClientProject $project, CarbonImmutable $month, ?CarbonImmutable $monthEnd = null): array
     {
-        $base = $project->activities()->inMonth($month)->where('status', '!=', ClientProjectActivity::STATUS_CANCELLED);
+        $base = $project->activities()->inMonth($month, $monthEnd)->where('status', '!=', ClientProjectActivity::STATUS_CANCELLED);
         $used = (int) (clone $base)->sum('duration_minutes');
         $allocated = $project->monthly_hour_limit_minutes;
         $remaining = $allocated === null ? null : max(0, $allocated - $used);

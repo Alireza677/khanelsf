@@ -48,9 +48,13 @@
 
 @if ($hasVisibleContent && $template === 'image')
     <section
-        class="content-block block-cta-image block-configured-background"
-        @if ($imageStyle || $backgroundVariables) style="{!! trim($imageStyle.' '.$backgroundVariables, ' ;') !!}" @endif
+        class="content-block block-cta-image"
     >
+        <div
+            class="block-cta-image__background block-configured-background"
+            aria-hidden="true"
+            @if ($imageStyle || $backgroundVariables) style="{!! trim($imageStyle.' '.$backgroundVariables, ' ;') !!}" @endif
+        ></div>
         <div class="block-cta-image__inner">
             <div class="block-cta-image__content" @if ($contentWidth) style="max-width: {{ $contentWidth }}px" @endif>
                 @if (! empty($content['title']))

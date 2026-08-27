@@ -5,11 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\MediaResource\Pages;
 use App\Filament\Resources\MediaResource\Pages\ListMedia;
+use App\Models\Media;
+use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class MediaResource extends Resource
 {
@@ -31,7 +33,7 @@ class MediaResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->contentGrid(fn (ListMedia $livewire): ?array => $livewire->mediaView === 'grid'
                 ? [
-                    'default' => 5,
+                    'default' => 1,
                 ]
                 : null)
             ->columns([
@@ -43,11 +45,13 @@ class MediaResource extends Resource
                     ->label('پیش‌نمایش')
                     ->view('filament.tables.columns.media-preview')
                     ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
-                Tables\Columns\TextColumn::make('file_name')
-                    ->label('فایل')
+                Tables\Columns\TextColumn::make('name')
+                    ->label('نام رسانه')
+                    ->formatStateUsing(fn (?string $state, Media $record): string => filled($state)
+                        ? $state
+                        : $record->originalFilename())
                     ->searchable()
                     ->sortable()
-                    ->copyable()
                     ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
                 Tables\Columns\TextColumn::make('mime_type')
                     ->label('نوع فایل')
@@ -97,21 +101,43 @@ class MediaResource extends Resource
                         ->all()),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()->label('مشاهده'),
-                Tables\Actions\Action::make('open')
-                    ->label('باز کردن')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Media $record): string => $record->getUrl())
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('copyUrl')
-                    ->label('کپی لینک')
-                    ->icon('heroicon-o-link')
-                    ->modalHeading('لینک رسانه')
-                    ->modalSubmitAction(false)
+                Tables\Actions\Action::make('details')
+                    ->label('جزئیات')
+                    ->icon('heroicon-o-pencil-square')
+                    ->modalHeading(fn (Media $record): string => $record->displayTitle())
+                    ->modalWidth(MaxWidth::SevenExtraLarge)
+                    ->modalSubmitActionLabel('ذخیره تغییرات')
                     ->modalCancelActionLabel('بستن')
-                    ->modalContent(fn (Media $record) => view('filament.media.copy-url', [
-                        'url' => $record->getUrl(),
-                    ])),
+                    ->fillForm(fn (Media $record): array => [
+                        'title' => $record->displayTitle(),
+                        'alt_text' => $record->altText(),
+                    ])
+                    ->form([
+                        Forms\Components\TextInput::make('title')
+                            ->label('عنوان رسانه')
+                            ->required()
+                            ->string()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('alt_text')
+                            ->label('متن جایگزین')
+                            ->rows(3)
+                            ->maxLength(1000)
+                            ->visible(fn (Media $record): bool => str_starts_with((string) $record->mime_type, 'image/')),
+                    ])
+                    ->modalContent(fn (Media $record, ListMedia $livewire) => view('filament.media.details', [
+                        'record' => $record,
+                        'previousId' => $livewire->adjacentMediaId($record, 'previous'),
+                        'nextId' => $livewire->adjacentMediaId($record, 'next'),
+                    ]))
+                    ->action(function (Media $record, array $data): void {
+                        $record->name = trim(strip_tags((string) $data['title']));
+
+                        if (str_starts_with((string) $record->mime_type, 'image/')) {
+                            $record->setCustomProperty('alt_text', trim(strip_tags((string) ($data['alt_text'] ?? ''))));
+                        }
+
+                        $record->save();
+                    }),
                 Tables\Actions\DeleteAction::make()
                     ->label('حذف')
                     ->modalHeading('حذف رسانه')
@@ -137,7 +163,6 @@ class MediaResource extends Resource
         return [
             'index' => ListMedia::route('/'),
             'upload' => Pages\UploadMedia::route('/upload'),
-            'view' => Pages\ViewMedia::route('/{record}'),
         ];
     }
 

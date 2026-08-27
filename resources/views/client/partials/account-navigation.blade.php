@@ -2,6 +2,7 @@
     <a href="{{ $account['account_url'] }}" @class(['is-active' => request()->routeIs('account.home')])>حساب کاربری</a>
     <a href="{{ $account['profile_url'] }}" @class(['is-active' => request()->routeIs('account.profile.*')])>پروفایل من</a>
     <a href="{{ $account['orders_url'] }}" @class(['is-active' => request()->routeIs('account.orders.*')])>سفارش‌های من</a>
+    <a href="{{ route('account.invoices.index') }}" @class(['is-active' => request()->routeIs('account.invoices.*')])>فاکتورها</a>
     @if ($account['has_customer_capability'])
         <a href="{{ $account['services_url'] }}" @class(['is-active' => request()->routeIs('account.services.*', 'account.projects.*', 'client.dashboard', 'client.projects.*')])>خدمات و پروژه‌های من</a>
     @endif

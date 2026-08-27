@@ -37,8 +37,9 @@ class HeroDataNormalizerTest extends TestCase
         $this->assertSame('default', $result['template']);
         $this->assertSame('Lead', $result['content']['lead']);
         $this->assertSame('Description', $result['content']['description']);
-        $this->assertSame(['label' => 'Label only', 'url' => null], $result['content']['primary_cta']);
-        $this->assertSame(['label' => null, 'url' => '/url-only'], $result['content']['secondary_cta']);
+        $this->assertSame(['enabled' => true, 'label' => 'Label only', 'action' => null], $result['content']['primary_cta']);
+        $this->assertSame('custom_url', $result['content']['secondary_cta']['action']['type']);
+        $this->assertSame('/url-only', $result['content']['secondary_cta']['action']['value']);
     }
 
     public function test_hero_one_maps_alias_height_content_and_dotted_effect(): void
@@ -98,8 +99,10 @@ class HeroDataNormalizerTest extends TestCase
         ]);
 
         $this->assertSame($stats, $result['content']['stats']);
-        $this->assertSame(['placeholder' => 'Choose', 'items' => $selector], $result['content']['selector']);
-        $this->assertSame($social, $result['content']['social_links']);
+        $this->assertSame('/a', $result['content']['selector']['items'][0]['action']['value']);
+        $this->assertArrayNotHasKey('url', $result['content']['selector']['items'][0]);
+        $this->assertSame('/social', $result['content']['social_links'][0]['action']['value']);
+        $this->assertArrayNotHasKey('url', $result['content']['social_links'][0]);
         $this->assertSame('Scroll', $result['content']['scroll_label']);
     }
 
@@ -178,5 +181,45 @@ class HeroDataNormalizerTest extends TestCase
 
         $writes = array_filter($queries, fn (string $sql): bool => preg_match('/^(insert|update|delete|replace|alter|create|drop|truncate)\b/', $sql) === 1);
         $this->assertSame([], array_values($writes));
+    }
+
+    public function test_hero_one_infers_legacy_features_and_writes_canonical_actions(): void
+    {
+        $result = $this->normalizer->normalize([
+            'template' => 'hero_1',
+            'eyebrow' => 'Legacy eyebrow',
+            'hero_1_title_second_line' => 'Second line',
+            'primary_button_label' => 'Start',
+            'primary_button_url' => '/start',
+        ]);
+
+        $this->assertTrue($result['content']['eyebrow']['enabled']);
+        $this->assertTrue($result['content']['title_secondary_enabled']);
+        $this->assertTrue($result['content']['ctas_enabled']);
+        $this->assertTrue($result['content']['primary_cta']['enabled']);
+        $this->assertSame('custom_url', $result['content']['primary_cta']['action']['type']);
+        $this->assertSame('/start', $result['content']['primary_cta']['action']['value']);
+        $this->assertArrayNotHasKey('url', $result['content']['primary_cta']);
+    }
+
+    public function test_explicit_hero_one_feature_toggles_override_stale_content(): void
+    {
+        $result = $this->normalizer->normalize([
+            'schema_version' => 2,
+            'template' => 'hero_1',
+            'content' => [
+                'eyebrow' => ['enabled' => false, 'text' => 'Stale eyebrow'],
+                'title_secondary_enabled' => false,
+                'title_secondary' => 'Stale second line',
+                'ctas_enabled' => false,
+                'primary_cta' => ['enabled' => true, 'label' => 'Stale CTA', 'action' => ['type' => 'custom_url', 'value' => '/stale']],
+            ],
+            'settings' => ['background_treatment' => null],
+        ]);
+
+        $this->assertFalse($result['content']['eyebrow']['enabled']);
+        $this->assertFalse($result['content']['title_secondary_enabled']);
+        $this->assertFalse($result['content']['ctas_enabled']);
+        $this->assertSame('image', $result['settings']['background_treatment']);
     }
 }

@@ -5,7 +5,7 @@
 @endphp
 
 @if (str_starts_with($mimeType, 'image/'))
-    <img src="{{ $url }}" alt="{{ $record->name }}" style="height: 4rem; width: 4rem; object-fit: cover; border-radius: .375rem;">
+    <img src="{{ $url }}" alt="{{ method_exists($record, 'altText') ? $record->altText() : '' }}" style="height: 4rem; width: 4rem; object-fit: cover; border-radius: .375rem;">
 @elseif (str_starts_with($mimeType, 'video/'))
     <video src="{{ $url }}" muted playsinline style="height: 4rem; width: 6rem; object-fit: cover; border-radius: .375rem;"></video>
 @else

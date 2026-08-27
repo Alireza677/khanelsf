@@ -34,7 +34,7 @@ final class ServiceQueryService
     public function archiveQuery(): Builder
     {
         return Service::query()
-            ->with('media')
+            ->with(['media', 'mediaUsages.media'])
             ->published()
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -62,9 +62,11 @@ final class ServiceQueryService
     {
         return [
             'media',
+            'mediaUsages.media',
             'publicProjects' => fn ($query) => $query->with([
                 'category' => fn ($query) => $query->active(),
                 'media',
+                'mediaUsages.media',
             ]),
         ];
     }

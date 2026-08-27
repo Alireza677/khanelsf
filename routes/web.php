@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\BackupDownloadController;
-use App\Http\Controllers\Admin\ContactMessageExportController;
 use App\Http\Controllers\Admin\InternalLinkSearchController;
+use App\Http\Controllers\Admin\InvoicePdfController;
 use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Admin\OrderPrintController;
 use App\Http\Controllers\Admin\PreviewController;
@@ -14,6 +14,7 @@ use App\Http\Controllers\Client\AccountController;
 use App\Http\Controllers\Client\AccountOrderController;
 use App\Http\Controllers\Client\AuthenticatedSessionController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
 use App\Http\Controllers\Client\PlaceholderController as ClientPlaceholderController;
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ProjectController as ClientProjectController;
@@ -77,6 +78,9 @@ Route::middleware(['auth:client', 'client'])->group(function (): void {
     Route::get('/account/orders/{order}', [AccountOrderController::class, 'show'])
         ->whereNumber('order')
         ->name('account.orders.show');
+    Route::get('/account/invoices', [ClientInvoiceController::class, 'index'])->name('account.invoices.index');
+    Route::get('/account/invoices/{invoice}', [ClientInvoiceController::class, 'show'])->whereNumber('invoice')->name('account.invoices.show');
+    Route::get('/account/invoices/{invoice}/download', [ClientInvoiceController::class, 'download'])->whereNumber('invoice')->name('account.invoices.download');
 });
 
 Route::middleware(['auth:client', 'client', 'client.context', 'client.service'])->group(function (): void {
@@ -93,9 +97,6 @@ Route::get('/blog/category/{slug}', [PostController::class, 'category'])->name('
 Route::get('/blog/{slug}', [PostController::class, 'show'])->name('blog.show');
 
 Route::get('/contact', [ContactController::class, 'create'])->name('contact.create');
-Route::post('/contact', [ContactController::class, 'store'])
-    ->middleware('throttle:5,1')
-    ->name('contact.store');
 
 Route::post('/forms/{slug}/context', [FormController::class, 'capture'])->name('forms.context');
 Route::post('/forms/{slug}/modal', [FormController::class, 'modal'])->name('forms.modal');
@@ -149,6 +150,7 @@ Route::middleware('auth')
     ->name('admin.')
     ->group(function (): void {
         Route::get('/internal-links/search', InternalLinkSearchController::class)->name('internal-links.search');
+        Route::get('/invoices/{invoice}/pdf', InvoicePdfController::class)->name('invoices.pdf');
     });
 
 Route::middleware(['auth', 'throttle:10,1'])
@@ -170,7 +172,6 @@ Route::middleware('auth')
     ->prefix('admin')
     ->name('admin.exports.')
     ->group(function (): void {
-        Route::get('/contact-messages-export.csv', ContactMessageExportController::class)->name('contact-messages');
         Route::get('/redirects-export.csv', RedirectExportController::class)->name('redirects');
     });
 

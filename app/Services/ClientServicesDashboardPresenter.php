@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClientProject;
+use App\Support\PersianDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -25,6 +26,8 @@ class ClientServicesDashboardPresenter
                 'used_minutes' => $summary['used_minutes'],
                 'used_time' => $this->durations->format($summary['used_minutes']),
                 'limit_time' => $summary['allocated_minutes'] === null ? null : $this->durations->format($summary['allocated_minutes']),
+                'payment' => $this->payment($project),
+                'timeline' => $this->timeline($project),
             ];
         });
 
@@ -48,6 +51,75 @@ class ClientServicesDashboardPresenter
                 'chart_percentage' => min(100, $percentage ?? 0),
                 'has_limit' => $limit !== null,
             ],
+        ];
+    }
+
+    /** @return array{label: string, state: string} */
+    private function payment(ClientProject $project): array
+    {
+        $invoice = $project->cycles
+            ->sortByDesc(fn ($cycle) => $cycle->ends_at?->getTimestamp() ?? 0)
+            ->first(fn ($cycle) => $cycle->invoice !== null)?->invoice;
+
+        if ($invoice === null) {
+            return ['label' => 'بدون صورتحساب', 'state' => 'neutral'];
+        }
+
+        return [
+            'label' => $invoice->status->label(),
+            'state' => match ($invoice->status->value) {
+                'paid' => 'paid',
+                'issued' => 'pending',
+                'cancelled' => 'overdue',
+                default => 'neutral',
+            },
+        ];
+    }
+
+    /** @return array{state: string, label: string, percentage: int, today_percentage: int|null, detail: string} */
+    private function timeline(ClientProject $project): array
+    {
+        $today = CarbonImmutable::today();
+        $start = $project->start_date ? CarbonImmutable::instance($project->start_date)->startOfDay() : null;
+        $end = $project->end_date ? CarbonImmutable::instance($project->end_date)->startOfDay() : null;
+
+        $state = match (true) {
+            $project->status === ClientProject::STATUS_COMPLETED => 'completed',
+            $start && $today->lt($start) => 'upcoming',
+            $end && $today->gt($end) => 'overdue',
+            default => 'active',
+        };
+
+        $label = match ($state) {
+            'completed' => 'تکمیل‌شده',
+            'upcoming' => 'هنوز شروع نشده',
+            'overdue' => 'از موعد گذشته',
+            default => 'در حال اجرا',
+        };
+
+        $percentage = max(0, min(100, $project->progress));
+        $todayPercentage = null;
+        if ($start && $end && $end->gt($start)) {
+            $totalDays = max(1, $start->diffInDays($end));
+            $todayPercentage = (int) round(max(0, min($totalDays, $start->diffInDays($today, false))) / $totalDays * 100);
+            $percentage = $state === 'completed' ? 100 : $todayPercentage;
+        }
+
+        $detail = match ($state) {
+            'completed' => 'پروژه تکمیل شده است',
+            'upcoming' => PersianDate::digits((int) $today->diffInDays($start)).' روز تا شروع پروژه',
+            'overdue' => PersianDate::digits((int) $end->diffInDays($today)).' روز از موعد تحویل گذشته',
+            default => $end
+                ? PersianDate::digits((int) $today->diffInDays($end)).' روز تا تحویل باقی‌مانده'
+                : 'تاریخ تحویل تعیین نشده است',
+        };
+
+        return [
+            'state' => $state,
+            'label' => $label,
+            'percentage' => $percentage,
+            'today_percentage' => $todayPercentage,
+            'detail' => $detail,
         ];
     }
 }

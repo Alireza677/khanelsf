@@ -221,7 +221,7 @@ class DatabaseSeeder extends Seeder
             ['slug' => 'home'],
             [
                 'title' => 'خانه',
-                'content' => '<p>Welcome to your new website. This starter CMS gives you editable pages, blog posts, menus, settings, and contact messages.</p>',
+                'content' => '<p>Welcome to your new website. This starter CMS gives you editable pages, blog posts, menus, and settings.</p>',
                 'template' => 'home',
                 'status' => 'published',
                 'published_at' => now(),

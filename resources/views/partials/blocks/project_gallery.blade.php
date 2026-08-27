@@ -14,11 +14,11 @@
         <div class="block-gallery project-gallery__grid">
             @foreach ($images as $image)
                 @if ($lightbox)
-                    <button class="gallery-lightbox-trigger" type="button" data-gallery-lightbox-src="{{ $image->getUrl() }}" data-gallery-lightbox-alt="{{ $image->name }}">
-                        <img src="{{ $image->getUrl() }}" alt="{{ $image->name }}">
+                    <button class="gallery-lightbox-trigger" type="button" data-gallery-lightbox-src="{{ $image->getUrl() }}" data-gallery-lightbox-alt="{{ $image->altText() ?: $image->displayTitle() }}">
+                        <img src="{{ $image->getUrl() }}" alt="{{ $image->altText() ?: $image->displayTitle() }}">
                     </button>
                 @else
-                    <img src="{{ $image->getUrl() }}" alt="{{ $image->name }}">
+                    <img src="{{ $image->getUrl() }}" alt="{{ $image->altText() ?: $image->displayTitle() }}">
                 @endif
             @endforeach
         </div>

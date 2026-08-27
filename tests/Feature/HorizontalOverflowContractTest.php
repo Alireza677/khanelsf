@@ -9,14 +9,12 @@ class HorizontalOverflowContractTest extends TestCase
     public function test_public_forms_use_a_safe_honeypot_without_large_negative_positioning(): void
     {
         $form = file_get_contents(resource_path('views/forms/_form.blade.php'));
-        $contact = file_get_contents(resource_path('views/contact.blade.php'));
         $css = file_get_contents(resource_path('css/app.css'));
 
         $this->assertStringContainsString('class="form-honeypot"', $form);
         $this->assertStringContainsString('name="website"', $form);
         $this->assertStringContainsString('tabindex="-1"', $form);
-        $this->assertStringContainsString('class="form-honeypot"', $contact);
-        $this->assertStringNotContainsString('left: -9999px', $form.$contact);
+        $this->assertStringNotContainsString('left: -9999px', $form);
         $this->assertMatchesRegularExpression('/\.form-honeypot\s*\{[^}]*clip-path:\s*inset\(50%\)[^}]*overflow:\s*hidden[^}]*position:\s*absolute[^}]*width:\s*1px/s', $css);
     }
 

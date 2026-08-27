@@ -34,7 +34,7 @@ final class BlockEditorSaveManager
             } elseif (is_array($selector)) {
                 $blocks[$key]['data']['content']['selector']['items'] = $this->canonicalItems(
                     $selector['items'] ?? [],
-                    ['label', 'url'],
+                    ['label', 'action'],
                 );
             }
 
@@ -44,7 +44,7 @@ final class BlockEditorSaveManager
             );
             $blocks[$key]['data']['content']['social_links'] = $this->canonicalItems(
                 $block['data']['content']['social_links'] ?? [],
-                ['label', 'url', 'icon', 'icon_size'],
+                ['label', 'action', 'icon', 'icon_size'],
             );
 
             if (data_get($blocks[$key], 'data.settings.background_effect.settings.line_width') === null) {

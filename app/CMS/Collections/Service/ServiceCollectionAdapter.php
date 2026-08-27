@@ -29,7 +29,7 @@ final class ServiceCollectionAdapter
 
     public function item(Service $service): CollectionItem
     {
-        $imageUrl = $this->text($service->getFirstMediaUrl('featured_image', 'thumb'));
+        $imageUrl = $this->text($service->featuredImageUrl('thumb'));
         $url = $this->text($service->resolveNavigationUrl());
 
         return new CollectionItem(

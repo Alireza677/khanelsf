@@ -1,6 +1,6 @@
 @php
     $url = $service->resolveNavigationUrl();
-    $image = $service->getFirstMediaUrl('featured_image', 'thumb');
+    $image = $service->featuredImageUrl('thumb');
 @endphp
 
 <article class="blog-card service-archive-card">

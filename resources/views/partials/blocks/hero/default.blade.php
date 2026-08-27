@@ -4,9 +4,9 @@
     $media = $content['media'];
     $primaryCta = $content['primary_cta'];
     $secondaryCta = $content['secondary_cta'];
-    $link = static fn (array $cta): ?array => filled($cta['label'] ?? null) && filled($cta['url'] ?? null) ? [
+    $link = static fn (array $cta): ?array => filled($cta['label'] ?? null) && is_array($cta['presentation'] ?? null) ? [
         'label' => $cta['label'],
-        'presentation' => ['kind' => 'link', 'href' => $cta['url'], 'target' => null, 'rel' => null, 'prevent_default' => false],
+        'presentation' => $cta['presentation'],
     ] : null;
     $presentation = [
         'eyebrow' => $content['lead'],

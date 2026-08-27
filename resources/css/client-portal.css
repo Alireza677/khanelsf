@@ -45,6 +45,8 @@
 .portal-select, .client-portal input { background: #fff; border: 1px solid #cbd5e1; border-radius: var(--theme-button-radius, 10px); color: var(--theme-text, #1f2937); font: inherit; min-height: 44px; padding: .65rem .75rem; width: 100%; }
 .portal-field { display: grid; gap: .4rem; }
 .portal-field label, .portal-field > span { color: #475569; font-size: .85rem; font-weight: 700; }
+.portal-month-filter__selects { display: grid; direction: rtl; gap: .5rem; grid-template-columns: minmax(8rem, 1fr) minmax(6rem, auto); }
+.portal-month-filter .portal-select { font-variant-numeric: normal; }
 .portal-error { color: #b91c1c; font-size: .82rem; }
 .portal-success { background: #dcfce7; border-radius: var(--theme-button-radius, 10px); color: #166534; margin: 0; padding: .75rem 1rem; }
 .portal-empty-state { background: #fff; border: 1px dashed #cbd5e1; border-radius: calc(var(--theme-button-radius, 10px) + 3px); padding: 3.5rem 1.5rem; text-align: center; }

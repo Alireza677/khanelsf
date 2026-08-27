@@ -29,10 +29,10 @@
                 'content' => ! empty($content['lead']) ? $content['lead'] : ($content['description'] ?? null),
                 'class' => 'hero-template-3__description',
             ])
-            @if ((! empty($primaryCta['label']) && ! empty($primaryCta['url'])) || (! empty($secondaryCta['label']) && ! empty($secondaryCta['url'])))
+            @if ((! empty($primaryCta['label']) && ! empty($primaryCta['presentation'])) || (! empty($secondaryCta['label']) && ! empty($secondaryCta['presentation'])))
                 <div class="hero-template-3__actions">
-                    @if (! empty($primaryCta['label']) && ! empty($primaryCta['url']))<a class="button hero-template-3__primary" href="{{ $primaryCta['url'] }}">{{ $primaryCta['label'] }}</a>@endif
-                    @if (! empty($secondaryCta['label']) && ! empty($secondaryCta['url']))<a class="button hero-template-3__secondary" href="{{ $secondaryCta['url'] }}">{{ $secondaryCta['label'] }}</a>@endif
+                    @include('partials.actions.render', ['label' => $primaryCta['label'], 'class' => 'button hero-template-3__primary', 'presentation' => $primaryCta['presentation']])
+                    @include('partials.actions.render', ['label' => $secondaryCta['label'], 'class' => 'button hero-template-3__secondary', 'presentation' => $secondaryCta['presentation']])
                 </div>
             @endif
             @if ($stats->isNotEmpty())

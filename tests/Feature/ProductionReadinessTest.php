@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\ContactMessage;
 use App\Models\Redirect;
 use App\Models\Setting;
 use App\Models\User;
@@ -75,32 +74,8 @@ class ProductionReadinessTest extends TestCase
 
     public function test_guest_cannot_download_maintenance_exports(): void
     {
-        $this->get(route('admin.exports.contact-messages'))
-            ->assertNotFound();
-
         $this->get(route('admin.exports.redirects'))
             ->assertNotFound();
-    }
-
-    public function test_admin_can_download_contact_messages_csv(): void
-    {
-        ContactMessage::query()->create([
-            'name' => 'Client User',
-            'email' => 'client@example.com',
-            'phone' => '555',
-            'subject' => 'Project',
-            'message' => 'Hello',
-            'status' => 'new',
-        ]);
-
-        $admin = User::factory()->admin()->create();
-
-        $response = $this->actingAs($admin)
-            ->get(route('admin.exports.contact-messages'))
-            ->assertOk()
-            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
-
-        $this->assertStringContainsString('client@example.com', $response->streamedContent());
     }
 
     public function test_admin_can_download_redirects_csv(): void

@@ -93,8 +93,7 @@ class PostResource extends Resource
                                 ->afterStateHydrated(function (Set $set, ?Post $record): void {
                                     $set(
                                         'featured_media_id',
-                                        $record?->featuredImage()?->getCustomProperty('source_media_id')
-                                            ?: ($record?->featuredImage() ? '__keep_existing__' : null),
+                                        static::mediaLibraryFeaturedState($record),
                                     );
                                 })
                                 ->helperText('Choose an existing image from Media Library. Upload new images from Media > Upload Media first.')

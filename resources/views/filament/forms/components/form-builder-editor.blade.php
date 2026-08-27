@@ -165,11 +165,6 @@
                             $isStructural = in_array($type, ['page', 'step'], true);
                             $span = $isStructural ? 12 : \App\Services\FormSchema::normalizeColumnSpan(data_get($itemState, 'layout.span'));
                             $widthLabel = [12 => '۱۰۰٪', 9 => '۷۵٪', 8 => '۶۶٪', 6 => '۵۰٪', 4 => '۳۳٪', 3 => '۲۵٪'][$span];
-                            $optionLabels = collect($itemState['options'] ?? [])
-                                ->map(fn ($option): ?string => is_string($option) ? $option : data_get($option, 'label'))
-                                ->filter()
-                                ->take(3)
-                                ->values();
                             $itemCloneAction = $cloneAction(['item' => $uuid]);
                             $itemDeleteAction = $deleteAction(['item' => $uuid]);
                         @endphp
@@ -211,22 +206,6 @@
                                     </div>
                                 </div>
 
-                                <div class="form-builder-card__preview" aria-hidden="true">
-                                    @if ($type === 'textarea')
-                                        <span class="is-textarea"></span>
-                                    @elseif ($type === 'select')
-                                        <span>{{ $optionLabels->first() ?? 'انتخاب کنید' }}</span>
-                                        <x-filament::icon icon="heroicon-m-chevron-down" />
-                                    @elseif (in_array($type, ['image_choice', 'radio_card'], true))
-                                        @forelse ($optionLabels as $optionLabel)
-                                            <span class="is-choice">{{ $optionLabel }}</span>
-                                        @empty
-                                            <span class="is-choice">بدون گزینه</span>
-                                        @endforelse
-                                    @else
-                                        <span>{{ $itemState['placeholder'] ?? '' }}</span>
-                                    @endif
-                                </div>
                             @endif
 
                             <div class="form-builder-card__actions">

@@ -6,7 +6,9 @@ use App\Filament\Resources\ClientProjectResource\Pages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Models\ClientProject;
 use App\Models\Customer;
+use App\Services\ClientProjectCycleUsage;
 use App\Services\DurationFormatter;
+use App\Support\PersianDate;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -133,6 +135,14 @@ class ClientProjectResource extends Resource
                 Infolists\Components\TextEntry::make('start_date')->label('تاریخ شروع')->jalaliDate()->placeholder('—'),
                 Infolists\Components\TextEntry::make('end_date')->label('تاریخ پایان')->jalaliDate()->placeholder('—'),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات')->placeholder('—')->columnSpanFull(),
+                Infolists\Components\RepeatableEntry::make('cycles')->label('دوره‌های تعهد زمانی')->schema([
+                    Infolists\Components\TextEntry::make('starts_at')->label('شروع')->formatStateUsing(fn ($state) => PersianDate::date($state)),
+                    Infolists\Components\TextEntry::make('ends_at')->label('Deadline')->formatStateUsing(fn ($state) => PersianDate::date($state)),
+                    Infolists\Components\TextEntry::make('allocated_minutes')->label('تعهد')->formatStateUsing(fn ($state) => app(DurationFormatter::class)->format($state)),
+                    Infolists\Components\TextEntry::make('id')->label('انجام‌شده')->formatStateUsing(fn ($state, $record) => app(DurationFormatter::class)->format(app(ClientProjectCycleUsage::class)->consumed($record))),
+                    Infolists\Components\TextEntry::make('status')->label('وضعیت')->formatStateUsing(fn ($state) => $state->label())->badge(),
+                    Infolists\Components\TextEntry::make('invoice.invoice_number')->label('فاکتور')->placeholder('—'),
+                ])->columns(3)->columnSpanFull(),
             ])->columns(2),
         ]);
     }

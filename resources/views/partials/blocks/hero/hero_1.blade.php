@@ -4,6 +4,9 @@
     $media = $content['media'];
     $primaryCta = $content['primary_cta'];
     $secondaryCta = $content['secondary_cta'];
+    $eyebrowEnabled = (bool) ($content['eyebrow']['enabled'] ?? false);
+    $secondTitleEnabled = (bool) ($content['title_secondary_enabled'] ?? false);
+    $ctasEnabled = (bool) ($content['ctas_enabled'] ?? false);
     $effect = $settings['background_effect'];
     $theme = match ($settings['background_treatment']) {
         'light_grid' => 'light-grid',
@@ -46,10 +49,12 @@
     $mobileHeightClass = $mobileHeight ? 'hero-template-1--mobile-fixed-height' : null;
     $sectionStyle = collect([$backgroundImage, $backgroundVariables, $desktopHeightVariable, $mobileHeightVariable, $animatedBackgroundColorVariable, $pathsVariables])->filter()->map(fn (string $style): string => trim($style, ' ;'))->implode('; ');
     $description = $content['lead'] ?? $content['description'];
-    $secondLine = trim((string) ($content['title_secondary'] ?? ''));
-    $showUnderline = $settings['title_decoration'] === 'underline';
+    $secondLine = $secondTitleEnabled ? trim((string) ($content['title_secondary'] ?? '')) : '';
+    $showUnderline = $secondTitleEnabled && (bool) ($content['title_secondary_underline'] ?? false);
     $headingTag = $settings['heading_tag'];
-    $socialLinks = collect($content['social_links'])->filter(fn ($item) => filled($item['label'] ?? null) && filled($item['url'] ?? null))->values();
+    $socialLinks = collect($content['social_links'])->filter(fn ($item) => filled($item['label'] ?? null) && is_array($item['presentation'] ?? null))->values();
+    $primaryPresentation = $ctasEnabled && ($primaryCta['enabled'] ?? false) ? ($primaryCta['presentation'] ?? null) : null;
+    $secondaryPresentation = $ctasEnabled && ($secondaryCta['enabled'] ?? false) ? ($secondaryCta['presentation'] ?? null) : null;
 @endphp
 @include('partials.blocks._image_control_styles')
 
@@ -125,14 +130,14 @@
     @endif
 
     <div class="hero-template-1__inner">
-        @if (! empty($content['eyebrow']['text']))
+        @if ($eyebrowEnabled && (! empty($content['eyebrow']['text']) || ! empty($content['eyebrow']['icon'])))
             <p class="hero-template-1__eyebrow">
                 @if (! empty($content['eyebrow']['icon']))
                     <span class="hero-template-1__eyebrow-icon" aria-hidden="true">
                         @include('partials.blocks._icon', ['icon' => $content['eyebrow']['icon'], 'size' => $settings['eyebrow_icon_size'] ?? null])
                     </span>
                 @endif
-                <span>{{ $content['eyebrow']['text'] }}</span>
+                @if (! empty($content['eyebrow']['text']))<span>{{ $content['eyebrow']['text'] }}</span>@endif
             </p>
         @endif
 
@@ -150,15 +155,10 @@
 
         @include('partials.blocks._rich_text', ['content' => $description, 'class' => 'hero-template-1__description'])
 
-        @if ((! empty($primaryCta['label']) && ! empty($primaryCta['url'])) || (! empty($secondaryCta['label']) && ! empty($secondaryCta['url'])))
+        @if (($primaryPresentation && filled($primaryCta['label'])) || ($secondaryPresentation && filled($secondaryCta['label'])))
             <div class="hero-template-1__actions">
-                @if (! empty($primaryCta['label']) && ! empty($primaryCta['url']))
-                    <a class="button" href="{{ $primaryCta['url'] }}">{{ $primaryCta['label'] }}</a>
-                @endif
-
-                @if (! empty($secondaryCta['label']) && ! empty($secondaryCta['url']))
-                    <a class="button hero-template-1__secondary" href="{{ $secondaryCta['url'] }}">{{ $secondaryCta['label'] }}</a>
-                @endif
+                @include('partials.actions.render', ['label' => $primaryCta['label'], 'class' => 'button', 'presentation' => $primaryPresentation])
+                @include('partials.actions.render', ['label' => $secondaryCta['label'], 'class' => 'button hero-template-1__secondary', 'presentation' => $secondaryPresentation])
             </div>
         @endif
 
@@ -167,9 +167,13 @@
                 @if ($socialLinks->isNotEmpty())
                     <div class="hero-template-1__socials">
                         @foreach ($socialLinks as $link)
-                            <a class="hero-template-1__social" href="{{ $link['url'] }}" aria-label="{{ $link['label'] }}">
-                                @include('partials.blocks._icon', ['icon' => $link['icon'] ?? null, 'fallback' => $link['label'], 'size' => $link['icon_size'] ?? null])
-                            </a>
+                            @if (($link['presentation']['kind'] ?? null) === 'link')
+                                <a class="hero-template-1__social" href="{{ $link['presentation']['href'] }}" aria-label="{{ $link['label'] }}" @if (filled($link['presentation']['target'] ?? null)) target="{{ $link['presentation']['target'] }}" @endif @if (filled($link['presentation']['rel'] ?? null)) rel="{{ $link['presentation']['rel'] }}" @endif>
+                                    @include('partials.blocks._icon', ['icon' => $link['icon'] ?? null, 'fallback' => $link['label'], 'size' => $link['icon_size'] ?? null])
+                                </a>
+                            @else
+                                @include('partials.actions.render', ['label' => $link['label'], 'class' => 'hero-template-1__social', 'presentation' => $link['presentation']])
+                            @endif
                         @endforeach
                     </div>
                 @endif

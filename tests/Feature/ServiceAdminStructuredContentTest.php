@@ -20,6 +20,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
 class ServiceAdminStructuredContentTest extends TestCase
@@ -256,14 +257,15 @@ class ServiceAdminStructuredContentTest extends TestCase
 
         $this->assertSame(
             $featured->id,
-            $service->featuredImage()?->getCustomProperty('source_media_id'),
+            $service->featuredImage()?->id,
         );
         $this->assertSame(
             [$gallery->id],
             $service->galleryImages()
-                ->map(fn ($media) => $media->getCustomProperty('source_media_id'))
+                ->pluck('id')
                 ->all(),
         );
+        $this->assertCount(2, Media::all());
     }
 
     public function test_service_resource_can_manage_existing_project_relations_without_touching_legacy_json(): void

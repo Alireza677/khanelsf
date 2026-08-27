@@ -198,6 +198,43 @@ class ClientProjectActivityFoundationTest extends TestCase
             ->assertSessionHasErrors('month');
     }
 
+    public function test_project_month_filter_uses_jalali_boundaries_and_persists_query_state(): void
+    {
+        $client = User::factory()->client()->create();
+        $customer = Customer::factory()->create();
+        $project = ClientProject::factory()->for($customer)->create(['monthly_hour_limit_minutes' => 600]);
+        app(CustomerMembershipManager::class)->assign($customer, $client, 'member');
+
+        foreach ([
+            ['Before Shahrivar', '2026-08-22'],
+            ['First Shahrivar', '2026-08-23'],
+            ['Last Shahrivar', '2026-09-22'],
+            ['After Shahrivar', '2026-09-23'],
+        ] as [$title, $date]) {
+            ClientProjectActivity::factory()->for($project, 'project')->publishedForClient()->create([
+                'title' => $title,
+                'activity_date' => $date,
+                'duration_minutes' => 60,
+            ]);
+        }
+
+        $this->actingAs($client, 'client')
+            ->get(route('client.projects.show', [
+                'project' => $project->id,
+                'customer' => $customer->id,
+                'month' => '1405-06',
+            ]))
+            ->assertOk()
+            ->assertSee('name="month" value="1405-06"', false)
+            ->assertSee('شهریور')
+            ->assertSee('۱۴۰۵')
+            ->assertSee('First Shahrivar')
+            ->assertSee('Last Shahrivar')
+            ->assertDontSee('Before Shahrivar')
+            ->assertDontSee('After Shahrivar')
+            ->assertDontSee('type="month"', false);
+    }
+
     public function test_deleting_performer_preserves_historical_activity(): void
     {
         $performer = User::factory()->admin()->create();

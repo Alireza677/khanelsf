@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Services\RecalculateClientProjectCycle;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 
 class ClientProjectActivity extends Model
 {
@@ -26,7 +30,7 @@ class ClientProjectActivity extends Model
     public const MAX_DURATION_MINUTES = 1440;
 
     protected $fillable = [
-        'client_project_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot',
+        'client_project_id', 'client_project_cycle_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot',
         'service_unit_label_snapshot', 'pricing_mode_snapshot', 'currency_snapshot',
         'unit_price_snapshot', 'quantity', 'total_amount', 'performed_by', 'activity_date', 'started_at', 'ended_at',
         'duration_minutes', 'title', 'description', 'internal_notes', 'visibility', 'status',
@@ -81,11 +85,37 @@ class ClientProjectActivity extends Model
                 throw ValidationException::withMessages($errors);
             }
         });
+        static::updating(function (self $activity): void {
+            $relevant = ['duration_minutes', 'client_project_id', 'client_project_cycle_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot', 'service_unit_label_snapshot', 'pricing_mode_snapshot', 'currency_snapshot', 'unit_price_snapshot', 'quantity', 'total_amount', 'status'];
+            if ($activity->isDirty($relevant) && DB::table('invoice_activity_claims')->where('client_project_activity_id', $activity->id)->exists()) {
+                throw new LogicException('Claimed activity financial and allocation fields are locked.');
+            }
+        });
+        static::saved(function (self $activity): void {
+            if ($activity->client_project_cycle_id && ($activity->wasRecentlyCreated || $activity->wasChanged(['duration_minutes', 'status', 'client_project_cycle_id']))) {
+                app(RecalculateClientProjectCycle::class)->handle($activity->cycle);
+            }
+        });
+        static::deleting(function (self $activity): void {
+            if (DB::table('invoice_activity_claims')->where('client_project_activity_id', $activity->id)->exists()) {
+                throw new LogicException('Claimed activities cannot be deleted.');
+            }
+        });
+        static::deleted(function (self $activity): void {
+            if ($activity->client_project_cycle_id) {
+                app(RecalculateClientProjectCycle::class)->handle(ClientProjectCycle::findOrFail($activity->client_project_cycle_id));
+            }
+        });
     }
 
     public function project(): BelongsTo
     {
         return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    public function cycle(): BelongsTo
+    {
+        return $this->belongsTo(ClientProjectCycle::class, 'client_project_cycle_id');
     }
 
     public function performedBy(): BelongsTo
@@ -96,6 +126,11 @@ class ClientProjectActivity extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function invoiceItems(): HasMany
+    {
+        return $this->hasMany(InvoiceItem::class);
     }
 
     public function scopeForProject(Builder $query, ClientProject|int $project): Builder
@@ -115,8 +150,13 @@ class ClientProjectActivity extends Model
         return $query->where('status', self::STATUS_PUBLISHED)->where('visibility', self::VISIBILITY_CLIENT);
     }
 
-    public function scopeInMonth(Builder $query, CarbonImmutable $month): Builder
+    public function scopeInMonth(Builder $query, CarbonImmutable $month, ?CarbonImmutable $end = null): Builder
     {
-        return $query->whereBetween('activity_date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()]);
+        $start = $end ? $month : $month->startOfMonth();
+        $inclusiveEnd = $end ?: $month->endOfMonth();
+
+        return $query
+            ->where('activity_date', '>=', $start->toDateString())
+            ->where('activity_date', '<', $inclusiveEnd->addDay()->toDateString());
     }
 }

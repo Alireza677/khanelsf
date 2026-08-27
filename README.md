@@ -1,6 +1,6 @@
 # Starter CMS
 
-A minimal Laravel 11 starter CMS prepared for public pages, blog posts, categories, contact messages, menus, site settings, Filament admin, and Spatie Media Library.
+A minimal Laravel 11 starter CMS prepared for public pages, blog posts, categories, menus, site settings, Filament admin, and Spatie Media Library.
 
 Composer package downloads were not reachable from this environment, so `vendor/` is not installed. Run the commands below from this directory when Packagist is reachable.
 
@@ -68,7 +68,6 @@ Create CMS resources after dependencies are installed:
 php artisan make:filament-resource Page --generate
 php artisan make:filament-resource Category --generate
 php artisan make:filament-resource Post --generate
-php artisan make:filament-resource ContactMessage --generate
 php artisan make:filament-resource Menu --generate
 php artisan make:filament-resource MenuItem --generate
 php artisan make:filament-resource Setting --generate
@@ -149,7 +148,7 @@ php artisan db:seed
 What this creates:
 
 - Laravel tables: `users`, `sessions`, `cache`, `jobs`, failed jobs, and password reset tokens.
-- CMS tables: `pages`, `categories`, `posts`, `contact_messages`, `menus`, `menu_items`, and `settings`.
+- CMS tables: `pages`, `categories`, `posts`, `menus`, `menu_items`, and `settings`.
 - Media Library table: `media`, after publishing its migration.
 - A default admin user: `admin@example.com` / `password`.
 - A published `home` page.
@@ -849,7 +848,6 @@ Only authenticated admins can access this page.
 Maintenance exports are intentionally lightweight CSV downloads:
 
 - `Orders > Export CSV`
-- `Inbox > Contact Messages > Export CSV`
 - `SEO > Redirects > Export CSV`
 
 Use these for handoff and reporting. They are not a substitute for full database backups.
@@ -960,7 +958,7 @@ Set up backups before handing over the website:
 - `.env` as a secure manual backup outside the repository and outside public web directories
 - restore test for at least one backup before launch
 
-For client projects with orders, contact messages, or frequent content updates, use automated daily backups at minimum.
+For client projects with orders or frequent content updates, use automated daily backups at minimum.
 
 Restore notes:
 

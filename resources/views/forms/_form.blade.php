@@ -25,12 +25,12 @@
     $calculatorReportUrl = $calculatorResult
         ? data_get($calculatorResultState, 'report_url')
         : null;
-    $hasStepMarkers = collect($fields)->contains(fn (array $field): bool => in_array($field['type'], ['page', 'step'], true));
+    $hasStepMarkers = collect($fields)->contains(fn (array $field): bool => $field['type'] === 'page');
     $steps = [];
     $currentStep = ['field_id' => null, 'label' => $form->name, 'description' => null, 'fields' => []];
 
     foreach ($fields as $field) {
-        if (in_array($field['type'], ['page', 'step'], true)) {
+        if ($field['type'] === 'page') {
             if ($currentStep['fields'] !== []) {
                 $steps[] = $currentStep;
             }
@@ -127,7 +127,53 @@
                 @php($errorId = $inputId.'-error')
                 @php($columnSpan = \App\Services\FormSchema::normalizeColumnSpan(data_get($field, 'layout.span')))
                 <div class="form-field form-field--span-{{ $columnSpan }}">
-                    @if ($field['type'] === 'textarea')
+                    @if ($field['type'] === 'step')
+                        <div class="form-section-divider">
+                            <div class="form-section-divider__title">{{ $field['label'] }}</div>
+                            <div class="form-section-divider__line" aria-hidden="true"></div>
+                            @if ($field['description'])
+                                <p>{{ $field['description'] }}</p>
+                            @endif
+                        </div>
+                    @elseif ($field['type'] === 'date')
+                        @php($canonicalDate = is_string($oldValue($field['name'])) ? $oldValue($field['name']) : '')
+                        <label id="{{ $inputId }}-label" for="{{ $inputId }}">{{ $field['label'] }}</label>
+                        <div
+                            class="form-date-picker"
+                            data-form-date-picker
+                            data-placeholder="{{ $field['placeholder'] ?: 'تاریخ را انتخاب کنید' }}"
+                            @if($field['date_range_enabled'] && $field['min_date']) data-min-date="{{ $field['min_date'] }}" @endif
+                            @if($field['date_range_enabled'] && $field['max_date']) data-max-date="{{ $field['max_date'] }}" @endif
+                        >
+                            <input
+                                id="{{ $inputId }}"
+                                class="form-date-picker__canonical"
+                                name="{{ $field['name'] }}"
+                                type="text"
+                                inputmode="numeric"
+                                value="{{ $canonicalDate }}"
+                                placeholder="YYYY-MM-DD"
+                                pattern="\d{4}-\d{2}-\d{2}"
+                                autocomplete="off"
+                                @required($field['required'])
+                                @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif
+                                data-form-date-canonical
+                            >
+                            <button
+                                type="button"
+                                class="form-date-picker__trigger"
+                                aria-haspopup="dialog"
+                                aria-expanded="false"
+                                aria-labelledby="{{ $inputId }}-label {{ $inputId }}-display"
+                                hidden
+                                data-form-date-trigger
+                            >
+                                <span id="{{ $inputId }}-display" data-form-date-display></span>
+                                <span class="form-date-picker__icon" aria-hidden="true">📅</span>
+                            </button>
+                            <div class="form-date-picker__calendar" role="dialog" aria-modal="false" aria-label="انتخاب تاریخ شمسی" hidden data-form-date-calendar></div>
+                        </div>
+                    @elseif ($field['type'] === 'textarea')
                         <label for="{{ $inputId }}">{{ $field['label'] }}</label>
                         <textarea id="{{ $inputId }}" name="{{ $field['name'] }}" rows="5" placeholder="{{ $field['placeholder'] }}" @required($field['required']) @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>{{ $oldValue($field['name']) }}</textarea>
                     @elseif ($field['type'] === 'select')

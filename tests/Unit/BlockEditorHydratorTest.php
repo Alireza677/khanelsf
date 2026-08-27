@@ -65,7 +65,8 @@ class BlockEditorHydratorTest extends TestCase
         $this->assertSame('Legacy', $hero['content']['title']);
         $this->assertSame('Second', $hero['content']['title_secondary']);
         $this->assertSame($stats, $hero['content']['stats']);
-        $this->assertSame($social, $hero['content']['social_links']);
+        $this->assertSame('/social', $hero['content']['social_links'][0]['action']['value']);
+        $this->assertArrayNotHasKey('url', $hero['content']['social_links'][0]);
         $this->assertSame('/video.mp4', $hero['content']['media']['video_url']);
         $this->assertArrayNotHasKey('title', $hero);
         $this->assertSame('FAQ', $result[1]['data']['section_title']);

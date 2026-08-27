@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\CMS\Blocks\BlockRegistry;
+use App\CMS\Blocks\BusinessNetwork\BusinessNetworkMapBlock;
+use App\CMS\Blocks\BusinessNetwork\BusinessNetworkRuntime;
 use App\CMS\Blocks\CTA\CTABlock;
 use App\CMS\Blocks\FeatureGrid\FeatureGridBlock;
 use App\CMS\Blocks\FeatureGrid\FeatureGridRuntime;
@@ -56,6 +58,7 @@ class BlockServiceProvider extends ServiceProvider
                 'cta' => CTABlock::class,
                 'form' => FormBlock::class,
                 'feature_grid' => FeatureGridBlock::class,
+                'business_network_map' => BusinessNetworkMapBlock::class,
                 'site_header' => SiteHeaderBlock::class,
                 'project_header' => ProjectHeaderBlock::class,
                 'project_overview' => ProjectOverviewBlock::class,
@@ -90,7 +93,15 @@ class BlockServiceProvider extends ServiceProvider
         SiteHeaderTemplateResolver $headerTemplates,
         TemplateService $templates,
         PublicAccountNavigation $accounts,
+        BusinessNetworkRuntime $businessNetwork,
     ): void {
+        View::composer('partials.blocks.business_network_map', function (IlluminateView $view) use ($businessNetwork): void {
+            $viewData = $view->getData();
+            $view->with('network', $businessNetwork->prepare(
+                is_array($viewData['data'] ?? null) ? $viewData['data'] : [],
+                is_array($viewData['context'] ?? null) ? $viewData['context'] : [],
+            ));
+        });
         View::composer(
             'partials.blocks.form',
             function (IlluminateView $view) use ($forms): void {

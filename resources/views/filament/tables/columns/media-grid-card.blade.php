@@ -5,12 +5,12 @@
     $extension = strtoupper(pathinfo($record->file_name, PATHINFO_EXTENSION));
 @endphp
 
-<div class="media-grid-card" title="{{ $record->file_name }}">
+<div class="media-grid-card" title="{{ $record->displayTitle() }}">
     <div class="media-grid-card__preview">
         @if (str_starts_with($mimeType, 'image/'))
             <img
                 src="{{ $url }}"
-                alt="{{ $record->name }}"
+                alt="{{ $record->altText() }}"
                 loading="lazy"
             >
         @elseif (str_starts_with($mimeType, 'video/'))
@@ -31,5 +31,5 @@
         @endif
     </div>
 
-    <div class="media-grid-card__title">{{ $record->file_name }}</div>
+    <div class="media-grid-card__title">{{ $record->displayTitle() }}</div>
 </div>

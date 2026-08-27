@@ -89,12 +89,95 @@ class FormSchemaTest extends TestCase
                 ['key' => 'third', 'type' => 'text', 'layout' => ['span' => '4']],
                 ['key' => 'invalid', 'type' => 'text', 'layout' => ['span' => 5]],
                 ['key' => 'step', 'type' => 'page', 'layout' => ['span' => 3]],
+                ['key' => 'section', 'type' => 'step', 'layout' => ['span' => 6]],
             ]],
         ]);
 
         $fields = app(FormSchema::class)->fields($form);
 
-        $this->assertSame([12, 3, 4, 12, 12], array_column(array_column($fields, 'layout'), 'span'));
+        $this->assertSame([12, 3, 4, 12, 12, 12], array_column(array_column($fields, 'layout'), 'span'));
         $this->assertSame($fields, app(FormSchema::class)->fields(new Form(['schema' => ['fields' => $fields]])));
+    }
+
+    public function test_structural_fields_never_create_validation_rules(): void
+    {
+        $form = new Form(['schema' => ['fields' => [
+            ['key' => 'section', 'label' => 'Section', 'type' => 'step', 'required' => true],
+            ['key' => 'page_two', 'label' => 'Page two', 'type' => 'page', 'required' => true],
+            ['key' => 'name', 'label' => 'Name', 'type' => 'text'],
+        ]]]);
+
+        $this->assertSame(['name'], array_keys(app(FormSchema::class)->validationRules($form)));
+    }
+
+    public function test_date_fields_normalize_fixed_boundaries_and_build_canonical_validation_rules(): void
+    {
+        $form = new Form(['schema' => ['fields' => [[
+            'key' => 'visit_date',
+            'label' => 'Visit date',
+            'type' => 'date',
+            'required' => true,
+            'min_date' => '2026-08-20',
+            'max_date' => '2026-08-30',
+        ]]]]);
+
+        $field = app(FormSchema::class)->fields($form)[0];
+        $this->assertSame('2026-08-20', $field['min_date']);
+        $this->assertSame('2026-08-30', $field['max_date']);
+        $this->assertSame([
+            'required',
+            'string',
+            'max:255',
+            'date_format:Y-m-d',
+            'after_or_equal:1971-03-21',
+            'after_or_equal:2026-08-20',
+            'before_or_equal:2026-08-30',
+        ], app(FormSchema::class)->validationRules($form)['visit_date']);
+    }
+
+    public function test_date_range_rules_are_inactive_when_the_toggle_is_off(): void
+    {
+        $form = new Form(['schema' => ['fields' => [[
+            'key' => 'visit_date',
+            'type' => 'date',
+            'date_range_enabled' => false,
+            'min_date' => '2026-08-20',
+            'max_date' => '2026-08-30',
+        ]]]]);
+
+        $field = app(FormSchema::class)->fields($form)[0];
+        $this->assertFalse($field['date_range_enabled']);
+        $this->assertSame([
+            'nullable', 'string', 'max:255', 'date_format:Y-m-d', 'after_or_equal:1971-03-21',
+        ], app(FormSchema::class)->validationRules($form)['visit_date']);
+    }
+
+    public function test_legacy_date_boundaries_enable_the_range_during_normalization(): void
+    {
+        $form = new Form(['schema' => ['fields' => [[
+            'key' => 'legacy_date',
+            'type' => 'date',
+            'min_date' => '2020-01-01',
+        ]]]]);
+
+        $this->assertTrue(app(FormSchema::class)->fields($form)[0]['date_range_enabled']);
+    }
+
+    public function test_enabled_date_range_supports_only_one_boundary(): void
+    {
+        $minimumOnly = new Form(['schema' => ['fields' => [[
+            'key' => 'minimum_only', 'type' => 'date', 'date_range_enabled' => true, 'min_date' => '2026-08-20',
+        ]]]]);
+        $maximumOnly = new Form(['schema' => ['fields' => [[
+            'key' => 'maximum_only', 'type' => 'date', 'date_range_enabled' => true, 'max_date' => '2026-08-30',
+        ]]]]);
+
+        $minimumRules = app(FormSchema::class)->validationRules($minimumOnly)['minimum_only'];
+        $maximumRules = app(FormSchema::class)->validationRules($maximumOnly)['maximum_only'];
+
+        $this->assertContains('after_or_equal:2026-08-20', $minimumRules);
+        $this->assertNotContains('before_or_equal:2026-08-30', $minimumRules);
+        $this->assertContains('before_or_equal:2026-08-30', $maximumRules);
+        $this->assertNotContains('after_or_equal:2026-08-20', $maximumRules);
     }
 }

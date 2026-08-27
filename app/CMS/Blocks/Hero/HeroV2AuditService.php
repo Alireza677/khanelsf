@@ -190,9 +190,9 @@ final class HeroV2AuditService
         }
 
         foreach ($v2
-            ? [['content.primary_cta.label', 'content.primary_cta.url'], ['content.secondary_cta.label', 'content.secondary_cta.url']]
-            : [['primary_button_label', 'primary_button_url'], ['secondary_button_label', 'secondary_button_url']] as [$labelPath, $urlPath]) {
-            if (filled(data_get($data, $labelPath)) xor filled(data_get($data, $urlPath))) {
+            ? [['content.primary_cta.label', 'content.primary_cta.action'], ['content.secondary_cta.label', 'content.secondary_cta.action']]
+            : [['primary_button_label', 'primary_button_url'], ['secondary_button_label', 'secondary_button_url']] as [$labelPath, $actionPath]) {
+            if (filled(data_get($data, $labelPath)) xor filled(data_get($data, $actionPath))) {
                 $issues[] = $this->issue('malformed_cta', 'warning');
             }
         }

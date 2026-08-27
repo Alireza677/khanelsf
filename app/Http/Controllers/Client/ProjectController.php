@@ -39,12 +39,15 @@ class ProjectController extends Controller
     ): View {
         $project = $access->findFor($request->attributes->get('portalCustomer'), $project);
         Gate::forUser($request->user('client'))->authorize('view', $project);
-        $month = $months->resolve($request->query('month'));
-        $activities = $project->activities()->publishedForClient()->inMonth($month)
+        $month = $months->resolveRange($request->query('month'));
+        $activities = $project->activities()->publishedForClient()->inMonth($month['start'], $month['end'])
             ->latest('activity_date')->latest('id')->paginate(10)->withQueryString();
         $activities->through(fn ($activity): array => $activityPresenter->present($activity));
-        $summary = $timeService->summarize($project, $month);
+        $summary = $timeService->summarize($project, $month['start'], $month['end']);
         $summary = [...$summary, ...[
+            'month' => $month['value'],
+            'jalali_year' => $month['year'],
+            'jalali_month' => $month['month'],
             'allocated' => $durations->format($summary['allocated_minutes']),
             'used' => $durations->format($summary['used_minutes']),
             'remaining' => $durations->format($summary['remaining_minutes']),
