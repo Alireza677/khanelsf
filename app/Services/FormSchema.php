@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Form;
+use App\Support\FormNumber;
+use App\Support\FormUpload;
+use App\Rules\FormUploadRule;
 use Illuminate\Validation\Rule;
 
 final class FormSchema
@@ -11,7 +14,7 @@ final class FormSchema
 
     public const DATE_GLOBAL_MIN = '1971-03-21';
 
-    private const INPUT_TYPES = ['text', 'email', 'tel', 'date', 'textarea', 'select', 'image_choice', 'radio_card'];
+    private const INPUT_TYPES = ['text', 'number', 'email', 'tel', 'date', 'textarea', 'select', 'radio', 'checkbox', 'image_choice', 'radio_card', 'file'];
 
     private const STRUCTURAL_TYPES = ['page', 'step'];
 
@@ -20,7 +23,10 @@ final class FormSchema
         return [...self::INPUT_TYPES, ...self::STRUCTURAL_TYPES];
     }
 
-    public function __construct(private readonly FormSchemaIdentityManager $identity) {}
+    public function __construct(
+        private readonly FormSchemaIdentityManager $identity,
+        private readonly SettingsService $settings,
+    ) {}
 
     public function fields(Form $form): array
     {
@@ -77,6 +83,24 @@ final class FormSchema
                 'layout' => ['span' => self::normalizeColumnSpan(data_get($field, 'layout.span'))],
             ];
 
+            if ($type === 'number') {
+                $normalizedField['settings'] = [
+                    'thousands_separator' => filter_var(data_get($field, 'settings.thousands_separator', false), FILTER_VALIDATE_BOOLEAN),
+                    'allow_decimals' => filter_var(data_get($field, 'settings.allow_decimals', false), FILTER_VALIDATE_BOOLEAN),
+                    'decimal_places' => $this->decimalPlaces(data_get($field, 'settings.decimal_places', 2)),
+                ];
+            }
+
+            if ($type === 'file') {
+                $mode = FormUpload::mode(data_get($field, 'settings.file_type'));
+                $normalizedField['settings'] = [
+                    'file_type' => $mode,
+                    'max_size_mb' => FormUpload::maxSizeMb($this->settings),
+                    'allowed_extensions' => FormUpload::extensions($mode),
+                    'allowed_extensions_label' => FormUpload::extensionLabel($mode),
+                ];
+            }
+
             if ($type === 'date') {
                 $normalizedField['min_date'] = self::normalizeIsoDate($field['min_date'] ?? null);
                 $normalizedField['max_date'] = self::normalizeIsoDate($field['max_date'] ?? null);
@@ -85,7 +109,7 @@ final class FormSchema
                     : $normalizedField['min_date'] !== null || $normalizedField['max_date'] !== null;
             }
 
-            if (in_array($type, ['select', 'image_choice', 'radio_card'], true)) {
+            if (in_array($type, ['select', 'radio', 'checkbox', 'image_choice', 'radio_card'], true)) {
                 $options = $this->options($field['options'] ?? []);
 
                 if ($options === []) {
@@ -120,6 +144,50 @@ final class FormSchema
                 continue;
             }
 
+            if ($field['type'] === 'checkbox') {
+                $values = array_column($field['options'], 'value');
+                $rules[$field['name']] = array_values(array_filter([
+                    $field['required'] ? 'required' : 'nullable',
+                    'array',
+                    $field['required'] ? 'min:1' : null,
+                ]));
+                $rules[$field['name'].'.*'] = [
+                    'string',
+                    'distinct',
+                    Rule::in($values),
+                ];
+
+                continue;
+            }
+
+            if ($field['type'] === 'number') {
+                $places = $field['settings']['decimal_places'];
+                $pattern = $field['settings']['allow_decimals']
+                    ? "/^-?\\d+(?:\\.\\d{1,{$places}})?$/"
+                    : '/^-?\d+$/';
+                $rules[$field['name']] = [
+                    $field['required'] ? 'required' : 'nullable',
+                    'string',
+                    'max:255',
+                    "regex:{$pattern}",
+                ];
+
+                continue;
+            }
+
+            if ($field['type'] === 'file') {
+                $rules[$field['name']] = [
+                    $field['required'] ? 'required' : 'nullable',
+                    'file',
+                    new FormUploadRule(
+                        $field['settings']['file_type'],
+                        $field['settings']['max_size_mb'],
+                    ),
+                ];
+
+                continue;
+            }
+
             $fieldRules = [$field['required'] ? 'required' : 'nullable', 'string'];
             $fieldRules[] = $field['type'] === 'textarea' ? 'max:5000' : 'max:255';
 
@@ -140,7 +208,7 @@ final class FormSchema
                 }
             }
 
-            if (in_array($field['type'], ['select', 'image_choice', 'radio_card'], true)) {
+            if (in_array($field['type'], ['select', 'radio', 'image_choice', 'radio_card'], true)) {
                 $values = $field['type'] === 'select'
                     ? array_keys($field['options'])
                     : array_column($field['options'], 'value');
@@ -151,6 +219,39 @@ final class FormSchema
         }
 
         return $rules;
+    }
+
+    public function normalizeSubmissionInput(Form $form, array $input): array
+    {
+        foreach ($this->fields($form) as $field) {
+            if ($field['type'] === 'number' && array_key_exists($field['name'], $input)) {
+                $input[$field['name']] = FormNumber::canonicalize($input[$field['name']]);
+            }
+        }
+
+        return $input;
+    }
+
+    public function validationMessages(Form $form): array
+    {
+        $messages = [];
+
+        foreach ($this->fields($form) as $field) {
+            if ($field['type'] !== 'file') {
+                continue;
+            }
+
+            $messages[$field['name'].'.required'] = "انتخاب فایل برای «{$field['label']}» الزامی است.";
+            $messages[$field['name'].'.file'] = "فایل انتخاب‌شده برای «{$field['label']}» معتبر نیست.";
+            $messages[$field['name'].'.uploaded'] = "بارگذاری فایل «{$field['label']}» ناموفق بود.";
+        }
+
+        return $messages;
+    }
+
+    private function decimalPlaces(mixed $value): int
+    {
+        return is_numeric($value) ? max(1, min((int) $value, 4)) : 2;
     }
 
     private function label(array $field, string $default): string

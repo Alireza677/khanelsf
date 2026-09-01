@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\CMS\Collections\Blog\BlogCollectionAdapter;
 use App\CMS\Collections\Project\ProjectCollectionAdapter;
-use App\CMS\Collections\Service\ServiceCollectionAdapter;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Gallery;
@@ -20,13 +19,14 @@ use App\Models\Template;
 use App\Services\ModuleService;
 use App\Services\ProductTemplateContextBuilder;
 use App\Services\ProductTemplateRuntime;
-use App\Services\ProjectTemplateContextBuilder;
 use App\Services\ProjectDiscoveryTemplateContextBuilder;
 use App\Services\ProjectGalleryDiscoveryService;
+use App\Services\ProjectTemplateContextBuilder;
 use App\Services\SeoService;
-use App\Services\SettingsService;
-use App\Services\ServiceTemplateRuntime;
+use App\Services\ServiceArchiveContextBuilder;
 use App\Services\ServiceQueryService;
+use App\Services\ServiceTemplateRuntime;
+use App\Services\SettingsService;
 use App\Services\TemplateService;
 use App\Support\SeoData;
 use Illuminate\Contracts\View\View;
@@ -109,7 +109,7 @@ class PreviewController extends Controller
         ProductTemplateRuntime $productRuntime,
         ServiceTemplateRuntime $serviceRuntime,
         ServiceQueryService $serviceQueries,
-        ServiceCollectionAdapter $serviceCollections,
+        ServiceArchiveContextBuilder $serviceArchiveContextBuilder,
         BlogCollectionAdapter $blogCollections,
         ProjectCollectionAdapter $projectCollections,
         ProjectGalleryDiscoveryService $projectDiscovery,
@@ -169,8 +169,13 @@ class PreviewController extends Controller
                 'services_index_description',
                 'با ترکیب تجربه، خلاقیت و فناوری‌های روز، مسیر رشد پایدار کسب‌وکارتان را هموار می‌سازیم.',
             );
-            $services = $serviceQueries->paginateArchive((int) $settings->get('services_per_page', 12));
-            $collection = $serviceCollections->adapt($services, $heading, $description);
+            $roots = $serviceQueries->paginatePublicArchiveRoots((int) $settings->get('services_per_page', 12));
+            $archive = $serviceArchiveContextBuilder->build(
+                $roots,
+                $serviceQueries->publicArchiveChildren($roots->getCollection()),
+                $heading,
+                $description,
+            );
 
             return view('templates.render', [
                 'template' => $template,
@@ -180,7 +185,7 @@ class PreviewController extends Controller
                     'heading' => $heading,
                     'description' => $description,
                     'emptyMessage' => 'هنوز خدمتی منتشر نشده است.',
-                    'collection' => $collection,
+                    'serviceArchive' => $archive,
                     'isPreview' => true,
                 ],
                 'seo' => $this->noindex($seoService->forServiceIndex($heading, $description)),

@@ -54,7 +54,24 @@ class FeatureGridDataNormalizerTest extends TestCase
         $this->assertSame('Eyebrow', $result['settings']['eyebrow']);
         $this->assertSame('h1', $result['settings']['heading_tag']);
         $this->assertSame('muted', $result['settings']['section_background']);
+        $this->assertSame('default', $result['settings']['variant']);
         $this->assertSame(80, $result['content']['items'][0]['image_width_value']);
+    }
+
+    public function test_presentation_variant_is_allowlisted_and_legacy_data_defaults_to_current_view(): void
+    {
+        $legacy = $this->normalizer()->normalize(['section_title' => 'Legacy']);
+        $iconList = $this->normalizer()->normalize([
+            'content' => ['section_title' => 'List'],
+            'settings' => ['variant' => 'icon_list'],
+        ]);
+        $unknown = $this->normalizer()->normalize([
+            'settings' => ['variant' => 'future_variant'],
+        ]);
+
+        $this->assertSame('default', $legacy['settings']['variant']);
+        $this->assertSame('icon_list', $iconList['settings']['variant']);
+        $this->assertSame('default', $unknown['settings']['variant']);
     }
 
     public function test_multiple_sanitized_existing_grids_and_dynamic_shape_are_supported(): void

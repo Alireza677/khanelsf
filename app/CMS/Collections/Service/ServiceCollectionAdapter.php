@@ -11,20 +11,40 @@ use App\CMS\Collections\Data\CollectionPaginationLink;
 use App\CMS\Collections\Data\CollectionPresentation;
 use App\Models\Service;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 final class ServiceCollectionAdapter
 {
     public function adapt(LengthAwarePaginator $services, string $title, ?string $description = null): CollectionPresentation
     {
+        return $this->adaptServices(
+            $services->getCollection(),
+            $title,
+            $description,
+            $services->hasPages() ? $this->pagination($services) : null,
+        );
+    }
+
+    public function adaptServices(
+        Collection $services,
+        string $title,
+        ?string $description = null,
+        ?CollectionPagination $pagination = null,
+    ): CollectionPresentation {
         return new CollectionPresentation(
             title: $title,
             description: $this->text($description),
-            items: $services->getCollection()->map(fn (Service $service): CollectionItem => $this->item($service))->all(),
-            pagination: $services->hasPages() ? $this->pagination($services) : null,
+            items: $services->map(fn (Service $service): CollectionItem => $this->item($service))->all(),
+            pagination: $pagination,
             emptyState: new CollectionEmptyState('هنوز خدمتی منتشر نشده است.'),
             variant: 'clean_grid',
             columns: 3,
         );
+    }
+
+    public function paginationFor(LengthAwarePaginator $services): ?CollectionPagination
+    {
+        return $services->hasPages() ? $this->pagination($services) : null;
     }
 
     public function item(Service $service): CollectionItem

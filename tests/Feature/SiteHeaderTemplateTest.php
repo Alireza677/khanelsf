@@ -139,6 +139,45 @@ class SiteHeaderTemplateTest extends TestCase
         $this->assertStringContainsString('moreTrigger.focus()', $javascript);
     }
 
+    public function test_industrial_header_overflow_parent_uses_a_nested_flyout_without_replacing_siblings(): void
+    {
+        $blade = file_get_contents(resource_path('views/partials/blocks/site-header-industrial.blade.php'));
+        $css = file_get_contents(resource_path('css/app.css'));
+        $javascript = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('<ul data-navigation-more-items></ul>', $blade);
+        $this->assertStringContainsString('moreItems.prepend(candidates().at(-1))', $javascript);
+        $this->assertStringContainsString("moreItems.addEventListener('pointerover'", $javascript);
+        $this->assertStringContainsString("moreItems.addEventListener('focusin'", $javascript);
+        $this->assertStringContainsString("item.querySelector(':scope > ul')", $javascript);
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__more\s*>\s*ul\s*>\s*li\s*>\s*ul\s*\{[^}]*right:\s*100%;[^}]*top:\s*-\.55rem;/s',
+            $css,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__more\s*>\s*ul\s*>\s*li\.is-submenu-inline-end\s*>\s*ul\s*\{[^}]*left:\s*100%;[^}]*right:\s*auto;/s',
+            $css,
+        );
+    }
+
+    public function test_industrial_header_dropdown_uses_canonical_typography_and_content_width(): void
+    {
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__navigation li\s*>\s*ul\s*\{[^}]*font-size:\s*var\(--theme-base-font-size, 16px\);[^}]*max-width:\s*calc\(100vw - 2rem\);[^}]*width:\s*max-content;/s',
+            $css,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__navigation li\s*>\s*ul a\s*\{[^}]*font-size:\s*var\(--theme-base-font-size, 16px\);/s',
+            $css,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__navigation li ul a\s*\{[^}]*font-size:\s*var\(--theme-base-font-size-mobile, 15px\);/s',
+            $css,
+        );
+    }
+
     public function test_industrial_header_actions_use_the_canonical_theme_palette(): void
     {
         $css = file_get_contents(resource_path('css/app.css'));

@@ -6,8 +6,12 @@ use App\Enums\BackupStatus;
 use App\Enums\BackupType;
 use App\Exceptions\BackupOperationException;
 use App\Models\Backup;
+use App\Models\BackupRestore;
 use App\Services\BackupManager;
+use App\Services\BackupRestoreManager;
 use App\Services\BackupUploadService;
+use App\Support\BackupUploadLimit;
+use App\Support\PersianDate;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -17,6 +21,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 
 class Backups extends Page implements HasTable
 {
@@ -52,8 +57,12 @@ class Backups extends Page implements HasTable
                         ->label('فایل نسخه پشتیبان CMS')
                         ->disk('local')->directory((string) config('backup.incoming_prefix', 'backups/incoming'))
                         ->visibility('private')->acceptedFileTypes(['application/zip', 'application/x-zip-compressed'])
-                        ->maxSize($this->effectiveUploadMaxKb())->required()
-                        ->helperText('فقط فایل ZIP ساخته‌شده توسط همین CMS پذیرفته می‌شود. حداکثر حجم قابل دریافت این سرور: '.$this->formatBytes($this->effectiveUploadMaxKb() * 1024)),
+                        ->maxSize(BackupUploadLimit::kilobytes())
+                        ->validationMessages([
+                            'max' => BackupUploadLimit::validationMessage(),
+                        ])
+                        ->required()
+                        ->helperText($this->uploadHelperText()),
                 ])
                 ->action(function (array $data, BackupUploadService $uploads): void {
                     try {
@@ -87,6 +96,29 @@ class Backups extends Page implements HasTable
                 Tables\Actions\Action::make('download')->label('دانلود')->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (Backup $record) => route('admin.backups.download', $record))
                     ->visible(fn (Backup $record) => $this->fileExists($record)),
+                Tables\Actions\Action::make('restore')
+                    ->label('بازیابی')
+                    ->icon('heroicon-o-arrow-path-rounded-square')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('بازیابی نسخه پشتیبان')
+                    ->modalDescription(new HtmlString(
+                        'با بازیابی این نسخه پشتیبان، اطلاعات فعلی وب‌سایت با اطلاعات موجود در این نسخه جایگزین می‌شود.<br><br>'
+                        .'قبل از شروع بازیابی، به‌صورت خودکار یک نسخه پشتیبان ایمنی از وضعیت فعلی ایجاد خواهد شد.<br><br>'
+                        .'<strong>اطلاعات ایجادشده بعد از زمان Backup ممکن است حذف شوند. بازگشت فقط از طریق نسخه پشتیبان ایمنی امکان‌پذیر است.</strong>'
+                    ))
+                    ->modalSubmitActionLabel('شروع بازیابی')
+                    ->visible(fn (Backup $record): bool => $record->type === BackupType::Full
+                        && $this->fileExists($record)
+                        && ! BackupRestore::query()->whereNotNull('active_lock')->exists())
+                    ->action(function (Backup $record, BackupRestoreManager $restores): void {
+                        try {
+                            $started = $restores->startWithProgress($record, auth()->user());
+                            $this->redirect($started->progressUrl(), navigate: false);
+                        } catch (BackupOperationException $exception) {
+                            Notification::make()->danger()->title($exception->getMessage())->send();
+                        }
+                    }),
                 Tables\Actions\Action::make('retry')->label('تلاش مجدد')->icon('heroicon-o-arrow-path')
                     ->visible(fn (Backup $record) => $record->status === BackupStatus::Failed)
                     ->requiresConfirmation()
@@ -97,6 +129,15 @@ class Backups extends Page implements HasTable
                     }),
             ])
             ->emptyStateHeading('هنوز نسخه پشتیبانی ایجاد نشده است.');
+    }
+
+    public function latestRestore(): ?BackupRestore
+    {
+        return BackupRestore::query()
+            ->with(['backup:id,uuid,archive_name', 'safetyBackup:id,uuid,archive_name'])
+            ->latest('created_at')
+            ->latest('id')
+            ->first();
     }
 
     private function visibleBackupsQuery(): Builder
@@ -140,25 +181,19 @@ class Backups extends Page implements HasTable
         return $backup->isAvailable() && Storage::disk($backup->local_disk)->exists($backup->local_path);
     }
 
-    private function effectiveUploadMaxKb(): int
+    private function uploadHelperText(): string
     {
-        $configured = max(1, (int) config('backup.upload_max_mb', 2048)) * 1024;
-        $phpLimits = array_filter([$this->iniKb('upload_max_filesize'), $this->iniKb('post_max_size')]);
+        $text = 'فقط فایل ZIP ساخته‌شده توسط همین CMS پذیرفته می‌شود. '.BackupUploadLimit::validationMessage();
+        $serverLimit = BackupUploadLimit::serverKilobytes();
 
-        return $phpLimits ? min($configured, ...$phpLimits) : $configured;
-    }
-
-    private function iniKb(string $key): int
-    {
-        $value = trim((string) ini_get($key));
-        if ($value === '' || $value === '-1') {
-            return 0;
+        if ($serverLimit !== null && $serverLimit < BackupUploadLimit::kilobytes()) {
+            $serverMegabytes = rtrim(rtrim(number_format($serverLimit / 1024, 1, '.', ''), '0'), '.');
+            $text .= ' هشدار: محدودیت فعلی PHP این سرور '
+                .PersianDate::digits($serverMegabytes)
+                .' مگابایت است و باید در تنظیمات سرور افزایش یابد.';
         }
-        $number = (float) $value;
 
-        return (int) round($number * match (strtolower(substr($value, -1))) {
-            'g' => 1024 * 1024, 'm' => 1024, 'k' => 1, default => 1 / 1024,
-        });
+        return $text;
     }
 
     private function formatBytes(int $bytes): string

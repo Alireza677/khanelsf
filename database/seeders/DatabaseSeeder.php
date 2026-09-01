@@ -56,6 +56,8 @@ class DatabaseSeeder extends Seeder
             ['health_check_enabled', '1', 'general', 'boolean'],
             ['default_og_image', '', 'seo', 'image'],
             ['footer_text', 'A practical website starter for client projects.', 'footer', 'textarea'],
+            ['contact_mobile', '', 'contact', 'text'],
+            ['working_hours', '', 'contact', 'text'],
             ['social_instagram_url', '', 'social', 'text'],
             ['social_telegram_url', '', 'social', 'text'],
             ['social_whatsapp_url', '', 'social', 'text'],
@@ -624,6 +626,8 @@ class DatabaseSeeder extends Seeder
                 'type' => 'select',
             ],
         );
+
+        $this->call(CorporateFooterTemplateSeeder::class);
 
         foreach ([
             ['shop-index-template', 'Shop Index Template', 'shop_index', 'Shop', 'Browse simple products and starter catalog items.'],

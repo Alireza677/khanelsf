@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PageResource\Pages;
 
 use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
+use App\Filament\Resources\Concerns\HasStickyFormActions;
 use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
 use App\Filament\Resources\Concerns\WarnsAboutMultiplePageHeadings;
 use App\Filament\Resources\PageResource;
@@ -24,6 +25,7 @@ use Throwable;
 
 class EditPage extends EditRecord
 {
+    use HasStickyFormActions;
     use LogsHeroV2SaveFailures;
     use ManagesBlockEditorIdentity;
     use WarnsAboutMultiplePageHeadings;
@@ -103,7 +105,7 @@ class EditPage extends EditRecord
     public function getExtraBodyAttributes(): array
     {
         return [
-            'class' => 'fi-page-editor-locked-scroll',
+            'class' => 'fi-page-editor-locked-scroll fi-always-sticky-form-actions',
         ];
     }
 

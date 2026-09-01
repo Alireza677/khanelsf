@@ -52,7 +52,17 @@ class BackupArchiveBuilder
                 'type' => $backup->type->value,
                 'created_at' => now()->toIso8601String(),
                 'database_driver' => config('database.connections.'.config('database.default').'.driver'),
-                'application' => ['name' => config('app.name'), 'laravel_version' => app()->version()],
+                'database' => [
+                    'restore_policy' => 'historical_application_data',
+                    'excluded_operational_tables' => array_values(config('backup.operational_tables', [])),
+                ],
+                'application' => [
+                    'name' => config('app.name'),
+                    'laravel_version' => app()->version(),
+                    'cms_identifier' => 'noor/starter-cms',
+                    'migration_fingerprint' => $this->migrationFingerprint(),
+                ],
+                'storage_scopes' => array_values(array_keys(config('backup.persistent_disks', []))),
                 'files' => ['count' => $fileCount, 'bytes' => $fileBytes],
                 'checksum' => ['algorithm' => 'sha256', 'scope' => 'archive'],
             ];
@@ -74,5 +84,13 @@ class BackupArchiveBuilder
             'checksum' => hash_file('sha256', $archivePath),
             'metadata' => $manifest,
         ];
+    }
+
+    private function migrationFingerprint(): string
+    {
+        $files = glob(database_path('migrations/*.php')) ?: [];
+        sort($files, SORT_STRING);
+
+        return hash('sha256', implode("\n", array_map('basename', $files)));
     }
 }

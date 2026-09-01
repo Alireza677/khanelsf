@@ -16,6 +16,7 @@ class LocalBackupRetentionService
         $keep = max(1, (int) config('backup.local_retention_count', 3));
         $candidates = Backup::query()
             ->where('status', BackupStatus::Completed->value)
+            ->whereDoesntHave('safetyForRestores', fn ($query) => $query->whereNotNull('active_lock'))
             ->whereNotNull('local_disk')->whereNotNull('local_path')
             ->latest('finished_at')->latest('id')->take(1000)->get();
 

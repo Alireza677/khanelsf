@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
 use LogicException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as SpatieMedia;
 
@@ -33,6 +35,31 @@ class Media extends SpatieMedia
         return filled($this->original_filename)
             ? (string) $this->original_filename
             : (string) $this->file_name;
+    }
+
+    public function scopeReusableImages(Builder $query): Builder
+    {
+        return $query
+            ->where('collection_name', 'media_library')
+            ->where('mime_type', 'like', 'image/%');
+    }
+
+    public function isReusableImage(): bool
+    {
+        return $this->collection_name === 'media_library'
+            && str_starts_with((string) $this->mime_type, 'image/')
+            && Storage::disk($this->disk)->exists($this->getPathRelativeToRoot());
+    }
+
+    public static function reusableImage(int|string|null $mediaId): ?self
+    {
+        if (! is_numeric($mediaId) || (int) $mediaId < 1) {
+            return null;
+        }
+
+        $media = static::query()->reusableImages()->find((int) $mediaId);
+
+        return $media?->isReusableImage() ? $media : null;
     }
 
     /** @return array{width: int, height: int}|null */

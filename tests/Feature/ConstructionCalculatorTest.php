@@ -148,6 +148,7 @@ class ConstructionCalculatorTest extends TestCase
             'slug' => 'normal-form',
             'status' => 'published',
             'display_mode' => 'page',
+            'lead_generation_enabled' => true,
             'type' => 'normal',
             'schema_version' => 1,
             'schema' => ['fields' => [
@@ -263,6 +264,7 @@ class ConstructionCalculatorTest extends TestCase
             'status' => 'published',
             'display_mode' => 'page',
             'type' => 'calculator',
+            'lead_generation_enabled' => true,
             'calculator_identifier' => 'construction_process_v1',
             'schema_version' => 1,
             'schema' => ['fields' => [

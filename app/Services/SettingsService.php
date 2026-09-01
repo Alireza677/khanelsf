@@ -162,6 +162,11 @@ class SettingsService
         return $this->positiveInteger('header_template_id');
     }
 
+    public function footerTemplateId(): ?int
+    {
+        return $this->positiveInteger('footer_template_id');
+    }
+
     public function contactEmail(): ?string
     {
         return $this->nullableString('contact_email');
@@ -172,9 +177,19 @@ class SettingsService
         return $this->nullableString('contact_phone');
     }
 
+    public function contactMobile(): ?string
+    {
+        return $this->nullableString('contact_mobile');
+    }
+
     public function contactAddress(): ?string
     {
         return $this->nullableString('contact_address');
+    }
+
+    public function workingHours(): ?string
+    {
+        return $this->nullableString('working_hours');
     }
 
     public function footerText(): ?string

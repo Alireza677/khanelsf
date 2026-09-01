@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
+use App\Support\BackupUploadLimit;
 
 class BackupUploadService
 {
@@ -31,9 +32,9 @@ class BackupUploadService
                 throw new BackupOperationException('upload_missing', 'فایل آپلودشده در دسترس نیست.');
             }
             $size = filesize($absolutePath);
-            $maximum = max(1, (int) config('backup.upload_max_mb', 2048)) * 1024 * 1024;
+            $maximum = BackupUploadLimit::bytes();
             if ($size === false || $size < 1 || $size > $maximum) {
-                throw new BackupOperationException('upload_too_large', 'حجم فایل نسخه پشتیبان بیشتر از حد مجاز است.');
+                throw new BackupOperationException('upload_too_large', BackupUploadLimit::validationMessage());
             }
 
             $checksum = hash_file('sha256', $absolutePath);

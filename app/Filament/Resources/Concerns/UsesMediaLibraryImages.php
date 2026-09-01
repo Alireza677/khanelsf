@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Concerns;
 
+use App\Models\Media;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 trait UsesMediaLibraryImages
 {
@@ -22,14 +22,14 @@ trait UsesMediaLibraryImages
         $startedAt = hrtime(true);
 
         static::$mediaLibraryImageItemsCache = Media::query()
-            ->where('collection_name', 'media_library')
-            ->where('mime_type', 'like', 'image/%')
+            ->reusableImages()
             ->latest()
             ->get()
-            ->filter(fn (Media $media): bool => file_exists($media->getPath()))
+            ->filter(fn (Media $media): bool => $media->isReusableImage())
             ->map(fn (Media $media): array => [
                 'id' => $media->id,
                 'name' => $media->file_name,
+                'title' => $media->displayTitle(),
                 'url' => $media->getUrl(),
             ])
             ->values()

@@ -3,6 +3,7 @@
 use App\Providers\ActionServiceProvider;
 use App\Providers\AdminLoginServiceProvider;
 use App\Providers\BlockServiceProvider;
+use App\Providers\BackupServiceProvider;
 use App\Providers\EditorHistoryServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
 use App\Providers\FormServiceProvider;
@@ -24,6 +25,7 @@ return [
     PostServiceProvider::class,
     ProjectServiceProvider::class,
     BlockServiceProvider::class,
+    BackupServiceProvider::class,
     EditorHistoryServiceProvider::class,
     NavigationServiceProvider::class,
     ShopServiceProvider::class,

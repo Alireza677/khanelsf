@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\MediaResource\Pages\ListMedia;
+use App\Filament\Support\QuickCreate;
 use App\Http\Middleware\AuthenticateAdmin;
 use App\Http\Middleware\AuthenticateAdminSession;
 use App\Http\Middleware\ProtectFilamentLoginRoute;
@@ -50,6 +51,12 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn (): string => view('filament.view-website-button')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn (): string => view('filament.quick-create', [
+                    'items' => app(QuickCreate::class)->items(),
+                ])->render(),
             )
             ->renderHook(
                 TablesRenderHook::TOOLBAR_TOGGLE_COLUMN_TRIGGER_AFTER,

@@ -64,8 +64,10 @@ class ManageSiteSettings extends Page implements HasForms
         'site_logo' => ['branding', 'image'],
         'site_favicon' => ['branding', 'image'],
         'contact_phone' => ['contact', 'text'],
+        'contact_mobile' => ['contact', 'text'],
         'contact_email' => ['contact', 'text'],
         'contact_address' => ['contact', 'textarea'],
+        'working_hours' => ['contact', 'text'],
         'social_instagram_url' => ['social', 'text'],
         'social_telegram_url' => ['social', 'text'],
         'social_whatsapp_url' => ['social', 'text'],
@@ -77,6 +79,7 @@ class ManageSiteSettings extends Page implements HasForms
         'header_template_id' => ['header', 'select'],
         'footer_text' => ['footer', 'textarea'],
         'footer_menu_id' => ['footer', 'select'],
+        'footer_template_id' => ['footer', 'select'],
         'site_title' => ['seo', 'text'],
         'default_meta_description' => ['seo', 'textarea'],
         'default_og_image' => ['seo', 'image'],
@@ -84,6 +87,7 @@ class ManageSiteSettings extends Page implements HasForms
         'robots_disallow' => ['seo', 'text'],
         'robots_txt' => ['seo', 'textarea'],
         'sitemap_enabled' => ['seo', 'boolean'],
+        'form_max_upload_size_mb' => ['forms', 'number'],
         'public_services_enabled' => ['services', 'boolean'],
         'service_activity_catalog_enabled' => ['services', 'boolean'],
         'service_pricing_enabled' => ['services', 'boolean'],
@@ -156,6 +160,7 @@ class ManageSiteSettings extends Page implements HasForms
         $state = $settings->many(array_keys($this->settingsMeta))->all();
         $state['admin_login_path'] = app(AdminLoginPath::class)->current();
         $state['public_services_enabled'] ??= true;
+        $state['form_max_upload_size_mb'] ??= 10;
         $state['service_activity_catalog_enabled'] ??= true;
         $state['service_pricing_enabled'] ??= true;
         $state['default_service_currency'] ??= 'IRT';
@@ -249,6 +254,11 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->placeholder('مثلا 02112345678')
                                     ->tel()
                                     ->maxLength(255),
+                                Forms\Components\TextInput::make('contact_mobile')
+                                    ->label('شماره موبایل')
+                                    ->placeholder('مثلا 09121234567')
+                                    ->tel()
+                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('contact_email')
                                     ->label('ایمیل تماس')
                                     ->placeholder('مثلا info@example.com')
@@ -258,6 +268,11 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->label('آدرس')
                                     ->placeholder('آدرس کامل کسب‌وکار را وارد کنید')
                                     ->rows(3)
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('working_hours')
+                                    ->label('ساعات کاری')
+                                    ->placeholder('مثلا شنبه تا چهارشنبه، ۸ تا ۱۷')
+                                    ->maxLength(255)
                                     ->columnSpanFull(),
                             ])
                             ->columns(2),
@@ -299,6 +314,20 @@ class ManageSiteSettings extends Page implements HasForms
                             ->columns(2),
                         Forms\Components\Tabs\Tab::make('فوتر')
                             ->schema([
+                                Forms\Components\Select::make('footer_template_id')
+                                    ->label('قالب فوتر')
+                                    ->options(fn (): array => Template::query()
+                                        ->published()
+                                        ->where('type', 'site_footer')
+                                        ->orderBy('title')
+                                        ->pluck('title', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->placeholder('فوتر فعلی سایت')
+                                    ->helperText('فقط قالب‌های منتشرشده سازگار نمایش داده می‌شوند. اگر قالب در دسترس نباشد، فوتر فعلی سایت نمایش داده می‌شود.')
+                                    ->rules(['nullable', 'integer', 'exists:templates,id']),
                                 $this->menuSelect('footer_menu_id', 'منوی فوتر'),
                                 Forms\Components\Textarea::make('footer_text')
                                     ->label('متن فوتر')
@@ -371,6 +400,19 @@ class ManageSiteSettings extends Page implements HasForms
                                     Forms\Components\Toggle::make('service_form_media_enabled')->label('رسانه و گالری')->default(true),
                                     Forms\Components\Toggle::make('service_form_related_projects_enabled')->label('پروژه‌های مرتبط')->default(true),
                                 ])->columns(2),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('فرم‌ها')
+                            ->schema([
+                                Forms\Components\TextInput::make('form_max_upload_size_mb')
+                                    ->label('حداکثر حجم فایل آپلودی کاربران')
+                                    ->numeric()
+                                    ->integer()
+                                    ->minValue(1)
+                                    ->maxValue(100)
+                                    ->default(10)
+                                    ->required()
+                                    ->suffix('MB')
+                                    ->helperText('این محدودیت در Backend هنگام ثبت فرم اعمال می‌شود.'),
                             ]),
                         Forms\Components\Tabs\Tab::make('شبکه کسب‌وکار')
                             ->schema([

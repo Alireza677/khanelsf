@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\MediaResource;
 use App\Filament\Resources\MediaResource\Pages\ListMedia;
 use App\Filament\Resources\MediaResource\Pages\UploadMedia;
 use App\Models\Media;
@@ -148,20 +149,32 @@ class MediaLibraryDetailsTest extends TestCase
 
     public function test_grid_and_list_are_independent_presentations_with_responsive_grid_css(): void
     {
-        $this->actingAs(User::factory()->admin()->create());
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $admin->addMedia(UploadedFile::fake()->image('grid-item.jpg'))
+            ->toMediaCollection('media_library', 'public');
 
-        Livewire::test(ListMedia::class)
+        $gridComponent = Livewire::test(ListMedia::class)
             ->assertSet('mediaView', 'list')
             ->call('setMediaView', 'grid')
             ->assertSet('mediaView', 'grid')
+            ->assertSeeHtml('media-library-grid')
+            ->assertSeeHtml('media-grid-card__preview');
+        $this->assertTrue($gridComponent->instance()->isGridView());
+        $this->assertSame('filament.media.grid', $gridComponent->instance()->getTable()->getContent()?->name());
+
+        $gridComponent
             ->call('setMediaView', 'list')
             ->assertSet('mediaView', 'list');
+        $this->assertNull($gridComponent->instance()->getTable()->getContent());
 
         $theme = file_get_contents(resource_path('views/filament/theme.blade.php'));
         $card = file_get_contents(resource_path('views/filament/tables/columns/media-grid-card.blade.php'));
 
-        $this->assertStringContainsString('repeat(auto-fill, minmax(', $theme);
-        $this->assertStringContainsString('.fi-ta-content-grid:has(.media-grid-card)', $theme);
+        $this->assertStringContainsString('.media-library-grid', $theme);
+        $this->assertStringContainsString('repeat(5, minmax(0, 1fr))', $theme);
+        $this->assertStringContainsString('repeat(6, minmax(0, 1fr))', $theme);
         $this->assertStringContainsString('@media (max-width: 767px)', $theme);
         $this->assertStringContainsString('$record->displayTitle()', $card);
     }

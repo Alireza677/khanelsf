@@ -19,6 +19,7 @@ use App\Models\Template;
 use App\Models\User;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ViewField;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,9 @@ class FeatureGridActionMigrationTest extends TestCase
         $this->assertSame(1, $block->version());
 
         foreach ([HeroBlock::CONTEXT_PAGE, HeroBlock::CONTEXT_TEMPLATE] as $context) {
+            $variant = collect($block->filamentSchema($context))
+                ->first(fn ($component): bool => $component instanceof Select
+                    && $component->getStatePath(false) === 'settings.variant');
             $items = collect($block->filamentSchema($context))
                 ->first(fn ($component): bool => $component instanceof Repeater
                     && $component->getStatePath(false) === 'content.items');
@@ -54,6 +58,8 @@ class FeatureGridActionMigrationTest extends TestCase
                     && $component->getStatePath(false) === 'image');
 
             $this->assertInstanceOf(ActionPicker::class, $picker);
+            $this->assertInstanceOf(Select::class, $variant);
+            $this->assertSame(['default', 'icon_list'], array_keys($variant->getOptions()));
             $this->assertInstanceOf(RichEditor::class, $description);
             $this->assertInstanceOf(ViewField::class, $image);
             $this->assertSame('full', $image->getColumnSpan('default'));
@@ -70,6 +76,19 @@ class FeatureGridActionMigrationTest extends TestCase
                 'phone',
             ], array_keys($picker->getTypeOptions()));
         }
+    }
+
+    public function test_iconsax_picker_uses_the_global_modal_layer_outside_editor_stacking_contexts(): void
+    {
+        $source = file_get_contents(resource_path(
+            'views/filament/forms/components/iconsax-icon-picker.blade.php',
+        ));
+
+        $this->assertStringContainsString('<template x-teleport="body">', $source);
+        $this->assertStringContainsString('class="cms-modal-layer', $source);
+        $this->assertStringContainsString('class="cms-modal-backdrop', $source);
+        $this->assertStringContainsString('class="cms-modal-panel', $source);
+        $this->assertStringNotContainsString('class="fixed inset-0 z-50', $source);
     }
 
     public function test_page_editor_dual_reads_legacy_and_writes_canonical_without_write_on_open(): void
@@ -276,6 +295,48 @@ class FeatureGridActionMigrationTest extends TestCase
         $this->assertStringContainsString('href="#"', $html);
         $this->assertStringContainsString('data-action-placeholder', $html);
         $this->assertStringContainsString('>Temporary feature action</a>', $html);
+    }
+
+    public function test_default_variant_keeps_existing_card_presentation(): void
+    {
+        $html = $this->render($this->canonicalGrid([[
+            'title' => 'Default feature',
+            'description' => 'Current card presentation',
+            'icon' => 'home',
+        ]]));
+
+        $this->assertStringContainsString('block-feature-grid', $html);
+        $this->assertStringNotContainsString('block-feature-grid--icon-list', $html);
+        $this->assertStringContainsString('<article class="block-card">', $html);
+        $this->assertStringNotContainsString('block-card__content', $html);
+    }
+
+    public function test_icon_list_variant_renders_rtl_list_structure_and_preserves_actions(): void
+    {
+        $data = $this->canonicalGrid([
+            [
+                'title' => 'Feature with image',
+                'description' => 'Image description',
+                'image' => '/feature.jpg',
+                'button_label' => 'Feature action',
+                'action' => ['type' => 'custom_url', 'value' => '/feature-action'],
+            ],
+            [
+                'title' => 'Feature without media',
+                'description' => 'Text remains aligned',
+            ],
+        ]);
+        $data['settings']['variant'] = 'icon_list';
+
+        $html = $this->render($data);
+
+        $this->assertStringContainsString('block-feature-grid--icon-list', $html);
+        $this->assertSame(1, substr_count($html, 'block-card__media'));
+        $this->assertSame(2, substr_count($html, 'block-card__content'));
+        $this->assertStringContainsString('src="/feature.jpg"', $html);
+        $this->assertStringContainsString('href="/feature-action"', $html);
+        $this->assertStringContainsString('>Feature action</a>', $html);
+        $this->assertStringContainsString('Feature without media', $html);
     }
 
     public function test_item_rich_text_and_legacy_text_use_shared_safe_renderer(): void

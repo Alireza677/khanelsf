@@ -109,12 +109,12 @@ class ServiceCollectionFoundationTest extends TestCase
             ->assertOk()
             ->assertSee('class="services-archive"', false)
             ->assertSee('خدمات حرفه‌ای برای رشد کسب‌وکار شما')
-            ->assertSee('class="shared-collection__eyebrow">خدمات', false)
+            ->assertSee('class="service-archive-group__header"', false)
             ->assertSee('مشاهده جزئیات')
             ->assertSee('shared-collection__grid--3', false)
             ->assertSee('shared-collection-card__media', false);
 
-        $this->assertSame(1, substr_count($response->getContent(), 'id="shared-collection-title"'));
+        $this->assertSame(1, substr_count($response->getContent(), 'class="service-archive-group__header"'));
         $this->assertSame(1, substr_count($response->getContent(), 'class="shared-collection-card"'));
     }
 }

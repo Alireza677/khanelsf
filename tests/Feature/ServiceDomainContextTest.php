@@ -247,6 +247,7 @@ class ServiceDomainContextTest extends TestCase
             'media',
             'projects',
             'relatedServices',
+            'breadcrumbs',
             'seo',
             'templateContext',
         ], array_keys($context));
@@ -257,7 +258,8 @@ class ServiceDomainContextTest extends TestCase
         $this->assertSame(['Report'], collect($context['content']['deliverables'])->pluck('title')->all());
         $this->assertSame($featured->getUrl(), $context['media']['featured']['url']);
         $this->assertSame([$project->id], $context['projects']->modelKeys());
-        $this->assertTrue($context['relatedServices']->isEmpty());
+        $this->assertSame([], $context['relatedServices']->items);
+        $this->assertSame(['خانه', 'خدمات', 'Context Service'], collect($context['breadcrumbs'])->pluck('name')->all());
         $this->assertSame('service', $context['templateContext']['type']);
         $this->assertSame('service_single', $context['templateContext']['target']);
 
@@ -266,11 +268,11 @@ class ServiceDomainContextTest extends TestCase
             $project->category;
             $project->media;
         });
-        $context['relatedServices']->all();
+        collect($context['relatedServices']->items)->all();
         $context['seo']->metaTitle();
 
         $this->assertSame($queryCountAfterBuild, count(DB::getQueryLog()));
-        $this->assertSame(0, $queryCountAfterBuild);
+        $this->assertSame(1, $queryCountAfterBuild);
     }
 
     public function test_context_builder_supplies_safe_empty_values(): void
@@ -287,7 +289,7 @@ class ServiceDomainContextTest extends TestCase
         $this->assertSame([], $context['content']['process']);
         $this->assertSame([], $context['content']['deliverables']);
         $this->assertTrue($context['projects']->isEmpty());
-        $this->assertTrue($context['relatedServices']->isEmpty());
+        $this->assertSame([], $context['relatedServices']->items);
         $this->assertTrue($context['media']['gallery']->isEmpty());
     }
 

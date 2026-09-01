@@ -344,6 +344,7 @@ class CTAV2Test extends TestCase
             'slug' => 'cta-form-'.$displayMode,
             'status' => 'published',
             'display_mode' => $displayMode,
+            'lead_generation_enabled' => true,
             'schema_version' => 1,
             'schema' => ['fields' => [
                 ['name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],

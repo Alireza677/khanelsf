@@ -7,6 +7,7 @@ use App\Enums\BackupStatus;
 use App\Enums\BackupType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Backup extends Model
@@ -42,6 +43,16 @@ class Backup extends Model
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function restores(): HasMany
+    {
+        return $this->hasMany(BackupRestore::class);
+    }
+
+    public function safetyForRestores(): HasMany
+    {
+        return $this->hasMany(BackupRestore::class, 'safety_backup_id');
     }
 
     public function isAvailable(): bool

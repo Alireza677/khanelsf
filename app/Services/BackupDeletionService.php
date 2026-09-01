@@ -11,6 +11,13 @@ class BackupDeletionService
 {
     public function delete(Backup $backup): void
     {
+        if ($backup->safetyForRestores()->whereNotNull('active_lock')->exists()) {
+            throw new BackupOperationException(
+                'protected_restore_safety_backup',
+                'این نسخه پشتیبان برای بازیابی ناموفق نگهداری شده و تا آزادسازی قفل قابل حذف نیست.',
+            );
+        }
+
         try {
             if (filled($backup->local_disk) && filled($backup->local_path)) {
                 $root = trim((string) config('backup.files_prefix', 'backups/files'), '/').'/';

@@ -24,10 +24,15 @@ class FormSchemaTest extends TestCase
 
         $fields = app(FormSchema::class)->fields($form);
 
-        $this->assertSame(['name', 'email', 'name_2', 'field'], array_column($fields, 'name'));
+        $this->assertSame(['name', 'email', 'name_2', 'field', 'amount'], array_column($fields, 'name'));
         $this->assertSame('Your name', $fields[0]['label']);
         $this->assertTrue($fields[0]['required']);
         $this->assertSame('Email', $fields[1]['label']);
+        $this->assertSame([
+            'thousands_separator' => false,
+            'allow_decimals' => false,
+            'decimal_places' => 2,
+        ], $fields[4]['settings']);
     }
 
     public function test_it_builds_validation_rules_from_the_normalized_schema(): void

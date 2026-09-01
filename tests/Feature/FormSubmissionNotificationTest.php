@@ -126,6 +126,7 @@ class FormSubmissionNotificationTest extends TestCase
             'slug' => $slug,
             'status' => 'published',
             'display_mode' => 'page',
+            'lead_generation_enabled' => true,
             'type' => 'normal',
             'schema_version' => 2,
             'schema' => ['fields' => [

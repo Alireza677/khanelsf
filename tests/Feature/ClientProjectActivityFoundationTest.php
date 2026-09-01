@@ -25,7 +25,10 @@ class ClientProjectActivityFoundationTest extends TestCase
     public function test_admin_can_create_an_integer_minute_activity_for_private_project(): void
     {
         $admin = User::factory()->admin()->create();
-        $project = ClientProject::factory()->create();
+        $project = ClientProject::factory()->create([
+            'monthly_hour_limit_minutes' => 600,
+            'start_date' => '2026-08-01',
+        ]);
         $this->actingAs($admin);
 
         Livewire::test(CreateClientProjectActivity::class)
@@ -46,6 +49,9 @@ class ClientProjectActivityFoundationTest extends TestCase
             'duration_minutes' => 90,
             'title' => 'بهینه‌سازی فنی',
         ]);
+        $activity = ClientProjectActivity::query()->where('title', 'بهینه‌سازی فنی')->firstOrFail();
+        $this->assertNotNull($activity->client_project_cycle_id);
+        $this->assertTrue($activity->cycle->containsDate($activity->activity_date));
     }
 
     public function test_public_cms_project_cannot_be_selected_for_an_activity(): void

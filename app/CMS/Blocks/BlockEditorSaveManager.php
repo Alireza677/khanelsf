@@ -3,6 +3,7 @@
 namespace App\CMS\Blocks;
 
 use App\CMS\Blocks\Hero\HeroMediaResolver;
+use App\Models\Media;
 
 final class BlockEditorSaveManager
 {
@@ -21,6 +22,12 @@ final class BlockEditorSaveManager
         $blocks = $this->hydrator->hydrateV2($blocks);
 
         foreach ($blocks as $key => $block) {
+            if (is_array($block)
+                && ($block['type'] ?? null) === 'template_shop_complete'
+                && is_array($block['data'] ?? null)) {
+                $blocks[$key]['data'] = $this->normalizeDynamicShopMedia($block['data']);
+            }
+
             if (! is_array($block) || ($block['type'] ?? null) !== 'hero' || ! is_array($block['data'] ?? null)) {
                 continue;
             }
@@ -67,6 +74,30 @@ final class BlockEditorSaveManager
         }
 
         return $blocks;
+    }
+
+    private function normalizeDynamicShopMedia(array $data): array
+    {
+        foreach ([
+            'background_media_id' => 'background_image',
+            'all_categories_media_id' => 'all_categories_image',
+        ] as $mediaIdKey => $legacyUrlKey) {
+            if (! array_key_exists($mediaIdKey, $data)) {
+                continue;
+            }
+
+            $media = Media::reusableImage($data[$mediaIdKey]);
+
+            if ($media) {
+                $data[$mediaIdKey] = (int) $media->getKey();
+            } else {
+                unset($data[$mediaIdKey]);
+            }
+
+            unset($data[$legacyUrlKey]);
+        }
+
+        return $data;
     }
 
     private function canonicalItems(mixed $items, array $keys): array

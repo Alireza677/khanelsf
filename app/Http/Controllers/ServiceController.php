@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\CMS\Collections\Service\ServiceCollectionAdapter;
 use App\Exceptions\ServiceTemplateUnavailable;
 use App\Services\SeoService;
+use App\Services\ServiceArchiveContextBuilder;
 use App\Services\ServiceQueryService;
 use App\Services\ServiceSettings;
 use App\Services\ServiceTemplateRuntime;
@@ -19,7 +19,7 @@ final class ServiceController extends Controller
         SettingsService $settings,
         SeoService $seo,
         ServiceSettings $serviceSettings,
-        ServiceCollectionAdapter $collectionAdapter,
+        ServiceArchiveContextBuilder $archiveContextBuilder,
         TemplateService $templates,
     ): View {
         abort_unless($serviceSettings->publicEnabled(), 404);
@@ -29,8 +29,10 @@ final class ServiceController extends Controller
             'با ترکیب تجربه، خلاقیت و فناوری‌های روز، خدماتی ارائه می‌دهیم که حضور دیجیتال شما را قدرتمندتر می‌کند، مشتریان بیشتری جذب می‌کند و مسیر رشد پایدار کسب‌وکارتان را هموار می‌سازد.',
         );
 
-        $collection = $collectionAdapter->adapt(
-            $services->paginateArchive((int) $settings->get('services_per_page', 12)),
+        $roots = $services->paginatePublicArchiveRoots((int) $settings->get('services_per_page', 12));
+        $archive = $archiveContextBuilder->build(
+            $roots,
+            $services->publicArchiveChildren($roots->getCollection()),
             $heading,
             $description,
         );
@@ -38,7 +40,7 @@ final class ServiceController extends Controller
         $template = $templates->findTemplateFor('service_index');
 
         return $templates->viewOrFallback($template, 'services.index', [
-            'collection' => $collection,
+            'serviceArchive' => $archive,
             'seo' => $seo->forServiceIndex($heading, $description),
             'templateContext' => [
                 'kind' => 'archive',
@@ -46,7 +48,7 @@ final class ServiceController extends Controller
                 'heading' => $heading,
                 'description' => $description,
                 'emptyMessage' => 'هنوز خدمتی منتشر نشده است.',
-                'collection' => $collection,
+                'serviceArchive' => $archive,
             ],
         ]);
     }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Form extends Model
 {
@@ -18,6 +19,7 @@ class Form extends Model
         'slug',
         'status',
         'display_mode',
+        'lead_generation_enabled',
         'type',
         'calculator_identifier',
         'schema_version',
@@ -29,6 +31,7 @@ class Form extends Model
     {
         return [
             'schema_version' => 'integer',
+            'lead_generation_enabled' => 'boolean',
             'schema' => 'array',
             'settings' => 'array',
         ];
@@ -37,6 +40,16 @@ class Form extends Model
     public function submissions(): HasMany
     {
         return $this->hasMany(FormSubmission::class);
+    }
+
+    public function submissionAttachments(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            FormSubmissionAttachment::class,
+            FormSubmission::class,
+            'form_id',
+            'form_submission_id',
+        );
     }
 
     public function leads(): HasMany
@@ -52,5 +65,10 @@ class Form extends Model
     public function isCalculator(): bool
     {
         return $this->type === 'calculator';
+    }
+
+    public function generatesLeads(): bool
+    {
+        return $this->lead_generation_enabled === true;
     }
 }

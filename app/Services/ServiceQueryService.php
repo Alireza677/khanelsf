@@ -46,6 +46,60 @@ final class ServiceQueryService
         return $this->archiveQuery()->paginate(max(1, min($perPage, 48)));
     }
 
+    public function paginatePublicArchiveRoots(int $perPage = 12): LengthAwarePaginator
+    {
+        return $this->archiveQuery()
+            ->whereNull('parent_id')
+            ->paginate(max(1, min($perPage, 48)));
+    }
+
+    public function publicArchiveChildren(Collection $roots): Collection
+    {
+        $rootIds = $roots->modelKeys();
+
+        if ($rootIds === []) {
+            return collect();
+        }
+
+        return $this->archiveQuery()
+            ->whereIn('parent_id', $rootIds)
+            ->get();
+    }
+
+    public function publicDirectChildren(Service $service): Collection
+    {
+        return $this->archiveQuery()
+            ->where('parent_id', $service->getKey())
+            ->get();
+    }
+
+    public function publicAncestorChain(Service $service): Collection
+    {
+        $ancestors = collect();
+        $parentId = $service->parent_id;
+        $visited = [];
+
+        while ($parentId !== null) {
+            $parentId = (int) $parentId;
+
+            if (isset($visited[$parentId])) {
+                return collect();
+            }
+
+            $visited[$parentId] = true;
+            $ancestor = Service::query()->published()->find($parentId);
+
+            if (! $ancestor) {
+                return collect();
+            }
+
+            $ancestors->prepend($ancestor);
+            $parentId = $ancestor->parent_id;
+        }
+
+        return $ancestors->values();
+    }
+
     public function prepareForContext(Service $service): Service
     {
         return $service->loadMissing($this->contextRelations());

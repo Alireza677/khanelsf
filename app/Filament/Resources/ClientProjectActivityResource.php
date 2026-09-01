@@ -27,6 +27,7 @@ use Filament\Tables;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ClientProjectActivityResource extends Resource
@@ -200,13 +201,28 @@ class ClientProjectActivityResource extends Resource
 
     public static function applyCycleFormState(array $data, ?ClientProjectActivity $activity = null): array
     {
-        if ($activity?->client_project_cycle_id && (int) $activity->client_project_id === (int) ($data['client_project_id'] ?? 0)) {
+        $projectChanged = $activity && (int) $activity->client_project_id !== (int) ($data['client_project_id'] ?? 0);
+        $dateChanged = $activity && $activity->activity_date->toDateString() !== CarbonImmutable::parse($data['activity_date'])->toDateString();
+
+        if ($activity && ($projectChanged || $dateChanged)
+            && DB::table('invoice_activity_claims')->where('client_project_activity_id', $activity->id)->exists()) {
+            throw ValidationException::withMessages([
+                $dateChanged ? 'activity_date' : 'client_project_id' => 'فعالیت ثبت‌شده در فاکتور قابل انتقال یا تغییر تاریخ نیست.',
+            ]);
+        }
+
+        if ($activity?->client_project_cycle_id && ! $projectChanged && ! $dateChanged) {
             $data['client_project_cycle_id'] = $activity->client_project_cycle_id;
 
             return $data;
         }
         $project = ClientProject::findOrFail($data['client_project_id']);
-        $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse($data['activity_date']), (int) $data['duration_minutes']);
+        $cycle = app(ClientProjectCycleResolver::class)->resolveForDate(
+            $project,
+            CarbonImmutable::parse($data['activity_date']),
+            (int) $data['duration_minutes'],
+            $activity?->id,
+        );
         $data['client_project_cycle_id'] = $cycle?->id;
 
         return $data;

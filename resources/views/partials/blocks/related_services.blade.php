@@ -1,9 +1,25 @@
 @php
     $data = app(\App\CMS\Blocks\Service\RelatedServicesBlock::class)->normalize(is_array($data ?? null) ? $data : []);
-    $services = collect($context['relatedServices'] ?? [])->filter();
+    $relatedServices = $context['relatedServices'] ?? null;
+    $services = $relatedServices instanceof \App\CMS\Collections\Data\CollectionPresentation
+        ? collect()
+        : collect($relatedServices ?? [])->filter();
 @endphp
 
-@if ($services->isNotEmpty())
+@if ($relatedServices instanceof \App\CMS\Collections\Data\CollectionPresentation && $relatedServices->items !== [])
+    <section class="content-block service-section related-services" dir="rtl">
+        @if ($data['content']['title'])
+            @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
+        @endif
+
+        <div class="shared-collection shared-collection--{{ $relatedServices->variant }}">
+            @include('partials.presentations.collection.grid', [
+                'collection' => $relatedServices,
+                'collectionColumns' => $data['settings']['columns'],
+            ])
+        </div>
+    </section>
+@elseif ($services->isNotEmpty())
     <section class="content-block service-section related-services" dir="rtl">
         @if ($data['content']['title'])
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])

@@ -221,6 +221,7 @@ class LeadGenerationFoundationTest extends TestCase
             'slug' => 'consultation',
             'status' => 'published',
             'display_mode' => 'page',
+            'lead_generation_enabled' => true,
             'schema_version' => 1,
             'schema' => ['fields' => [
                 ['name' => 'name', 'label' => 'Name', 'type' => 'text', 'required' => true],

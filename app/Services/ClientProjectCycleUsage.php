@@ -7,14 +7,17 @@ use App\Models\ClientProjectCycle;
 
 final class ClientProjectCycleUsage
 {
-    public function consumed(ClientProjectCycle $cycle): int
+    public function consumed(ClientProjectCycle $cycle, ?int $excludeActivityId = null): int
     {
-        return (int) $cycle->activities()->where('status', '!=', ClientProjectActivity::STATUS_CANCELLED)->sum('duration_minutes');
+        return (int) $cycle->activities()
+            ->where('status', '!=', ClientProjectActivity::STATUS_CANCELLED)
+            ->when($excludeActivityId, fn ($query) => $query->where('id', '!=', $excludeActivityId))
+            ->sum('duration_minutes');
     }
 
-    public function summary(ClientProjectCycle $cycle): array
+    public function summary(ClientProjectCycle $cycle, ?int $excludeActivityId = null): array
     {
-        $consumed = $this->consumed($cycle);
+        $consumed = $this->consumed($cycle, $excludeActivityId);
 
         return ['allocated_minutes' => $cycle->allocated_minutes, 'consumed_minutes' => $consumed, 'remaining_minutes' => max(0, $cycle->allocated_minutes - $consumed)];
     }

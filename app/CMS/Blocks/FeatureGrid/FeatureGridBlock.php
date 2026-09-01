@@ -77,6 +77,13 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
             Forms\Components\Hidden::make('block_id'),
             Forms\Components\Hidden::make('schema_version')->default($this->version()),
             Forms\Components\Hidden::make('template')->default($this->defaultTemplate()),
+            Forms\Components\Select::make('settings.variant')
+                ->label($page ? 'قالب' : 'Variant')
+                ->options($page
+                    ? ['default' => 'پیش‌فرض', 'icon_list' => 'لیست آیکن']
+                    : ['default' => 'Default', 'icon_list' => 'Icon list'])
+                ->default('default')
+                ->required(),
             Forms\Components\Select::make('settings.section_background')
                 ->label($page ? 'پس‌زمینه بخش' : 'Section background')
                 ->options($page

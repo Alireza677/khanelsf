@@ -6,8 +6,10 @@
     $activeCategory = $context['activeCategory'] ?? null;
     $heading = $data['title'] ?? $context['heading'] ?? 'فروشگاه';
     $description = $data['description'] ?? $context['description'] ?? null;
-    $backgroundImage = $data['background_image'] ?? null;
-    $allCategoriesImage = $data['all_categories_image'] ?? null;
+    $backgroundImage = \App\Models\Media::reusableImage($data['background_media_id'] ?? null)?->getUrl()
+        ?? ($data['background_image'] ?? null);
+    $allCategoriesImage = \App\Models\Media::reusableImage($data['all_categories_media_id'] ?? null)?->getUrl()
+        ?? ($data['all_categories_image'] ?? null);
     $thicknessOptions = ['0.75' => '۰٫۷۵', '0.9' => '۰٫۹', '1.25' => '۱٫۲۵', '1.5' => '۱٫۵'];
     $applicationOptions = [
         'wall' => 'دیوار',
@@ -36,10 +38,18 @@
     $cleanQuery = fn (array $values): array => collect($values)
         ->reject(fn ($value): bool => $value === '' || $value === null || $value === false || $value === [])
         ->all();
+    $hasActiveProductFilters = $query['q'] !== ''
+        || $query['category'] !== ''
+        || $query['min_price'] !== ''
+        || $query['max_price'] !== ''
+        || $query['stock'] !== ''
+        || $query['featured'] !== ''
+        || $query['thickness'] !== []
+        || $query['application'] !== [];
 @endphp
 
 @if (($context['type'] ?? null) === 'products')
-    <section class="content-block shop-template" dir="rtl">
+    <section class="content-block shop-template" dir="rtl" data-shop-filter-drawer>
         <header class="shop-template__hero" @if ($style) style="{!! $style !!}" @endif>
             <div class="shop-template__hero-inner">
                 <div class="shop-template__copy">
@@ -172,7 +182,29 @@
         @endif
 
         <section class="shop-template__catalog" aria-labelledby="shop-template-products-title">
-            <aside class="shop-template__filters" aria-label="فیلترهای محصول">
+            <button
+                class="shop-template__filter-backdrop"
+                type="button"
+                aria-label="بستن فیلتر محصولات"
+                tabindex="-1"
+                data-shop-filter-close
+            ></button>
+
+            <aside
+                id="shop-product-filters"
+                class="shop-template__filters"
+                aria-labelledby="shop-product-filters-title"
+                role="complementary"
+                tabindex="-1"
+                data-shop-filter-panel
+            >
+                <header class="shop-template__filter-header">
+                    <h2 id="shop-product-filters-title">فیلتر محصولات</h2>
+                    <button class="shop-template__filter-close" type="button" aria-label="بستن فیلتر محصولات" data-shop-filter-close>
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </header>
+
                 <form action="{{ route('shop.index') }}" method="get">
                     @if ($query['favorites'])
                         <input type="hidden" name="favorites" value="1">
@@ -265,24 +297,41 @@
             </aside>
 
             <div class="shop-template__products">
+                <h2 id="shop-template-products-title" class="sr-only">محصولات فروشگاه</h2>
                 <div class="shop-template__toolbar">
                     <div class="shop-template__toolbar-actions">
+                        <button
+                            @class(['shop-template__filter-toggle', 'has-active-filters' => $hasActiveProductFilters])
+                            type="button"
+                            aria-expanded="false"
+                            aria-controls="shop-product-filters"
+                            aria-haspopup="dialog"
+                            aria-label="{{ $hasActiveProductFilters ? 'فیلتر محصولات، فیلتر فعال است' : 'فیلتر محصولات' }}"
+                            data-shop-filter-toggle
+                        >
+                            <i class="icon-filter" aria-hidden="true"></i>
+                            <span>فیلتر محصولات</span>
+                        </button>
+
                         <div class="shop-template__sort">
-                            <span>مرتب‌سازی:</span>
+                            <i class="shop-template__sort-icon icon-sort" aria-hidden="true"></i>
+                            <span class="shop-template__sort-label">مرتب‌سازی:</span>
                             <select aria-label="مرتب‌سازی محصولات">
                                 <option>جدیدترین</option>
                                 <option>پربازدیدترین</option>
                                 <option>ارزان‌ترین</option>
                                 <option>گران‌ترین</option>
                             </select>
+                            <i class="shop-template__sort-chevron icon-arrow-down-1" aria-hidden="true"></i>
                         </div>
 
                         <a
                             @class(['shop-template__favorites-filter', 'is-active' => $query['favorites']])
                             href="{{ route('shop.index', $cleanQuery([...$query, 'favorites' => $query['favorites'] ? '' : '1'])) }}"
                             aria-pressed="{{ $query['favorites'] ? 'true' : 'false' }}"
+                            aria-label="{{ $query['favorites'] ? 'نمایش همه محصولات' : 'مشاهده علاقه‌مندی‌ها' }}"
                         >
-                            
+                            <i class="icon-heart" aria-hidden="true"></i>
                             <span>{{ $query['favorites'] ? 'نمایش همه محصولات' : 'مشاهده علاقه‌مندی‌ها' }}</span>
                         </a>
                     </div>

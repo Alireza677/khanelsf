@@ -130,7 +130,7 @@ class SeoService
         ]);
     }
 
-    public function forService(Service $service, ?array $mediaContext = null): SeoData
+    public function forService(Service $service, ?array $mediaContext = null, ?array $breadcrumbs = null): SeoData
     {
         $description = $service->seo_description
             ?: $service->excerpt
@@ -149,7 +149,7 @@ class SeoService
             'robots_follow' => $isPublished,
             'og_image' => $this->serviceMedia->seoImageUrl($service, $mediaContext),
             'og_type' => 'website',
-            'schema' => $this->serviceSchema($service, $description, $mediaContext, $canonical),
+            'schema' => $this->serviceSchema($service, $description, $mediaContext, $canonical, $breadcrumbs),
         ]);
     }
 
@@ -462,6 +462,7 @@ class SeoService
         string $description,
         array $mediaContext,
         string $canonical,
+        ?array $breadcrumbs = null,
     ): array {
         $image = data_get($mediaContext, 'featured.url')
             ?: data_get($mediaContext, 'gallery.0.url');
@@ -480,7 +481,7 @@ class SeoService
 
         return $this->schemaGraph([
             $serviceSchema,
-            $this->breadcrumbSchema([
+            $this->breadcrumbSchema($breadcrumbs ?? [
                 ['name' => 'خانه', 'url' => route('home')],
                 ['name' => 'خدمات', 'url' => route('services.index')],
                 ['name' => $service->name, 'url' => $canonical],

@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\Admin\BackupDownloadController;
+use App\Http\Controllers\Admin\FormSubmissionAttachmentDownloadController;
 use App\Http\Controllers\Admin\InternalLinkSearchController;
 use App\Http\Controllers\Admin\InvoicePdfController;
 use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Admin\OrderPrintController;
 use App\Http\Controllers\Admin\PreviewController;
 use App\Http\Controllers\Admin\RedirectExportController;
+use App\Http\Controllers\BackupRestoreProgressController;
+use App\Http\Controllers\BackupRestoreStatusController;
 use App\Http\Controllers\CalculatorSubmissionReportController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -42,6 +45,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/backup-restore-progress/{restore:uuid}', BackupRestoreProgressController::class)
+    ->middleware('throttle:60,1')->name('backup-restore.progress');
+Route::get('/backup-restore-progress/{restore:uuid}/status', BackupRestoreStatusController::class)
+    ->middleware('throttle:120,1')->name('backup-restore.status');
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/search', PublicSearchController::class)->name('search.index');
 
@@ -151,6 +158,10 @@ Route::middleware('auth')
     ->group(function (): void {
         Route::get('/internal-links/search', InternalLinkSearchController::class)->name('internal-links.search');
         Route::get('/invoices/{invoice}/pdf', InvoicePdfController::class)->name('invoices.pdf');
+        Route::get('/form-submission-attachments/{attachment}/download', FormSubmissionAttachmentDownloadController::class)
+            ->name('form-submission-attachments.download');
+        Route::get('/form-submission-attachments/{attachment}/view', [FormSubmissionAttachmentDownloadController::class, 'view'])
+            ->name('form-submission-attachments.view');
     });
 
 Route::middleware(['auth', 'throttle:10,1'])

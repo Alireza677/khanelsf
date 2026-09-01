@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
+use App\Support\BackupUploadLimit;
 
 class BackupUploadTest extends TestCase
 {
@@ -35,6 +36,20 @@ class BackupUploadTest extends TestCase
         $this->assertStringStartsWith('backups/files/', $backup->local_path);
         Storage::disk('local')->assertExists($backup->local_path);
         $this->actingAs($admin)->get(route('admin.backups.download', $backup))->assertOk()->assertDownload($backup->archive_name);
+    }
+
+    public function test_backup_upload_limit_is_centralized_at_512_mb_for_livewire_and_backend(): void
+    {
+        $this->assertSame(512, BackupUploadLimit::megabytes());
+        $this->assertSame(512 * 1024, BackupUploadLimit::kilobytes());
+        $this->assertSame(
+            ['required', 'file', 'max:524288'],
+            config('livewire.temporary_file_upload.rules'),
+        );
+        $this->assertSame(
+            'حداکثر حجم مجاز فایل نسخه پشتیبان ۵۱۲ مگابایت است.',
+            BackupUploadLimit::validationMessage(),
+        );
     }
 
     public function test_invalid_zip_and_missing_manifest_are_rejected(): void
@@ -84,6 +99,7 @@ class BackupUploadTest extends TestCase
             $this->fail('Oversized archive accepted.');
         } catch (BackupOperationException $exception) {
             $this->assertSame('upload_too_large', $exception->failureCode);
+            $this->assertSame('حداکثر حجم مجاز فایل نسخه پشتیبان ۱ مگابایت است.', $exception->getMessage());
         }
 
         $first = $this->archive('incoming/first.zip');

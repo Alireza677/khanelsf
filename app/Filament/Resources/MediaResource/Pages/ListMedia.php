@@ -5,15 +5,18 @@ namespace App\Filament\Resources\MediaResource\Pages;
 use App\Filament\Resources\MediaResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Livewire\Attributes\Url;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ListMedia extends ListRecords
 {
     protected static string $resource = MediaResource::class;
 
-    #[Url(as: 'view')]
     public string $mediaView = 'list';
+
+    public function getExtraBodyAttributes(): array
+    {
+        return ['class' => 'media-library-page'];
+    }
 
     public function mount(): void
     {
@@ -22,6 +25,7 @@ class ListMedia extends ListRecords
         if (! in_array($this->mediaView, ['list', 'grid'], true)) {
             $this->mediaView = 'list';
         }
+
     }
 
     public function setMediaView(string $view): void
@@ -31,6 +35,12 @@ class ListMedia extends ListRecords
         }
 
         $this->mediaView = $view;
+        $this->table->content($view === 'grid' ? view('filament.media.grid') : null);
+    }
+
+    public function isGridView(): bool
+    {
+        return $this->mediaView === 'grid';
     }
 
     public function adjacentMediaId(Media $record, string $direction): ?int

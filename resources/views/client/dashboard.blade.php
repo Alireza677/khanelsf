@@ -9,7 +9,7 @@
     </div>
 
     @if ($customer)
-        @php($monthly = $servicesDashboard['monthly'])
+        @php($currentCycles = $servicesDashboard['current_cycles'])
         <div class="services-dashboard">
             <section class="services-project-list" aria-labelledby="customer-projects-title">
                 <div class="services-section-heading">
@@ -21,7 +21,7 @@
                 @else
                     <div class="services-project-table" role="table" aria-label="فهرست پروژه‌ها">
                         <div class="services-project-table__head" role="row">
-                            <span role="columnheader">نام پروژه</span><span role="columnheader">نوع پروژه</span><span role="columnheader">وضعیت پروژه</span><span role="columnheader">سقف خدمات هر ماه</span><span role="columnheader">مصرف این ماه</span><span role="columnheader">وضعیت پرداخت</span>
+                            <span role="columnheader">نام پروژه</span><span role="columnheader">نوع پروژه</span><span role="columnheader">وضعیت پروژه</span><span role="columnheader">سهم دوره جاری</span><span role="columnheader">مصرف دوره جاری</span><span role="columnheader">وضعیت پرداخت</span>
                         </div>
                         <div class="services-project-table__body">
                             @foreach ($servicesDashboard['projects'] as $project)
@@ -30,8 +30,8 @@
                                         <div class="services-project-name" role="cell"><strong>{{ $project['title'] }}</strong><small>مشاهده جزئیات پروژه ←</small></div>
                                         <div role="cell"><small>نوع پروژه</small><span>{{ $project['type'] ?: 'پروژه خدماتی' }}</span></div>
                                         <div role="cell"><small>وضعیت پروژه</small><span class="portal-badge">{{ $project['status_label'] }}</span></div>
-                                        <div role="cell"><small>سقف خدمات هر ماه</small><strong>{{ $project['limit_time'] ?? 'تعیین نشده' }}</strong></div>
-                                        <div role="cell"><small>مصرف این ماه</small><strong>{{ $project['used_time'] }}</strong></div>
+                                        <div role="cell"><small>سهم دوره جاری</small><strong>{{ $project['limit_time'] ?? 'دوره جاری ندارد' }}</strong></div>
+                                        <div role="cell"><small>مصرف دوره جاری</small><strong>{{ $project['used_time'] }}</strong>@if($project['cycle_start'])<small>دوره جاری: {{ $project['cycle_start'] }} تا {{ $project['cycle_end'] }}</small>@endif</div>
                                         <div role="cell"><small>وضعیت پرداخت</small><span class="services-payment services-payment--{{ $project['payment']['state'] }}">{{ $project['payment']['label'] }}</span></div>
                                     </div>
                                     <div class="services-project-timeline">
@@ -52,29 +52,28 @@
 
             <section class="services-hero-card" aria-labelledby="monthly-time-title">
                 <div class="services-hero-card__heading">
-                    <div><span class="services-kicker">وضعیت خدمات این ماه</span><h2 id="monthly-time-title">زمان مصرف‌شده پروژه ها در این ماه</h2></div>
-                    <span class="services-month"><x-persian-date :value="now()" format="month-year" /></span>
+                    <div><span class="services-kicker">وضعیت دوره‌های قراردادی جاری</span><h2 id="monthly-time-title">زمان مصرف‌شده پروژه‌ها در دوره جاری</h2></div>
                 </div>
                 <div class="services-time-layout">
-                    <div class="services-donut {{ $monthly['has_limit'] ? '' : 'is-neutral' }}" style="--usage: {{ $monthly['chart_percentage'] }}" role="img" aria-label="زمان مصرف‌شده {{ $monthly['used_time'] }}{{ $monthly['has_limit'] ? '، باقی‌مانده '.$monthly['remaining_time'] : '، سقف ماهانه تعیین نشده' }}">
-                        <div><strong>{{ $monthly['used_time'] }}</strong><span>مصرف‌شده</span></div>
+                    <div class="services-donut {{ $currentCycles['has_limit'] ? '' : 'is-neutral' }}" style="--usage: {{ $currentCycles['chart_percentage'] }}" role="img" aria-label="زمان مصرف‌شده {{ $currentCycles['used_time'] }}{{ $currentCycles['has_limit'] ? '، باقی‌مانده '.$currentCycles['remaining_time'] : '، دوره جاری تعیین نشده' }}">
+                        <div><strong>{{ $currentCycles['used_time'] }}</strong><span>مصرف‌شده</span></div>
                     </div>
                     <dl class="services-time-legend">
-                        <div><dt><i class="is-used"></i>مصرف‌شده</dt><dd>{{ $monthly['used_time'] }}</dd></div>
-                        @if ($monthly['has_limit'])
-                            <div><dt><i class="is-remaining"></i>باقی‌مانده</dt><dd>{{ $monthly['remaining_time'] }}</dd></div>
-                            <div><dt>درصد مصرف</dt><dd>{{ $monthly['percentage'] }}٪</dd></div>
-                            <div><dt>سقف ماهانه</dt><dd>{{ $monthly['limit_time'] }}</dd></div>
-                            @if ($monthly['overage_time'])<div class="is-warning"><dt>مازاد</dt><dd>{{ $monthly['overage_time'] }}</dd></div>@endif
+                        <div><dt><i class="is-used"></i>مصرف‌شده</dt><dd>{{ $currentCycles['used_time'] }}</dd></div>
+                        @if ($currentCycles['has_limit'])
+                            <div><dt><i class="is-remaining"></i>باقی‌مانده</dt><dd>{{ $currentCycles['remaining_time'] }}</dd></div>
+                            <div><dt>درصد مصرف</dt><dd>{{ $currentCycles['percentage'] }}٪</dd></div>
+                            <div><dt>سهم دوره‌های جاری</dt><dd>{{ $currentCycles['limit_time'] }}</dd></div>
+                            @if ($currentCycles['overage_time'])<div class="is-warning"><dt>مازاد</dt><dd>{{ $currentCycles['overage_time'] }}</dd></div>@endif
                         @else
-                            <div class="services-no-limit"><dt>سقف ماهانه</dt><dd>برای مجموعه پروژه‌ها تعیین نشده است.</dd></div>
+                            <div class="services-no-limit"><dt>دوره جاری</dt><dd>برای مجموعه پروژه‌ها تعیین نشده است.</dd></div>
                         @endif
                     </dl>
                 </div>
             </section>
 
             <section class="services-kpis" aria-label="آمار خدمات">
-                @foreach ([['پروژه‌های فعال', $dashboardStats['active_projects'], '◫'], ['فعالیت‌های قابل‌نمایش این ماه', $dashboardStats['published_activities'], '✓'], ['زمان مصرف‌شده این ماه', $monthly['used_time'], '◷']] as [$label, $value, $icon])
+                @foreach ([['پروژه‌های فعال', $dashboardStats['active_projects'], '◫'], ['فعالیت‌های قابل‌نمایش این ماه', $dashboardStats['published_activities'], '✓'], ['زمان مصرف‌شده دوره جاری', $currentCycles['used_time'], '◷']] as [$label, $value, $icon])
                     <article class="services-kpi"><span class="services-kpi__icon">{{ $icon }}</span><div><strong>{{ $value }}</strong><span>{{ $label }}</span></div></article>
                 @endforeach
             </section>

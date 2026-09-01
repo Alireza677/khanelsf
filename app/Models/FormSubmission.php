@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class FormSubmission extends Model
 {
@@ -44,5 +48,25 @@ class FormSubmission extends Model
     public function lead(): HasOne
     {
         return $this->hasOne(Lead::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(FormSubmissionAttachment::class);
+    }
+
+    /** @return Collection<string, Collection<int, FormSubmissionAttachment>> */
+    public function attachmentsByField(): Collection
+    {
+        return $this->attachments->groupBy('field_key');
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $submission): void {
+            $paths = $submission->attachments()->pluck('stored_path')->all();
+
+            DB::afterCommit(fn () => Storage::disk('local')->delete($paths));
+        });
     }
 }

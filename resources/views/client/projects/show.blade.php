@@ -44,19 +44,20 @@
             </div>
         </x-client.card>
 
-        @if ($project['monthly_hour_limit_minutes'] !== null)
-            <x-client.card title="زمان مصرف‌شده پروژه">
+        @if ($currentCycleSummary)
+            <x-client.card title="مصرف دوره جاری">
                 <div class="portal-time-summary">
-                    <div><small>سهم ماهانه</small><strong>{{ $summary['allocated'] }}</strong></div>
-                    <div><small>زمان ثبت‌شده</small><strong>{{ $summary['used'] }}</strong></div>
-                    @if ($summary['is_exceeded'])
-                        <div class="is-over"><small>مازاد</small><strong>{{ $summary['overage'] }}</strong></div>
-                    @else
-                        <div><small>زمان باقی‌مانده</small><strong>{{ $summary['remaining'] }}</strong></div>
-                    @endif
-                    <div><small>مصرف</small><strong>{{ $summary['usage_percentage'] }}٪</strong></div>
+                    <div><small>سهم دوره</small><strong>{{ $currentCycleSummary['allocated'] }}</strong></div>
+                    <div><small>زمان ثبت‌شده</small><strong>{{ $currentCycleSummary['used'] }}</strong></div>
+                    <div><small>زمان باقی‌مانده</small><strong>{{ $currentCycleSummary['remaining'] }}</strong></div>
+                    <div><small>مصرف</small><strong>{{ $currentCycleSummary['percentage'] }}٪</strong></div>
                 </div>
+                <p class="portal-privacy-note">دوره جاری: {{ $currentCycleSummary['starts_at'] }} تا {{ $currentCycleSummary['ends_at'] }}</p>
                 <p class="portal-privacy-note">مجموع زمان شامل تمام کار ثبت‌شده غیرلغوشده است؛ جزئیات فعالیت‌های داخلی و پیش‌نویس خصوصی باقی می‌ماند.</p>
+            </x-client.card>
+        @elseif ($project['monthly_hour_limit_minutes'] !== null)
+            <x-client.card title="مصرف دوره جاری">
+                <p class="portal-privacy-note">برای تاریخ امروز دوره قراردادی جاری ثبت نشده است.</p>
             </x-client.card>
         @endif
 

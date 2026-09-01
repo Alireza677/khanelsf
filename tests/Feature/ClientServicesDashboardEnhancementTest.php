@@ -6,6 +6,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\ClientProjectCycleResolver;
 use App\Services\CustomerMembershipManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -17,10 +18,12 @@ class ClientServicesDashboardEnhancementTest extends TestCase
     public function test_dashboard_aggregates_project_time_and_handles_overage(): void
     {
         [$user, $customer] = $this->member();
-        $first = ClientProject::factory()->for($customer)->create(['title' => 'پروژه اول', 'status' => ClientProject::STATUS_ACTIVE, 'monthly_hour_limit_minutes' => 120]);
-        $second = ClientProject::factory()->for($customer)->create(['title' => 'پروژه دوم', 'status' => ClientProject::STATUS_ACTIVE, 'monthly_hour_limit_minutes' => 60]);
-        ClientProjectActivity::factory()->for($first, 'project')->create(['duration_minutes' => 150, 'activity_date' => now()]);
-        ClientProjectActivity::factory()->for($second, 'project')->publishedForClient()->create(['title' => 'گزارش مجاز', 'duration_minutes' => 60, 'activity_date' => now()]);
+        $first = ClientProject::factory()->for($customer)->create(['title' => 'پروژه اول', 'status' => ClientProject::STATUS_ACTIVE, 'monthly_hour_limit_minutes' => 120, 'start_date' => today()]);
+        $second = ClientProject::factory()->for($customer)->create(['title' => 'پروژه دوم', 'status' => ClientProject::STATUS_ACTIVE, 'monthly_hour_limit_minutes' => 60, 'start_date' => today()]);
+        $firstCycle = app(ClientProjectCycleResolver::class)->resolveForDate($first, now()->toImmutable());
+        $secondCycle = app(ClientProjectCycleResolver::class)->resolveForDate($second, now()->toImmutable());
+        ClientProjectActivity::factory()->for($first, 'project')->create(['client_project_cycle_id' => $firstCycle->id, 'duration_minutes' => 150, 'activity_date' => now()]);
+        ClientProjectActivity::factory()->for($second, 'project')->publishedForClient()->create(['client_project_cycle_id' => $secondCycle->id, 'title' => 'گزارش مجاز', 'duration_minutes' => 60, 'activity_date' => now()]);
 
         $this->actingAs($user, 'client')->get(route('account.services.index'))
             ->assertOk()

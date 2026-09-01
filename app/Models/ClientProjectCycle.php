@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Enums\ClientProjectCycleStatus;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,5 +33,26 @@ class ClientProjectCycle extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class, 'client_project_cycle_id')->where('status', '!=', 'cancelled')->latestOfMany();
+    }
+
+    public function scopeContainingDate(Builder $query, CarbonInterface|string $date): Builder
+    {
+        $date = $date instanceof CarbonInterface
+            ? CarbonImmutable::instance($date)->toDateString()
+            : CarbonImmutable::parse($date)->toDateString();
+
+        return $query
+            ->whereDate('starts_at', '<=', $date)
+            ->whereDate('ends_at', '>', $date);
+    }
+
+    public function containsDate(CarbonInterface|string $date): bool
+    {
+        $date = $date instanceof CarbonInterface
+            ? CarbonImmutable::instance($date)->startOfDay()
+            : CarbonImmutable::parse($date)->startOfDay();
+
+        return $this->starts_at->startOfDay()->lte($date)
+            && $this->ends_at->startOfDay()->gt($date);
     }
 }

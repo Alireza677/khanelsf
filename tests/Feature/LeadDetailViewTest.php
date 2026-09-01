@@ -101,6 +101,7 @@ class LeadDetailViewTest extends TestCase
             'slug' => 'lead-detail-normal',
             'status' => 'published',
             'display_mode' => 'page',
+            'lead_generation_enabled' => true,
             'type' => 'normal',
             'schema_version' => 2,
             'schema' => ['fields' => [
@@ -122,6 +123,7 @@ class LeadDetailViewTest extends TestCase
             'slug' => 'lead-detail-calculator',
             'status' => 'published',
             'display_mode' => 'page',
+            'lead_generation_enabled' => true,
             'type' => 'calculator',
             'calculator_identifier' => 'lead_detail_v1',
             'schema_version' => 2,

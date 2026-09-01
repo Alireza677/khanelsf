@@ -2,10 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BackupRestoreStatus;
 use App\Enums\BackupSource;
 use App\Enums\BackupStatus;
 use App\Enums\BackupType;
 use App\Models\Backup;
+use App\Models\BackupRestore;
+use App\Models\User;
+use App\Services\BackupDeletionService;
+use App\Exceptions\BackupOperationException;
 use App\Services\LocalBackupRetentionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -62,6 +67,38 @@ class BackupRetentionAndCleanupTest extends TestCase
         app(LocalBackupRetentionService::class)->prune();
         Storage::disk('local')->assertExists('protected.txt');
         $this->assertDatabaseHas('backups', ['id' => $unsafe->id, 'status' => BackupStatus::DeleteFailed->value]);
+    }
+
+    public function test_locked_restore_safety_backup_is_not_pruned_or_manually_deleted(): void
+    {
+        Storage::fake('local');
+        $target = $this->available(1, BackupSource::Uploaded);
+        $safety = $this->available(2, BackupSource::Automatic);
+        $restore = BackupRestore::query()->create([
+            'backup_id' => $target->id,
+            'safety_backup_id' => $safety->id,
+            'initiated_by' => User::factory()->admin()->create()->id,
+            'status' => BackupRestoreStatus::Failed,
+            'active_lock' => 'installation',
+        ]);
+        $this->available(3, BackupSource::Manual);
+        $this->available(4, BackupSource::Manual);
+        $this->available(5, BackupSource::Manual);
+
+        app(LocalBackupRetentionService::class)->prune();
+
+        $this->assertDatabaseHas('backups', ['id' => $safety->id]);
+        Storage::disk('local')->assertExists($safety->local_path);
+
+        try {
+            app(BackupDeletionService::class)->delete($safety->fresh());
+            $this->fail('Protected safety backup was deleted.');
+        } catch (BackupOperationException $exception) {
+            $this->assertSame('protected_restore_safety_backup', $exception->failureCode);
+        }
+
+        $this->assertDatabaseHas('backup_restores', ['id' => $restore->id, 'active_lock' => 'installation']);
+        Storage::disk('local')->assertExists($safety->local_path);
     }
 
     private function available(int $number, BackupSource $source, ?string $path = null): Backup

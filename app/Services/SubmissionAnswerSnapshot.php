@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Form;
 use App\Support\PersianDate;
+use App\Support\FormNumber;
 
 final class SubmissionAnswerSnapshot
 {
@@ -87,6 +88,13 @@ final class SubmissionAnswerSnapshot
             return PersianDate::date($value) ?? $value;
         }
 
+        if (($field['type'] ?? null) === 'number') {
+            return FormNumber::format(
+                $value,
+                (bool) data_get($field, 'settings.thousands_separator', false),
+            );
+        }
+
         if (($field['type'] ?? null) === 'select') {
             $options = is_array($field['options'] ?? null) ? $field['options'] : [];
 
@@ -95,7 +103,18 @@ final class SubmissionAnswerSnapshot
                 : $value;
         }
 
-        if (in_array($field['type'] ?? null, ['image_choice', 'radio_card'], true)) {
+        if (($field['type'] ?? null) === 'checkbox') {
+            $labels = collect($field['options'] ?? [])
+                ->whereIn('value', is_array($value) ? $value : [])
+                ->pluck('label')
+                ->filter(fn (mixed $label): bool => is_string($label) && $label !== '')
+                ->values()
+                ->all();
+
+            return implode('، ', $labels);
+        }
+
+        if (in_array($field['type'] ?? null, ['radio', 'image_choice', 'radio_card'], true)) {
             $option = collect($field['options'] ?? [])->firstWhere('value', $value);
 
             return is_array($option) ? ($option['label'] ?? $value) : $value;

@@ -25,8 +25,8 @@ class DashboardController extends Controller
         $customer?->load('users');
         $dashboardStats = $stats->forCustomer($customer, CarbonImmutable::now()->startOfMonth());
         $projects = $customer?->clientProjects()->with('cycles.invoice')->latest('updated_at')->get() ?? collect();
-        $dashboard = $presenter->present($projects, CarbonImmutable::now()->startOfMonth());
-        $dashboardStats['worked_time'] = $dashboard['monthly']['used_time'];
+        $dashboard = $presenter->present($projects, CarbonImmutable::today());
+        $dashboardStats['worked_time'] = $dashboard['current_cycles']['used_time'];
         $projectFilter = $request->integer('project') ?: null;
         $range = in_array($request->query('range'), ['current', 'previous', 'all'], true) ? $request->query('range') : 'current';
         $activityQuery = ClientProjectActivity::query()->with('project:id,title,customer_id')

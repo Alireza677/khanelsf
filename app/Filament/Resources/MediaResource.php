@@ -31,20 +31,14 @@ class MediaResource extends Resource
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->contentGrid(fn (ListMedia $livewire): ?array => $livewire->mediaView === 'grid'
-                ? [
-                    'default' => 1,
-                ]
+            ->content(fn (ListMedia $livewire) => $livewire->isGridView()
+                ? view('filament.media.grid')
                 : null)
             ->columns([
-                Tables\Columns\ViewColumn::make('grid_preview')
-                    ->label('رسانه')
-                    ->view('filament.tables.columns.media-grid-card')
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'grid'),
                 Tables\Columns\ViewColumn::make('preview')
                     ->label('پیش‌نمایش')
                     ->view('filament.tables.columns.media-preview')
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
                 Tables\Columns\TextColumn::make('name')
                     ->label('نام رسانه')
                     ->formatStateUsing(fn (?string $state, Media $record): string => filled($state)
@@ -52,33 +46,33 @@ class MediaResource extends Resource
                         : $record->originalFilename())
                     ->searchable()
                     ->sortable()
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
                 Tables\Columns\TextColumn::make('mime_type')
                     ->label('نوع فایل')
                     ->badge()
                     ->searchable()
                     ->sortable()
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
                 Tables\Columns\TextColumn::make('size')
                     ->label('حجم')
                     ->formatStateUsing(fn (?int $state): string => static::formatSize($state ?? 0))
                     ->sortable()
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
                 Tables\Columns\TextColumn::make('disk')
                     ->label('دیسک')
                     ->badge()
                     ->sortable()
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
                 Tables\Columns\TextColumn::make('collection_name')
                     ->label('مجموعه')
                     ->badge()
                     ->sortable()
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('زمان بارگذاری')
                     ->jalaliDateTime()
                     ->sortable()
-                    ->visible(fn (ListMedia $livewire): bool => $livewire->mediaView === 'list'),
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->isGridView()),
             ])
             ->filters([
                 Tables\Filters\Filter::make('images')
@@ -178,4 +172,5 @@ class MediaResource extends Resource
 
         return number_format($bytes / 1024 / 1024, 1).' MB';
     }
+
 }

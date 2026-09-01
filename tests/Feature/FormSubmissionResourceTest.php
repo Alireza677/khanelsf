@@ -124,7 +124,7 @@ class FormSubmissionResourceTest extends TestCase
             ->assertSee('فیلد آینده')
             ->assertSee('گزینه یک و دو')
             ->assertDontSee('برچسب تغییر یافته')
-            ->assertSee('سرنخ مرتبطی برای این ورودی وجود ندارد.')
+            ->assertDontSee('سرنخ مرتبطی برای این ورودی وجود ندارد.')
             ->assertSee('اطلاعات فنی')
             ->assertSee('unknown_future_field')
             ->assertDontSee('نتیجه محاسبه');

@@ -10,37 +10,43 @@ use Illuminate\Support\Collection;
 class ClientServicesDashboardPresenter
 {
     public function __construct(
-        private readonly ClientProjectMonthlyTimeService $monthlyTime,
+        private readonly ClientProjectCycleUsage $cycleUsage,
         private readonly ClientProjectPresenter $projects,
         private readonly DurationFormatter $durations,
     ) {}
 
     public function present(Collection $projects, CarbonImmutable $month): array
     {
-        $summaries = $this->monthlyTime->summarizeMany($projects, $month);
-        $projectCards = $projects->map(function (ClientProject $project) use ($summaries): array {
-            $summary = $summaries->get($project->getKey());
+        $date = $month->startOfDay();
+        $projectCards = $projects->map(function (ClientProject $project) use ($date): array {
+            $cycle = $project->cycles->sortBy('starts_at')
+                ->first(fn ($cycle): bool => $cycle->containsDate($date));
+            $summary = $cycle ? $this->cycleUsage->summary($cycle) : null;
 
             return [
                 ...$this->projects->present($project),
-                'used_minutes' => $summary['used_minutes'],
-                'used_time' => $this->durations->format($summary['used_minutes']),
-                'limit_time' => $summary['allocated_minutes'] === null ? null : $this->durations->format($summary['allocated_minutes']),
+                'used_minutes' => $summary['consumed_minutes'] ?? 0,
+                'used_time' => $this->durations->format($summary['consumed_minutes'] ?? 0),
+                'limit_minutes' => $summary['allocated_minutes'] ?? null,
+                'limit_time' => $summary ? $this->durations->format($summary['allocated_minutes']) : null,
+                'remaining_time' => $summary ? $this->durations->format($summary['remaining_minutes']) : null,
+                'cycle_start' => $cycle ? PersianDate::date($cycle->starts_at) : null,
+                'cycle_end' => $cycle ? PersianDate::date($cycle->ends_at) : null,
                 'payment' => $this->payment($project),
                 'timeline' => $this->timeline($project),
             ];
         });
 
         $used = (int) $projectCards->sum('used_minutes');
-        $hasLimit = $projects->isNotEmpty() && $projects->every(fn (ClientProject $project): bool => $project->monthly_hour_limit_minutes !== null);
-        $limit = $hasLimit ? (int) $projects->sum('monthly_hour_limit_minutes') : null;
+        $hasLimit = $projectCards->isNotEmpty() && $projectCards->every(fn (array $project): bool => $project['limit_minutes'] !== null);
+        $limit = $hasLimit ? (int) $projectCards->sum('limit_minutes') : null;
         $remaining = $limit === null ? null : max(0, $limit - $used);
         $overage = $limit === null ? 0 : max(0, $used - $limit);
         $percentage = $limit === null ? null : ($limit === 0 ? ($used > 0 ? 100 : 0) : (int) round(($used / $limit) * 100));
 
         return [
             'projects' => $projectCards,
-            'monthly' => [
+            'current_cycles' => [
                 'used_minutes' => $used,
                 'used_time' => $this->durations->format($used),
                 'limit_minutes' => $limit,

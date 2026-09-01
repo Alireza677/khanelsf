@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TemplateResource\Pages;
 
+use App\Filament\Resources\Concerns\HasStickyFormActions;
 use App\Filament\Resources\Concerns\LogsHeroV2SaveFailures;
 use App\Filament\Resources\Concerns\ManagesBlockEditorIdentity;
 use App\Filament\Resources\Concerns\ValidatesTemplatePublication;
@@ -13,6 +14,7 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditTemplate extends EditRecord
 {
+    use HasStickyFormActions;
     use LogsHeroV2SaveFailures;
     use ManagesBlockEditorIdentity {
         mutateFormDataBeforeSave as prepareBlockDataBeforeSave;

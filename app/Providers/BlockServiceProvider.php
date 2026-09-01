@@ -34,12 +34,14 @@ use App\CMS\Blocks\Service\ServiceHeaderBlock;
 use App\CMS\Blocks\Service\ServiceOverviewBlock;
 use App\CMS\Blocks\Service\ServiceProcessBlock;
 use App\CMS\Blocks\Service\ServiceProjectsBlock;
+use App\CMS\Blocks\SiteFooter\SiteFooterBlock;
+use App\CMS\Blocks\SiteFooter\SiteFooterRuntime;
 use App\CMS\Blocks\SiteHeader\SiteHeaderBlock;
 use App\CMS\Blocks\SiteHeader\SiteHeaderRuntime;
+use App\CMS\Templates\SiteFooterTemplateResolver;
 use App\CMS\Templates\SiteHeaderTemplateResolver;
 use App\Models\Template;
 use App\Services\PublicAccountNavigation;
-use App\Services\TemplateService;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\View as IlluminateView;
@@ -60,6 +62,7 @@ class BlockServiceProvider extends ServiceProvider
                 'feature_grid' => FeatureGridBlock::class,
                 'business_network_map' => BusinessNetworkMapBlock::class,
                 'site_header' => SiteHeaderBlock::class,
+                'site_footer' => SiteFooterBlock::class,
                 'project_header' => ProjectHeaderBlock::class,
                 'project_overview' => ProjectOverviewBlock::class,
                 'project_metrics' => ProjectMetricsBlock::class,
@@ -90,8 +93,9 @@ class BlockServiceProvider extends ServiceProvider
         FeatureGridRuntime $featureGrids,
         FormBlockRuntime $forms,
         SiteHeaderRuntime $siteHeaders,
+        SiteFooterRuntime $siteFooters,
         SiteHeaderTemplateResolver $headerTemplates,
-        TemplateService $templates,
+        SiteFooterTemplateResolver $footerTemplates,
         PublicAccountNavigation $accounts,
         BusinessNetworkRuntime $businessNetwork,
     ): void {
@@ -158,6 +162,26 @@ class BlockServiceProvider extends ServiceProvider
         );
 
         View::composer(
+            'partials.blocks.site-footer-corporate-dark',
+            function (IlluminateView $view) use ($siteFooters): void {
+                $viewData = $view->getData();
+                $data = is_array($viewData['data'] ?? null)
+                    ? $viewData['data']
+                    : [];
+                $context = is_array($viewData['context'] ?? null)
+                    ? $viewData['context']
+                    : [];
+                $context['page_url'] ??= request()->getRequestUri();
+
+                $view->with('footer', $siteFooters->prepare(
+                    $data,
+                    $context,
+                    ! empty($viewData['isPreview']) || ! empty($context['preview']),
+                ));
+            },
+        );
+
+        View::composer(
             'partials.header',
             fn (IlluminateView $view) => $view->with('account', $accounts->present()),
         );
@@ -169,18 +193,23 @@ class BlockServiceProvider extends ServiceProvider
 
         View::composer(
             'layouts.app',
-            function (IlluminateView $view) use ($headerTemplates, $templates): void {
+            function (IlluminateView $view) use ($headerTemplates, $footerTemplates): void {
                 $viewData = $view->getData();
                 $previewTemplate = $viewData['template'] ?? null;
                 $previewingHeader = ! empty($viewData['isPreview'])
                     && $previewTemplate instanceof Template
                     && $previewTemplate->type === 'site_header';
+                $previewingFooter = ! empty($viewData['isPreview'])
+                    && $previewTemplate instanceof Template
+                    && $previewTemplate->type === 'site_footer';
 
                 $view->with([
                     'siteHeaderTemplate' => $previewingHeader
                         ? $previewTemplate
                         : $headerTemplates->selected(),
-                    'siteFooterTemplate' => $templates->findTemplateFor('site_footer'),
+                    'siteFooterTemplate' => $previewingFooter
+                        ? $previewTemplate
+                        : $footerTemplates->selected(),
                 ]);
             },
         );

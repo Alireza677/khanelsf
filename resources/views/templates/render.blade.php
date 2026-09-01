@@ -1,9 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
-    @if ($template->type === 'site_header')
-        <section class="template-header-preview-note" aria-label="پیش‌نمایش قالب هدر">
-            <p>پیش‌نمایش هدر در بالای همین صفحه نمایش داده شده است.</p>
+    @if (in_array($template->type, ['site_header', 'site_footer'], true))
+        <section class="template-header-preview-note" aria-label="پیش‌نمایش قالب سراسری">
+            <p>
+                پیش‌نمایش {{ $template->type === 'site_header' ? 'هدر در بالای' : 'فوتر در پایین' }} همین صفحه نمایش داده شده است.
+            </p>
         </section>
     @else
         @if ($template->type === 'blog_index')

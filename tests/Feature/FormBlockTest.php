@@ -375,6 +375,7 @@ class FormBlockTest extends TestCase
             'slug' => $slug,
             'status' => $status,
             'display_mode' => 'page',
+            'lead_generation_enabled' => true,
             'type' => 'normal',
             'schema_version' => 2,
             'schema' => ['fields' => [[

@@ -6,6 +6,7 @@ use App\Enums\ClientProjectCycleStatus;
 use App\Enums\InvoiceStatus;
 use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
+use App\Models\ClientProjectCycle;
 use App\Models\Customer;
 use App\Services\ClientProjectCycleResolver;
 use App\Services\ClientProjectCycleUsage;
@@ -65,17 +66,17 @@ class ClientProjectCycleBillingTest extends TestCase
         $this->assertSame($invoice->id, app(ProjectCycleInvoiceGenerator::class)->generate($cycle)->id);
     }
 
-    public function test_overdue_cycle_accepts_later_activity_and_completes(): void
+    public function test_activity_outside_overdue_cycle_resolves_to_the_cycle_containing_its_date(): void
     {
         $project = $this->project(120, '2026-07-06');
         $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-07-10'));
         $this->activity($project, $cycle->id, 60);
         app(RecalculateClientProjectCycle::class)->handle($cycle);
         $resolved = app(ClientProjectCycleResolver::class)->resolve($project, now()->toImmutable(), 60);
-        $this->assertSame($cycle->id, $resolved->id);
-        $this->activity($project, $cycle->id, 60);
-        $this->assertSame(ClientProjectCycleStatus::Completed, $cycle->fresh()->status);
-        $this->assertNotNull($cycle->fresh()->invoice);
+        $this->assertNotSame($cycle->id, $resolved->id);
+        $this->assertTrue($resolved->containsDate(now()->toImmutable()));
+        $this->assertFalse($cycle->containsDate(now()->toImmutable()));
+        $this->assertSame(ClientProjectCycleStatus::Overdue, $cycle->fresh()->status);
     }
 
     public function test_activity_cannot_silently_overflow_remaining_allocation(): void
@@ -125,6 +126,8 @@ class ClientProjectCycleBillingTest extends TestCase
 
     private function activity(ClientProject $project, int $cycleId, int $minutes, array $extra = []): ClientProjectActivity
     {
-        return ClientProjectActivity::factory()->for($project, 'project')->create(['client_project_cycle_id' => $cycleId, 'duration_minutes' => $minutes, 'currency_snapshot' => 'IRT', 'unit_price_snapshot' => '100', 'total_amount' => '100', 'pricing_mode_snapshot' => 'fixed', 'service_unit_snapshot' => 'fixed', ...$extra]);
+        $cycle = ClientProjectCycle::findOrFail($cycleId);
+
+        return ClientProjectActivity::factory()->for($project, 'project')->create(['client_project_cycle_id' => $cycleId, 'activity_date' => $cycle->starts_at->addDay()->toDateString(), 'duration_minutes' => $minutes, 'currency_snapshot' => 'IRT', 'unit_price_snapshot' => '100', 'total_amount' => '100', 'pricing_mode_snapshot' => 'fixed', 'service_unit_snapshot' => 'fixed', ...$extra]);
     }
 }

@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
 use ZipArchive;
+use Livewire\Livewire;
+use App\Filament\Pages\Backups as BackupsPage;
 
 class BackupFoundationTest extends TestCase
 {
@@ -42,6 +44,15 @@ class BackupFoundationTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/admin/backups')->assertForbidden();
         $this->actingAs(User::factory()->admin()->create())->get('/admin/backups')
             ->assertOk()->assertSee('فقط سه نسخه آخر روی سرور نگهداری می‌شود')->assertDontSee('Google Drive')->assertDontSee('بکاپ خودکار');
+    }
+
+    public function test_upload_action_displays_the_central_persian_512_mb_limit(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(BackupsPage::class)
+            ->callAction('uploadBackup')
+            ->assertSee('حداکثر حجم مجاز فایل نسخه پشتیبان ۵۱۲ مگابایت است.');
     }
 
     public function test_manual_request_is_queued_without_remote_connection(): void

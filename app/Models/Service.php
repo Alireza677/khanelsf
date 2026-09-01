@@ -8,7 +8,9 @@ use App\Enums\ServiceUnit;
 use App\Models\Concerns\HasFeaturedImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
@@ -39,6 +41,7 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
     ];
 
     protected $fillable = [
+        'parent_id',
         'name',
         'slug',
         'excerpt',
@@ -86,6 +89,12 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
                 ? $service->unit
                 : ServiceUnit::tryFrom((string) $service->unit);
             $errors = [];
+
+            if ($service->parent_id !== null && $service->exists && (int) $service->parent_id === (int) $service->getKey()) {
+                $errors['parent_id'] = 'یک خدمت نمی‌تواند والد خودش باشد.';
+            } elseif ($service->parent_id !== null && $service->wouldCreateParentCycle((int) $service->parent_id)) {
+                $errors['parent_id'] = 'انتخاب این خدمت به‌عنوان والد باعث ایجاد چرخه می‌شود.';
+            }
 
             if ($service->pricing_mode !== null && ! $mode) {
                 $errors['pricing_mode'] = 'Pricing mode is invalid.';
@@ -205,6 +214,60 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class)->withTimestamps();
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
+    }
+
+    /** @return list<int> */
+    public function descendantIds(): array
+    {
+        if (! $this->exists) {
+            return [];
+        }
+
+        $descendants = [];
+        $frontier = [(int) $this->getKey()];
+        while ($frontier !== []) {
+            $frontier = self::query()
+                ->whereIn('parent_id', $frontier)
+                ->whereNotIn('id', $descendants)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+            $descendants = [...$descendants, ...$frontier];
+        }
+
+        return array_values(array_unique($descendants));
+    }
+
+    private function wouldCreateParentCycle(int $proposedParentId): bool
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        $visited = [];
+        $cursor = $proposedParentId;
+        while ($cursor > 0 && ! isset($visited[$cursor])) {
+            if ($cursor === (int) $this->getKey()) {
+                return true;
+            }
+            $visited[$cursor] = true;
+            $cursor = (int) (self::query()->whereKey($cursor)->value('parent_id') ?? 0);
+        }
+
+        return $cursor > 0;
     }
 
     public function publicProjects(): BelongsToMany

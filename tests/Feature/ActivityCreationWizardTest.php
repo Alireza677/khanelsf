@@ -61,7 +61,10 @@ class ActivityCreationWizardTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $customer = Customer::factory()->create();
-        $project = ClientProject::factory()->for($customer)->create();
+        $project = ClientProject::factory()->for($customer)->create([
+            'monthly_hour_limit_minutes' => 600,
+            'start_date' => '2026-08-01',
+        ]);
         $this->actingAs($admin);
 
         Livewire::test(ListClientProjectActivities::class)
@@ -85,6 +88,8 @@ class ActivityCreationWizardTest extends TestCase
         $this->assertSame($admin->id, $activity->performed_by);
         $this->assertSame(ClientProjectActivity::VISIBILITY_INTERNAL, $activity->visibility);
         $this->assertSame(ClientProjectActivity::STATUS_DRAFT, $activity->status);
+        $this->assertNotNull($activity->client_project_cycle_id);
+        $this->assertTrue($activity->cycle->containsDate($activity->activity_date));
         $this->assertArrayNotHasKey('internal_notes', $activity->toArray());
     }
 

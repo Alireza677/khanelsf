@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\CMS\Actions\Filament\ActionPicker;
 use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Hero\HeroBlock;
+use App\CMS\Blocks\Hero\HeroMediaResolver;
 use App\CMS\Blocks\Support\HeadingLevel;
 use App\Filament\Forms\Components\BlockBuilder;
 use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
@@ -21,6 +22,7 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Service;
 use App\Models\Template;
+use App\Services\ModuleService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -450,6 +452,14 @@ class TemplateResource extends Resource
             ];
         }
 
+        if ($target === 'site_footer') {
+            return [
+                app(BlockRegistry::class)
+                    ->find('site_footer')
+                    ->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
+            ];
+        }
+
         $projectBlocks = [
             'project_header',
             'project_overview',
@@ -489,7 +499,7 @@ class TemplateResource extends Resource
             app(BlockRegistry::class)->find('form')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE),
         ];
 
-        if (app(\App\Services\ModuleService::class)->businessNetworkEnabled()
+        if (app(ModuleService::class)->businessNetworkEnabled()
             && in_array($target, [null, '', 'page'], true)) {
             $commonBlocks[] = app(BlockRegistry::class)
                 ->find('business_network_map')->filamentBlock(HeroBlock::CONTEXT_TEMPLATE);
@@ -644,11 +654,17 @@ class TemplateResource extends Resource
                         ->helperText('Leave empty to use the shop description.')
                         ->rows(3)
                         ->columnSpanFull(),
-                    Forms\Components\ViewField::make('background_image')
+                    Forms\Components\Hidden::make('background_image'),
+                    Forms\Components\ViewField::make('background_media_id')
                         ->label('Hero background image')
-                        ->view('filament.forms.components.media-library-url-picker')
+                        ->view('filament.forms.components.media-library-picker')
                         ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()])
-                        ->helperText('Choose from Media Library or paste an image URL.')
+                        ->afterStateHydrated(function (Forms\Components\ViewField $component, mixed $state, Get $get): void {
+                            if (blank($state) && filled($get('background_image'))) {
+                                $component->state(app(HeroMediaResolver::class)->resolveSourceId($get('background_image')));
+                            }
+                        })
+                        ->helperText('Choose a reusable image from Media Library.')
                         ->columnSpanFull(),
                     Forms\Components\TextInput::make('overlay_opacity')
                         ->label('Overlay opacity')
@@ -670,10 +686,16 @@ class TemplateResource extends Resource
                         ->default('Shop by category')
                         ->maxLength(255),
                     static::headingTagField('Category heading tag', 'category_heading_tag'),
-                    Forms\Components\ViewField::make('all_categories_image')
+                    Forms\Components\Hidden::make('all_categories_image'),
+                    Forms\Components\ViewField::make('all_categories_media_id')
                         ->label('All products category image')
-                        ->view('filament.forms.components.media-library-url-picker')
+                        ->view('filament.forms.components.media-library-picker')
                         ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()])
+                        ->afterStateHydrated(function (Forms\Components\ViewField $component, mixed $state, Get $get): void {
+                            if (blank($state) && filled($get('all_categories_image'))) {
+                                $component->state(app(HeroMediaResolver::class)->resolveSourceId($get('all_categories_image')));
+                            }
+                        })
                         ->helperText('Optional image for the "All products" card in the category slider.')
                         ->columnSpanFull(),
                     Forms\Components\TextInput::make('products_title')

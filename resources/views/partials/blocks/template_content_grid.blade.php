@@ -28,7 +28,24 @@
         </div>
     @endif
 
-    @if ($collection instanceof \App\CMS\Collections\Data\CollectionPresentation)
+    @if (($context['serviceArchive'] ?? null) instanceof \App\CMS\Collections\Service\ServiceArchivePresentation)
+        @include('services.partials.archive-groups', [
+            'serviceArchive' => $context['serviceArchive'],
+            'columnsDesktop' => $columnsDesktop,
+            'columnsTablet' => $columnsTablet,
+            'imageRatio' => $imageRatio,
+            'cardDensity' => $cardDensity,
+            'presentationVariant' => $presentationVariant ?: 'clean_grid',
+            'showImage' => $enabled('show_image'),
+            'showIcon' => $enabled('show_icon'),
+            'showExcerpt' => $enabled('show_excerpt'),
+            'showBadges' => $enabled('show_badges'),
+            'showMeta' => $enabled('show_meta'),
+            'showAction' => $enabled('show_action'),
+            'actionLabel' => filled($data['action_label'] ?? null) ? $data['action_label'] : null,
+            'templateMode' => true,
+        ])
+    @elseif ($collection instanceof \App\CMS\Collections\Data\CollectionPresentation)
         <div @class([
             'shared-collection',
             'shared-collection--'.$presentationVariant,

@@ -38,9 +38,11 @@ class DatabaseBackupProducer
                 '--single-transaction',
                 '--quick',
                 '--skip-lock-tables',
+                '--add-drop-table',
                 '--routines',
                 '--triggers',
                 '--hex-blob',
+                ...$this->ignoredTableArguments((string) $database['database']),
                 '--result-file='.$destination,
                 (string) $database['database'],
             ]);
@@ -64,5 +66,13 @@ class DatabaseBackupProducer
     private function option(string $value): string
     {
         return '"'.str_replace(['\\', '"', "\n", "\r"], ['\\\\', '\\"', '', ''], $value).'"';
+    }
+
+    private function ignoredTableArguments(string $database): array
+    {
+        return array_map(
+            fn (string $table): string => '--ignore-table='.$database.'.'.$table,
+            config('backup.operational_tables', []),
+        );
     }
 }

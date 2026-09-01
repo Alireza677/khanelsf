@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\FormSubmission;
+use App\Models\FormSubmissionAttachment;
+use Illuminate\Support\Collection;
 
 final class FormSubmissionPresenter
 {
+    public function __construct(private readonly FormSchema $schema) {}
+
     /** @return list<array{label: string, value: string}> */
     public function answers(FormSubmission $submission): array
     {
@@ -13,7 +17,7 @@ final class FormSubmissionPresenter
         $snapshot = $this->snapshotAnswers($payload);
 
         if ($snapshot !== []) {
-            return $snapshot;
+            return [...$snapshot, ...$this->attachmentAnswers($submission)];
         }
 
         $fieldLabels = data_get($submission->calculation_result, 'answer_field_labels', []);
@@ -37,7 +41,67 @@ final class FormSubmissionPresenter
             ];
         }
 
-        return $answers;
+        return [...$answers, ...$this->attachmentAnswers($submission)];
+    }
+
+    public function answerGroups(FormSubmission $submission): array
+    {
+        $submission->loadMissing(['form', 'attachments']);
+        $payload = is_array($submission->payload) ? $submission->payload : [];
+        $snapshot = collect($payload[SubmissionAnswerSnapshot::PAYLOAD_KEY] ?? [])->keyBy('field_key');
+        $values = $this->submittedFields($payload);
+        $files = $submission->attachmentsByField();
+        $groups = [];
+        $group = null;
+        $known = [];
+        $number = 0;
+
+        foreach ($submission->form ? $this->schema->fields($submission->form) : [] as $field) {
+            if (in_array($field['type'], ['page', 'step'], true)) {
+                $number++;
+                $title = filled($field['label']) && $field['label'] !== 'مرحله جدید' ? $field['label'] : 'بخش '.$number;
+                $groups[] = ['title' => $title, 'answers' => []];
+                $group = array_key_last($groups);
+
+                continue;
+            }
+            $key = $field['name'];
+            $known[$key] = true;
+            if (! array_key_exists($key, $values) && ! $snapshot->has($key) && ! $files->has($key)) {
+                continue;
+            }
+            if ($group === null) {
+                $groups[] = ['title' => 'اطلاعات فرم', 'answers' => []];
+                $group = 0;
+            }
+            $saved = $snapshot->get($key, []);
+            $groups[$group]['answers'][] = $this->answerItem($key, $saved['field_label'] ?? $field['label'],
+                $saved['display_value'] ?? ($values[$key] ?? null), $field['type'], $files->get($key, collect()));
+        }
+
+        foreach (collect([...array_keys($values), ...$snapshot->keys(), ...$files->keys()])->unique() as $key) {
+            if (isset($known[$key])) {
+                continue;
+            }
+            $fallback = collect($groups)->search(fn ($item) => $item['title'] === 'اطلاعات فرم');
+            if ($fallback === false) {
+                $groups[] = ['title' => 'اطلاعات فرم', 'answers' => []];
+                $fallback = array_key_last($groups);
+            }
+            $saved = $snapshot->get($key, []);
+            $groups[$fallback]['answers'][] = $this->answerItem($key, $saved['field_label'] ?? $key,
+                $saved['display_value'] ?? ($values[$key] ?? null), 'text', $files->get($key, collect()));
+        }
+
+        return collect($groups)->filter(fn ($item) => $item['answers'] !== [])
+            ->map(fn ($item) => (object) [...$item, 'count' => count($item['answers'])])->values()->all();
+    }
+
+    public function files(FormSubmission $submission): array
+    {
+        $submission->loadMissing('attachments');
+
+        return $submission->attachments->map(fn ($file) => $this->fileItem($file))->all();
     }
 
     /** @return array<string, string> */
@@ -130,5 +194,59 @@ final class FormSubmissionPresenter
         }
 
         return '—';
+    }
+
+    private function answerItem(string $key, string $label, mixed $value, string $type, Collection $attachments): object
+    {
+        $display = $this->displayValue($value);
+
+        return (object) [
+            'key' => $key, 'label' => $label, 'value' => $display,
+            'wide' => $type === 'textarea' || mb_strlen($display) > 140,
+            'attachments' => $attachments->map(fn ($file) => $this->fileItem($file))->values()->all(),
+        ];
+    }
+
+    private function fileItem(FormSubmissionAttachment $file): object
+    {
+        $mime = strtolower((string) $file->mime_type);
+
+        return (object) [
+            'name' => $file->original_name,
+            'extension' => strtoupper(pathinfo($file->original_name, PATHINFO_EXTENSION) ?: 'FILE'),
+            'size' => $this->fileSize((int) $file->size),
+            'is_image' => str_starts_with($mime, 'image/'),
+            'can_view' => str_starts_with($mime, 'image/') || $mime === 'application/pdf',
+            'view_url' => route('admin.form-submission-attachments.view', $file),
+            'download_url' => route('admin.form-submission-attachments.download', $file),
+        ];
+    }
+
+    private function fileSize(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return max(0, $bytes).' B';
+        }
+        if ($bytes < 1048576) {
+            return number_format($bytes / 1024, 1).' KB';
+        }
+
+        return number_format($bytes / 1048576, 1).' MB';
+    }
+
+    /** @return list<array{label: string, value: string}> */
+    private function attachmentAnswers(FormSubmission $submission): array
+    {
+        $submission->loadMissing(['attachments', 'form']);
+        $labels = collect($submission->form ? $this->schema->fields($submission->form) : [])
+            ->mapWithKeys(fn (array $field): array => [$field['name'] => $field['label']]);
+
+        return $submission->attachmentsByField()
+            ->map(fn ($attachments, string $fieldKey): array => [
+                'label' => (string) ($labels[$fieldKey] ?? $fieldKey),
+                'value' => $attachments->pluck('original_name')->implode('، '),
+            ])
+            ->values()
+            ->all();
     }
 }

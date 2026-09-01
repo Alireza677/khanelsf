@@ -19,6 +19,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ServiceResource extends Resource
@@ -74,6 +75,12 @@ class ServiceResource extends Resource
                                 ->numeric()
                                 ->minValue(0)
                                 ->default(0),
+                            Forms\Components\ViewField::make('parent_id')
+                                ->label('خدمت والد')
+                                ->view('filament.forms.components.service-parent-picker')
+                                ->viewData(fn (?Service $record): array => [
+                                    'services' => static::parentPickerItems($record),
+                                ]),
                         ])
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('مزایا')
@@ -297,7 +304,6 @@ class ServiceResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('sort_order')
             ->columns([
                 Tables\Columns\SpatieMediaLibraryImageColumn::make('featured_image')
                     ->collection('featured_image')
@@ -305,6 +311,7 @@ class ServiceResource extends Resource
                     ->label('تصویر'),
                 Tables\Columns\TextColumn::make('name')
                     ->label('نام خدمت')
+                    ->formatStateUsing(fn (Service $record): string => static::hierarchicalLabels()[$record->id] ?? $record->name)
                     ->searchable(['name', 'slug'])
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
@@ -388,6 +395,126 @@ class ServiceResource extends Resource
             'create' => Pages\CreateService::route('/create'),
             'edit' => Pages\EditService::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $ids = array_keys(static::hierarchicalLabels());
+        if ($ids === []) {
+            return $query;
+        }
+        $cases = collect($ids)
+            ->values()
+            ->map(fn (int $id, int $rank): string => 'WHEN '.(int) $id.' THEN '.$rank)
+            ->implode(' ');
+
+        return $query->orderByRaw('CASE services.id '.$cases.' ELSE '.count($ids).' END');
+    }
+
+    public static function treeOptions(?Service $record = null): array
+    {
+        $excluded = $record?->exists
+            ? array_fill_keys([$record->getKey(), ...$record->descendantIds()], true)
+            : [];
+
+        return static::flattenedTree()
+            ->reject(fn (array $item): bool => isset($excluded[$item['service']->getKey()]))
+            ->mapWithKeys(fn (array $item): array => [
+                $item['service']->getKey() => str_repeat('— ', $item['depth']).$item['service']->name,
+            ])->all();
+    }
+
+    public static function hierarchicalLabels(): array
+    {
+        return static::flattenedTree()->mapWithKeys(fn (array $item): array => [
+            $item['service']->getKey() => str_repeat('— ', $item['depth']).$item['service']->name,
+        ])->all();
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, path: string, depth: int, parent_id: ?int, ancestor_ids: array<int, int>, children_count: int, has_children: bool, disabled: bool}>
+     */
+    public static function parentPickerItems(?Service $record = null): array
+    {
+        $services = Service::query()->orderBy('sort_order')->orderBy('name')->orderBy('id')->get();
+        $byParent = $services->groupBy(fn (Service $service): int => (int) ($service->parent_id ?? 0));
+        $excluded = $record?->exists
+            ? array_fill_keys([$record->getKey(), ...$record->descendantIds()], true)
+            : [];
+        $items = [];
+        $visited = [];
+
+        $append = function (int $parentId, array $ancestors, array $path) use (&$append, &$items, &$visited, $byParent, $excluded): void {
+            foreach ($byParent->get($parentId, collect()) as $service) {
+                if (isset($visited[$service->id])) {
+                    continue;
+                }
+
+                $visited[$service->id] = true;
+                $servicePath = [...$path, $service->name];
+                $items[] = [
+                    'id' => (int) $service->id,
+                    'name' => $service->name,
+                    'path' => implode(' ← ', $servicePath),
+                    'depth' => count($ancestors),
+                    'parent_id' => $service->parent_id ? (int) $service->parent_id : null,
+                    'ancestor_ids' => $ancestors,
+                    'children_count' => $byParent->get((int) $service->id, collect())->count(),
+                    'has_children' => $byParent->get((int) $service->id, collect())->isNotEmpty(),
+                    'disabled' => isset($excluded[$service->id]),
+                ];
+                $append((int) $service->id, [...$ancestors, (int) $service->id], $servicePath);
+            }
+        };
+
+        $append(0, [], []);
+
+        // Keep malformed legacy/orphan rows visible without attempting to repair hierarchy here.
+        foreach ($services as $service) {
+            if (! isset($visited[$service->id])) {
+                $items[] = [
+                    'id' => (int) $service->id,
+                    'name' => $service->name,
+                    'path' => $service->name,
+                    'depth' => 0,
+                    'parent_id' => null,
+                    'ancestor_ids' => [],
+                    'children_count' => 0,
+                    'has_children' => false,
+                    'disabled' => isset($excluded[$service->id]),
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /** @return Collection<int, array{service: Service, depth: int}> */
+    private static function flattenedTree(): Collection
+    {
+        $services = Service::query()->orderBy('sort_order')->orderBy('name')->orderBy('id')->get();
+        $byParent = $services->groupBy(fn (Service $service): int => (int) ($service->parent_id ?? 0));
+        $result = collect();
+        $visited = [];
+        $append = function (int $parentId, int $depth) use (&$append, &$visited, $byParent, $result): void {
+            foreach ($byParent->get($parentId, collect()) as $service) {
+                if (isset($visited[$service->id])) {
+                    continue;
+                }
+                $visited[$service->id] = true;
+                $result->push(['service' => $service, 'depth' => $depth]);
+                $append((int) $service->id, $depth + 1);
+            }
+        };
+        $append(0, 0);
+        foreach ($services as $service) {
+            if (! isset($visited[$service->id])) {
+                $result->push(['service' => $service, 'depth' => 0]);
+            }
+        }
+
+        return $result;
     }
 
     public static function statusOptions(): array

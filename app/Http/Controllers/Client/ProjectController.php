@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Services\ClientProjectAccess;
 use App\Services\ClientProjectActivityPresenter;
+use App\Services\ClientProjectCycleUsage;
 use App\Services\ClientProjectMonthlyTimeService;
 use App\Services\ClientProjectPresenter;
 use App\Services\DurationFormatter;
 use App\Services\MonthResolver;
+use App\Support\PersianDate;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -34,6 +37,7 @@ class ProjectController extends Controller
         ClientProjectPresenter $presenter,
         ClientProjectActivityPresenter $activityPresenter,
         ClientProjectMonthlyTimeService $timeService,
+        ClientProjectCycleUsage $cycleUsage,
         DurationFormatter $durations,
         MonthResolver $months,
     ): View {
@@ -53,11 +57,28 @@ class ProjectController extends Controller
             'remaining' => $durations->format($summary['remaining_minutes']),
             'overage' => $durations->format($summary['overage_minutes']),
         ]];
+        $currentCycle = $project->cycles()->containingDate(CarbonImmutable::today())->oldest('starts_at')->first();
+        $currentCycleSummary = null;
+        if ($currentCycle) {
+            $usage = $cycleUsage->summary($currentCycle);
+            $currentCycleSummary = [
+                ...$usage,
+                'starts_at' => PersianDate::date($currentCycle->starts_at),
+                'ends_at' => PersianDate::date($currentCycle->ends_at),
+                'allocated' => $durations->format($usage['allocated_minutes']),
+                'used' => $durations->format($usage['consumed_minutes']),
+                'remaining' => $durations->format($usage['remaining_minutes']),
+                'percentage' => $usage['allocated_minutes'] > 0
+                    ? (int) round(($usage['consumed_minutes'] / $usage['allocated_minutes']) * 100)
+                    : 0,
+            ];
+        }
 
         return view('client.projects.show', [
             'project' => $presenter->present($project),
             'activities' => $activities,
             'summary' => $summary,
+            'currentCycleSummary' => $currentCycleSummary,
             'serviceRoutes' => $this->serviceRoutes($request),
         ]);
     }

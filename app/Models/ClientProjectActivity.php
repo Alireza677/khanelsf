@@ -81,19 +81,37 @@ class ClientProjectActivity extends Model
                 }
             }
 
+            if ($activity->client_project_cycle_id) {
+                $cycle = ClientProjectCycle::find($activity->client_project_cycle_id);
+                if (! $cycle
+                    || (int) $cycle->client_project_id !== (int) $activity->client_project_id
+                    || ! $cycle->containsDate($activity->activity_date)) {
+                    $errors['client_project_cycle_id'] = 'The selected cycle must contain the activity date and belong to the same project.';
+                }
+            }
+
             if ($errors !== []) {
                 throw ValidationException::withMessages($errors);
             }
         });
         static::updating(function (self $activity): void {
-            $relevant = ['duration_minutes', 'client_project_id', 'client_project_cycle_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot', 'service_unit_label_snapshot', 'pricing_mode_snapshot', 'currency_snapshot', 'unit_price_snapshot', 'quantity', 'total_amount', 'status'];
+            $relevant = ['activity_date', 'duration_minutes', 'client_project_id', 'client_project_cycle_id', 'service_id', 'service_name_snapshot', 'service_unit_snapshot', 'service_unit_label_snapshot', 'pricing_mode_snapshot', 'currency_snapshot', 'unit_price_snapshot', 'quantity', 'total_amount', 'status'];
             if ($activity->isDirty($relevant) && DB::table('invoice_activity_claims')->where('client_project_activity_id', $activity->id)->exists()) {
                 throw new LogicException('Claimed activity financial and allocation fields are locked.');
             }
         });
         static::saved(function (self $activity): void {
-            if ($activity->client_project_cycle_id && ($activity->wasRecentlyCreated || $activity->wasChanged(['duration_minutes', 'status', 'client_project_cycle_id']))) {
-                app(RecalculateClientProjectCycle::class)->handle($activity->cycle);
+            if ($activity->wasRecentlyCreated || $activity->wasChanged(['duration_minutes', 'status', 'client_project_cycle_id'])) {
+                $cycleIds = array_values(array_unique(array_filter([
+                    $activity->wasRecentlyCreated ? null : $activity->getOriginal('client_project_cycle_id'),
+                    $activity->client_project_cycle_id,
+                ])));
+
+                foreach ($cycleIds as $cycleId) {
+                    if ($cycle = ClientProjectCycle::find($cycleId)) {
+                        app(RecalculateClientProjectCycle::class)->handle($cycle);
+                    }
+                }
             }
         });
         static::deleting(function (self $activity): void {

@@ -6,6 +6,7 @@ use App\Filament\Resources\FormResource;
 use App\Filament\Resources\FormResource\Pages\CreateForm;
 use App\Filament\Resources\FormResource\Pages\EditForm;
 use App\Models\Form;
+use App\Models\FormSubmission;
 use App\Models\User;
 use App\Services\FormSchema;
 use Filament\Forms\Components\Select;
@@ -17,7 +18,7 @@ class FormBuilderEditorTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_palette_settings_and_schema_supported_field_types_stay_in_sync(): void
+    public function test_palette_exposes_radio_but_keeps_legacy_radio_card_editable_only(): void
     {
         $this->actingAs(User::factory()->create());
         $component = Livewire::test(CreateForm::class);
@@ -35,8 +36,10 @@ class FormBuilderEditorTest extends TestCase
         sort($settingsTypes);
         sort($schemaTypes);
 
-        $this->assertSame($paletteTypes, $settingsTypes);
-        $this->assertSame($paletteTypes, $schemaTypes);
+        $this->assertContains('radio', $paletteTypes);
+        $this->assertNotContains('radio_card', $paletteTypes);
+        $this->assertContains('radio_card', $settingsTypes);
+        $this->assertSame($settingsTypes, $schemaTypes);
     }
 
     public function test_editor_renders_two_panel_canvas_palette_and_compact_structural_items(): void
@@ -90,6 +93,26 @@ class FormBuilderEditorTest extends TestCase
 
         $this->assertSame('email', $fields[array_key_last($fields)]['type']);
         $this->assertSame('ایمیل', $fields[array_key_last($fields)]['label']);
+    }
+
+    public function test_palette_can_create_radio_but_rejects_new_legacy_radio_cards(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $component = Livewire::test(CreateForm::class)
+            ->assertSee('رادیویی')
+            ->callFormComponentAction('schema.fields', 'add', arguments: ['fieldType' => 'radio']);
+
+        $fields = array_values($component->get('data')['schema']['fields']);
+        $this->assertSame('radio', $fields[array_key_last($fields)]['type']);
+
+        $component->callFormComponentAction(
+            'schema.fields',
+            'add',
+            arguments: ['fieldType' => 'radio_card'],
+        );
+        $fields = array_values($component->get('data')['schema']['fields']);
+        $this->assertSame('text', $fields[array_key_last($fields)]['type']);
     }
 
     public function test_scoring_settings_only_render_for_calculator_rich_choice_fields(): void
@@ -236,7 +259,10 @@ class FormBuilderEditorTest extends TestCase
         $newOptionKey = array_key_last($options);
 
         $this->assertSame('گزینه جدید', $options[$newOptionKey]['label']);
-        $this->assertNull($options[$newOptionKey]['value']);
+        $this->assertMatchesRegularExpression(
+            '/^option_[0-7][0-9a-hjkmnp-tv-z]{25}$/',
+            $options[$newOptionKey]['value'],
+        );
 
         $reversedKeys = array_reverse(array_keys($options));
         $component->callFormComponentAction($optionsPath, 'reorder', arguments: ['items' => $reversedKeys]);
@@ -251,6 +277,127 @@ class FormBuilderEditorTest extends TestCase
 
         $this->assertCount(2, $savedOptions);
         $this->assertSame('عنوان ویرایش‌شده', collect($savedOptions)->firstWhere('value', 'first')['label']);
+    }
+
+    public function test_radio_choice_editor_hides_value_and_preserves_it_when_label_changes(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $form = $this->radioForm();
+        $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()])
+            ->assertSee('عنوان گزینه')
+            ->assertDontSee('مقدار گزینه');
+        $fields = $component->get('data')['schema']['fields'];
+        $fieldKey = array_key_first($fields);
+        $optionKey = array_key_first($fields[$fieldKey]['options']);
+        $originalValue = $fields[$fieldKey]['options'][$optionKey]['value'];
+
+        $component
+            ->set("data.schema.fields.{$fieldKey}.options.{$optionKey}.label", 'عنوان تازه')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $savedOption = $form->fresh()->schema['fields'][0]['options'][0];
+        $this->assertSame('عنوان تازه', $savedOption['label']);
+        $this->assertSame($originalValue, $savedOption['value']);
+
+        $form->update(['status' => 'published']);
+        $this->post(route('forms.submit', $form->slug), [
+            'contact_method' => $originalValue,
+        ])->assertRedirect();
+        $submission = FormSubmission::query()->sole();
+        $this->assertSame($originalValue, $submission->payload['contact_method']);
+        $this->assertSame(
+            'عنوان تازه',
+            data_get($submission->payload, '_answer_snapshot.0.display_value'),
+        );
+    }
+
+    public function test_select_choice_editor_hides_value_and_preserves_legacy_value_for_submission(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $form = $this->choiceForm();
+        $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()])
+            ->assertSee('عنوان گزینه')
+            ->assertDontSee('مقدار گزینه');
+        $fields = $component->get('data')['schema']['fields'];
+        $fieldKey = array_key_first($fields);
+        $optionKey = array_key_first($fields[$fieldKey]['options']);
+        $originalValue = $fields[$fieldKey]['options'][$optionKey]['value'];
+
+        $component
+            ->set("data.schema.fields.{$fieldKey}.options.{$optionKey}.label", 'عنوان جدید Select')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $savedOption = $form->fresh()->schema['fields'][0]['options'][0];
+        $this->assertSame('عنوان جدید Select', $savedOption['label']);
+        $this->assertSame($originalValue, $savedOption['value']);
+
+        $form->update(['status' => 'published']);
+        $this->post(route('forms.submit', $form->slug), [
+            'choice' => $originalValue,
+        ])->assertRedirect();
+
+        $submission = FormSubmission::query()->sole();
+        $this->assertSame($originalValue, $submission->payload['choice']);
+        $this->assertSame(
+            'عنوان جدید Select',
+            data_get($submission->payload, '_answer_snapshot.0.display_value'),
+        );
+    }
+
+    public function test_new_select_option_receives_one_stable_internal_value(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $form = $this->choiceForm();
+        $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()]);
+        $fieldKey = array_key_first($component->get('data')['schema']['fields']);
+        $optionsPath = "schema.fields.{$fieldKey}.options";
+
+        $component->callFormComponentAction($optionsPath, 'add')
+            ->assertHasNoFormComponentActionErrors();
+        $options = $component->get('data')['schema']['fields'][$fieldKey]['options'];
+        $newOptionKey = array_key_last($options);
+        $internalValue = $options[$newOptionKey]['value'];
+
+        $this->assertMatchesRegularExpression('/^option_[0-7][0-9a-hjkmnp-tv-z]{25}$/', $internalValue);
+
+        $component
+            ->set("data.{$optionsPath}.{$newOptionKey}.label", 'گزینه Select جدید')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $savedOption = collect($form->fresh()->schema['fields'][0]['options'])
+            ->firstWhere('value', $internalValue);
+        $this->assertSame('گزینه Select جدید', $savedOption['label']);
+        $this->assertSame($internalValue, $savedOption['value']);
+    }
+
+    public function test_new_radio_option_receives_stable_internal_value(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $form = $this->radioForm();
+        $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()]);
+        $fieldKey = array_key_first($component->get('data')['schema']['fields']);
+        $optionsPath = "schema.fields.{$fieldKey}.options";
+
+        $component->callFormComponentAction($optionsPath, 'add')
+            ->assertHasNoFormComponentActionErrors();
+        $options = $component->get('data')['schema']['fields'][$fieldKey]['options'];
+        $newOptionKey = array_key_last($options);
+        $internalValue = $options[$newOptionKey]['value'];
+
+        $this->assertMatchesRegularExpression('/^option_[0-7][0-9a-hjkmnp-tv-z]{25}$/', $internalValue);
+
+        $component
+            ->set("data.{$optionsPath}.{$newOptionKey}.label", 'گزینه افزوده‌شده')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $savedOption = collect($form->fresh()->schema['fields'][0]['options'])
+            ->firstWhere('value', $internalValue);
+        $this->assertSame('گزینه افزوده‌شده', $savedOption['label']);
+        $this->assertSame($internalValue, $savedOption['value']);
     }
 
     private function form(array $overrides = []): Form
@@ -282,6 +429,23 @@ class FormBuilderEditorTest extends TestCase
             'options' => [
                 ['value' => 'first', 'label' => 'گزینه اول'],
                 ['value' => 'second', 'label' => 'گزینه دوم'],
+            ],
+        ]]]]);
+
+        return $form->fresh();
+    }
+
+    private function radioForm(): Form
+    {
+        $form = $this->form();
+        $form->update(['schema' => ['fields' => [[
+            'name' => 'contact_method',
+            'label' => 'روش تماس',
+            'type' => 'radio',
+            'required' => true,
+            'options' => [
+                ['value' => 'phone', 'label' => 'تلفن'],
+                ['value' => 'email', 'label' => 'ایمیل'],
             ],
         ]]]]);
 

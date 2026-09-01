@@ -41,6 +41,9 @@ final class FeatureGridDataNormalizer implements BlockNormalizer
                 'items' => $this->items($content['items'] ?? []),
             ],
             'settings' => [
+                'variant' => ($settings['variant'] ?? null) === 'icon_list'
+                    ? 'icon_list'
+                    : 'default',
                 'eyebrow' => $this->stringOrNull($settings['eyebrow'] ?? null),
                 'heading_tag' => HeadingLevel::normalize($settings['heading_tag'] ?? null),
                 'section_background' => in_array(

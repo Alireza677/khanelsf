@@ -232,9 +232,13 @@
         scrollbar-gutter: stable;
     }
 
-    .fi-page-editor-locked-scroll .fi-resource-pages form#form .fi-form-actions {
-        position: sticky;
-        bottom: 0;
+    :is(
+        .fi-page-editor-locked-scroll .fi-resource-pages,
+        .fi-resource-crm-forms.fi-resource-edit-record-page,
+        .fi-resource-templates.fi-resource-edit-record-page
+    ) form#form .fi-form-actions {
+        position: sticky !important;
+        bottom: 0 !important;
         z-index: 20;
         flex-shrink: 0;
         margin-inline: -1rem;
@@ -243,9 +247,16 @@
         box-shadow: 0 -10px 24px rgb(15 23 42 / 0.08);
         backdrop-filter: blur(10px);
         border-top: 1px solid rgb(229 231 235);
+        flex-wrap: wrap;
+        opacity: 1 !important;
+        visibility: visible !important;
     }
 
-    .dark .fi-page-editor-locked-scroll .fi-resource-pages form#form .fi-form-actions {
+    .dark :is(
+        .fi-page-editor-locked-scroll .fi-resource-pages,
+        .fi-resource-crm-forms.fi-resource-edit-record-page,
+        .fi-resource-templates.fi-resource-edit-record-page
+    ) form#form .fi-form-actions {
         background: rgb(17 24 39 / 0.96);
         border-top-color: rgb(255 255 255 / 0.1);
         box-shadow: 0 -10px 24px rgb(0 0 0 / 0.24);
@@ -312,13 +323,64 @@
         width: 100%;
     }
 
-    .fi-ta-content-grid:has(.media-grid-card) {
+    .media-library-grid {
         display: grid !important;
-        grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr)) !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: .75rem;
         align-items: start;
+        padding: 1rem;
     }
 
-    .fi-ta-record:has(.media-grid-card) {
+    .media-library-grid__item {
+        position: relative;
+        min-width: 0;
+        width: auto;
+        overflow: hidden;
+        border-radius: .75rem;
+        background: rgb(255 255 255);
+        box-shadow: 0 0 0 1px rgb(3 7 18 / .08);
+        transition: box-shadow 150ms ease, transform 150ms ease;
+    }
+
+    .dark .media-library-grid__item {
+        background: rgb(17 24 39);
+        box-shadow: 0 0 0 1px rgb(255 255 255 / .1);
+    }
+
+    .media-library-grid__item:hover,
+    .media-library-grid__item:focus-within {
+        box-shadow: 0 0 0 2px rgb(59 130 246 / .55);
+        transform: translateY(-1px);
+    }
+
+    .media-library-grid__details {
+        display: block;
+        min-width: 0;
+        width: 100%;
+        padding: .5rem .5rem .75rem;
+        text-align: start;
+    }
+
+    .media-library-grid__checkbox {
+        position: absolute;
+        inset-block-start: .75rem;
+        inset-inline-start: .75rem;
+        z-index: 2;
+        display: grid;
+        width: 1.75rem;
+        height: 1.75rem;
+        place-items: center;
+        border-radius: .375rem;
+        background: rgb(255 255 255 / .9);
+        box-shadow: 0 1px 4px rgb(0 0 0 / .18);
+    }
+
+    .media-library-grid__checkbox input {
+        margin: 0;
+    }
+
+    .media-library-grid__details,
+    .media-library-grid__item {
         min-width: 0;
     }
 
@@ -399,6 +461,30 @@
         white-space: nowrap;
     }
 
+    @media (min-width: 640px) {
+        .media-library-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .media-library-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .media-library-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (min-width: 1536px) {
+        .media-library-grid {
+            grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        }
+    }
+
     .dark .media-grid-card__title {
         color: rgb(243 244 246);
     }
@@ -452,11 +538,6 @@
     .dark .media-details__metadata > div { border-color: rgb(75 85 99); }
 
     @media (max-width: 767px) {
-        .fi-ta-content-grid:has(.media-grid-card) {
-            grid-template-columns: repeat(auto-fill, minmax(min(8rem, 100%), 1fr)) !important;
-            gap: .75rem;
-        }
-
         .media-details__layout { grid-template-columns: minmax(0, 1fr); }
         .media-details__preview { min-height: 15rem; }
     }
@@ -1683,11 +1764,25 @@
     }
 
     @media (min-width: 768px) {
-        .fi-page-editor-locked-scroll .fi-resource-pages form#form .fi-form-actions {
+        :is(
+            .fi-page-editor-locked-scroll .fi-resource-pages,
+            .fi-resource-crm-forms.fi-resource-edit-record-page,
+            .fi-resource-templates.fi-resource-edit-record-page
+        ) form#form .fi-form-actions {
             margin-inline: 0;
             border-radius: 0.75rem 0.75rem 0 0;
         }
     }
+
+    @media (max-width: 639px) {
+        :is(
+            .fi-resource-crm-forms.fi-resource-edit-record-page,
+            .fi-resource-templates.fi-resource-edit-record-page
+        ) form#form .fi-form-actions > * {
+            max-width: 100%;
+        }
+    }
+
     .activity-creation-wizard-modal {
         direction: rtl;
         overflow: hidden;

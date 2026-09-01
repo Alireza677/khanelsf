@@ -2,6 +2,7 @@ import './bootstrap';
 import { initIndustrialStickyHeader } from './components/industrial-sticky-header';
 import { initHeaderOverlays } from './components/header-overlays';
 import { initFormDatePickers } from './components/form-date-pickers';
+import { initFormNumberInputs } from './components/form-number-inputs';
 
 const initJalaliMonthFilters = () => {
     document.querySelectorAll('[data-jalali-month-filter]').forEach((form) => {
@@ -121,6 +122,10 @@ const initDesktopNavigationOverflow = () => {
             more.classList.remove('is-open');
             moreTrigger.setAttribute('aria-expanded', 'false');
 
+            moreItems.querySelectorAll('.is-submenu-inline-end').forEach((item) => {
+                item.classList.remove('is-submenu-inline-end');
+            });
+
             if (restoreFocus) {
                 moreTrigger.focus();
             }
@@ -170,6 +175,41 @@ const initDesktopNavigationOverflow = () => {
             if (willOpen) {
                 more.classList.add('is-open');
                 moreTrigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+
+        const positionNestedSubmenu = (item) => {
+            const submenu = item.querySelector(':scope > ul');
+
+            if (! submenu) {
+                return;
+            }
+
+            item.classList.remove('is-submenu-inline-end');
+
+            const itemRect = item.getBoundingClientRect();
+            const submenuWidth = Math.min(submenu.scrollWidth, window.innerWidth - 32);
+            const roomBefore = itemRect.left - 16;
+            const roomAfter = window.innerWidth - itemRect.right - 16;
+
+            if (roomBefore < submenuWidth && roomAfter > roomBefore) {
+                item.classList.add('is-submenu-inline-end');
+            }
+        };
+
+        moreItems.addEventListener('pointerover', (event) => {
+            const item = event.target.closest('li.has-children');
+
+            if (item?.parentElement === moreItems) {
+                positionNestedSubmenu(item);
+            }
+        });
+
+        moreItems.addEventListener('focusin', (event) => {
+            const item = event.target.closest('li.has-children');
+
+            if (item?.parentElement === moreItems) {
+                positionNestedSubmenu(item);
             }
         });
 
@@ -525,6 +565,163 @@ const initShopCategorySliders = () => {
     });
 };
 
+const initShopFilterDrawers = () => {
+    const focusableSelector = [
+        'a[href]',
+        'button:not([disabled])',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+
+    document.querySelectorAll('[data-shop-filter-drawer]').forEach((root) => {
+        if (root.dataset.shopFilterDrawerInitialized === 'true') {
+            return;
+        }
+
+        const panel = root.querySelector('[data-shop-filter-panel]');
+        const toggle = root.querySelector('[data-shop-filter-toggle]');
+        const backdrop = root.querySelector('.shop-template__filter-backdrop');
+        const closeButtons = Array.from(root.querySelectorAll('[data-shop-filter-close]'));
+
+        if (! panel || ! toggle || ! backdrop || closeButtons.length === 0) {
+            return;
+        }
+
+        root.dataset.shopFilterDrawerInitialized = 'true';
+        root.classList.add('is-filter-drawer-ready');
+
+        const mobileQuery = window.matchMedia('(max-width: 900px)');
+        let inertElements = [];
+
+        const restoreBackground = () => {
+            inertElements.forEach(({ element, wasInert }) => {
+                element.inert = wasInert;
+            });
+            inertElements = [];
+        };
+
+        const isolatePanel = () => {
+            let branch = panel;
+
+            while (branch.parentElement) {
+                const parent = branch.parentElement;
+
+                Array.from(parent.children)
+                    .filter((element) => element !== branch && element !== backdrop && element.tagName !== 'SCRIPT')
+                    .forEach((element) => {
+                        const wasInert = element.inert;
+                        element.inert = true;
+                        inertElements.push({ element, wasInert });
+                    });
+
+                if (parent === document.body) {
+                    break;
+                }
+
+                branch = parent;
+            }
+        };
+
+        const close = ({ restoreFocus = true } = {}) => {
+            const wasOpen = root.classList.contains('is-filter-open');
+
+            root.classList.remove('is-filter-open');
+            toggle.setAttribute('aria-expanded', 'false');
+            restoreBackground();
+
+            if (! document.querySelector('[data-shop-filter-drawer].is-filter-open')) {
+                document.body.classList.remove('shop-filter-drawer-open');
+            }
+
+            if (mobileQuery.matches) {
+                panel.setAttribute('aria-hidden', 'true');
+            }
+
+            if (wasOpen && restoreFocus) {
+                toggle.focus();
+            }
+        };
+
+        const open = () => {
+            if (! mobileQuery.matches || root.classList.contains('is-filter-open')) {
+                return;
+            }
+
+            isolatePanel();
+            root.classList.add('is-filter-open');
+            toggle.setAttribute('aria-expanded', 'true');
+            panel.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('shop-filter-drawer-open');
+
+            requestAnimationFrame(() => {
+                panel.querySelector('[data-shop-filter-close]')?.focus();
+            });
+        };
+
+        const syncMode = () => {
+            close({ restoreFocus: false });
+
+            if (mobileQuery.matches) {
+                panel.setAttribute('role', 'dialog');
+                panel.setAttribute('aria-modal', 'true');
+                panel.setAttribute('aria-hidden', 'true');
+            } else {
+                panel.setAttribute('role', 'complementary');
+                panel.removeAttribute('aria-modal');
+                panel.setAttribute('aria-hidden', 'false');
+            }
+        };
+
+        toggle.addEventListener('click', open);
+        closeButtons.forEach((button) => button.addEventListener('click', () => close()));
+
+        document.addEventListener('keydown', (event) => {
+            if (! root.classList.contains('is-filter-open')) {
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close();
+                return;
+            }
+
+            if (event.key !== 'Tab') {
+                return;
+            }
+
+            const focusable = Array.from(panel.querySelectorAll(focusableSelector))
+                .filter((element) => element.getClientRects().length > 0);
+
+            if (focusable.length === 0) {
+                event.preventDefault();
+                panel.focus();
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable.at(-1);
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (! event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+
+        if (typeof mobileQuery.addEventListener === 'function') {
+            mobileQuery.addEventListener('change', syncMode);
+        } else {
+            mobileQuery.addListener(syncMode);
+        }
+        syncMode();
+    });
+};
+
 const initMultiStepForms = () => {
     document.querySelectorAll('[data-multi-step-form]').forEach((form) => {
         if (form.dataset.stepsReady === 'true') {
@@ -536,6 +733,7 @@ const initMultiStepForms = () => {
         const back = form.querySelector('[data-step-back]');
         const next = form.querySelector('[data-step-next]');
         const submit = form.querySelector('[data-step-submit]');
+        const confirmation = form.querySelector('[data-submit-confirmation]');
 
         if (steps.length < 2 || ! currentLabel || ! back || ! next || ! submit) {
             return;
@@ -545,7 +743,9 @@ const initMultiStepForms = () => {
         const invalidStep = steps.findIndex((step) => step.querySelector('.form-error'));
         let current = invalidStep >= 0
             ? invalidStep
-            : form.dataset.initialStep === 'last' ? steps.length - 1 : 0;
+            : (form.dataset.initialStep === 'last' || form.dataset.submitConfirmationError === 'true')
+                ? steps.length - 1
+                : 0;
 
         const show = (index) => {
             current = index;
@@ -559,6 +759,9 @@ const initMultiStepForms = () => {
             back.hidden = current === 0;
             next.hidden = current === steps.length - 1;
             submit.hidden = current !== steps.length - 1;
+            if (confirmation) {
+                confirmation.hidden = current !== steps.length - 1;
+            }
         };
 
         next.addEventListener('click', () => {
@@ -575,6 +778,54 @@ const initMultiStepForms = () => {
         });
         back.addEventListener('click', () => show(Math.max(current - 1, 0)));
         show(current);
+    });
+};
+
+const initFormSubmitConfirmations = () => {
+    document.querySelectorAll('[data-submit-confirmation]').forEach((root) => {
+        if (root.dataset.submitConfirmationReady === 'true') {
+            return;
+        }
+
+        const checkbox = root.querySelector('[data-submit-confirmation-input]');
+        const form = root.closest('form');
+        const submitButtons = form ? Array.from(form.querySelectorAll('[data-form-submit]')) : [];
+
+        if (! checkbox || submitButtons.length === 0) {
+            return;
+        }
+
+        root.dataset.submitConfirmationReady = 'true';
+        const sync = () => submitButtons.forEach((button) => {
+            button.disabled = ! checkbox.checked;
+        });
+
+        checkbox.addEventListener('change', sync);
+        sync();
+    });
+};
+
+const initFormFileInputs = () => {
+    document.querySelectorAll('[data-form-file-picker]').forEach((root) => {
+        if (root.dataset.formFileReady === 'true') {
+            return;
+        }
+
+        const input = root.previousElementSibling;
+        const status = root.querySelector('[data-form-file-status]');
+
+        if (! input?.matches('[data-form-file-input]') || ! status) {
+            return;
+        }
+
+        root.dataset.formFileReady = 'true';
+        const sync = () => {
+            status.textContent = input.files?.[0]?.name || 'فایلی انتخاب نشده است';
+        };
+
+        input.addEventListener('change', sync);
+        input.form?.addEventListener('reset', () => window.setTimeout(sync, 0));
+        sync();
     });
 };
 
@@ -757,16 +1008,23 @@ const initPublicInteractions = () => {
     initHeroTemplateVideos();
     initStatsCounters();
     initShopCategorySliders();
+    initShopFilterDrawers();
     initMultiStepForms();
+    initFormSubmitConfirmations();
+    initFormFileInputs();
     initFormSelects();
     initFormDatePickers();
+    initFormNumberInputs();
     initCalculatorResultModals();
 };
 
 document.addEventListener('forms:rendered', () => {
     initMultiStepForms();
+    initFormSubmitConfirmations();
+    initFormFileInputs();
     initFormSelects();
     initFormDatePickers();
+    initFormNumberInputs();
     initCalculatorResultModals();
 });
 

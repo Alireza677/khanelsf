@@ -6,6 +6,7 @@ use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\FormResource\Pages;
 use App\Models\Form as FormModel;
+use App\Services\FormSchema;
 use App\Services\FormSchemaIdentityManager;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
@@ -72,6 +73,7 @@ class FormResource extends Resource
                 'label' => 'فیلدهای استاندارد',
                 'fields' => [
                     'text' => ['label' => 'متن کوتاه', 'icon' => 'heroicon-o-pencil-square'],
+                    'number' => ['label' => 'عدد', 'icon' => 'heroicon-o-hashtag'],
                     'textarea' => ['label' => 'متن چندخطی', 'icon' => 'heroicon-o-bars-3-bottom-left'],
                 ],
             ],
@@ -86,8 +88,9 @@ class FormResource extends Resource
                 'label' => 'فیلدهای انتخابی',
                 'fields' => [
                     'select' => ['label' => 'فهرست انتخاب', 'icon' => 'heroicon-o-chevron-up-down'],
+                    'radio' => ['label' => 'رادیویی', 'icon' => 'heroicon-o-list-bullet'],
+                    'checkbox' => ['label' => 'انتخاب چندگانه', 'icon' => 'heroicon-o-check-badge'],
                     'image_choice' => ['label' => 'انتخاب تصویری', 'icon' => 'heroicon-o-photo'],
-                    'radio_card' => ['label' => 'کارت انتخابی', 'icon' => 'heroicon-o-check-circle'],
                 ],
             ],
             'advanced' => [
@@ -96,6 +99,7 @@ class FormResource extends Resource
                     'email' => ['label' => 'ایمیل', 'icon' => 'heroicon-o-envelope'],
                     'tel' => ['label' => 'تلفن', 'icon' => 'heroicon-o-phone'],
                     'date' => ['label' => 'انتخاب تاریخ', 'icon' => 'heroicon-o-calendar-days'],
+                    'file' => ['label' => 'آپلود فایل', 'icon' => 'heroicon-o-paper-clip'],
                 ],
             ],
         ];
@@ -108,6 +112,19 @@ class FormResource extends Resource
             ->collapse()
             ->mapWithKeys(fn (array $field, string $type): array => [$type => $field['label']])
             ->all();
+    }
+
+    public static function supportedFieldTypeLabels(): array
+    {
+        return [
+            ...static::fieldTypeLabels(),
+            'radio_card' => 'کارت انتخابی (قدیمی)',
+        ];
+    }
+
+    private static function newChoiceOptionValue(): string
+    {
+        return 'option_'.strtolower((string) Str::ulid());
     }
 
     public static function prepareSchemaForEditor(array $data): array
@@ -128,7 +145,7 @@ class FormResource extends Resource
                 $fields[$index]['date_range_enabled'] = filled($field['min_date'] ?? null) || filled($field['max_date'] ?? null);
             }
 
-            if (! is_array($field) || ! in_array($field['type'] ?? null, ['select', 'image_choice', 'radio_card'], true)) {
+            if (! is_array($field) || ! in_array($field['type'] ?? null, ['select', 'radio', 'checkbox', 'image_choice', 'radio_card'], true)) {
                 continue;
             }
 
@@ -173,8 +190,8 @@ class FormResource extends Resource
 
         foreach ($fields as $fieldIndex => $field) {
             if (($field['type'] ?? null) === 'date') {
-                $fields[$fieldIndex]['min_date'] = \App\Services\FormSchema::normalizeIsoDate($field['min_date'] ?? null);
-                $fields[$fieldIndex]['max_date'] = \App\Services\FormSchema::normalizeIsoDate($field['max_date'] ?? null);
+                $fields[$fieldIndex]['min_date'] = FormSchema::normalizeIsoDate($field['min_date'] ?? null);
+                $fields[$fieldIndex]['max_date'] = FormSchema::normalizeIsoDate($field['max_date'] ?? null);
                 $fields[$fieldIndex]['date_range_enabled'] = array_key_exists('date_range_enabled', $field)
                     ? filter_var($field['date_range_enabled'], FILTER_VALIDATE_BOOLEAN)
                     : $fields[$fieldIndex]['min_date'] !== null || $fields[$fieldIndex]['max_date'] !== null;
@@ -231,6 +248,10 @@ class FormResource extends Resource
                             'calculator' => 'فرم محاسبه‌گر',
                         ])
                         ->default('normal'),
+                    Forms\Components\Toggle::make('lead_generation_enabled')
+                        ->label('ایجاد سرنخ فروش از ورودی‌ها')
+                        ->helperText('در صورت فعال بودن، هر ورودی جدید این فرم طبق فرآیند فعلی CRM به‌عنوان سرنخ فروش پردازش می‌شود.')
+                        ->default(false),
                     Forms\Components\TextInput::make('calculator_identifier')
                         ->label('شناسه محاسبه‌گر')
                         ->helperText('یک شناسه پایدار انگلیسی برای گزارش‌ها؛ مثل construction_process_v1')
@@ -257,7 +278,7 @@ class FormResource extends Resource
                             Forms\Components\Select::make('type')
                                 ->label('نوع')
                                 ->live()
-                                ->options(static::fieldTypeLabels())
+                                ->options(static::supportedFieldTypeLabels())
                                 ->required()
                                 ->default('text'),
                             Forms\Components\Toggle::make('required')
@@ -309,17 +330,53 @@ class FormResource extends Resource
                                 ->label('توضیح مرحله')
                                 ->visible(fn (Forms\Get $get): bool => in_array($get('type'), ['page', 'step'], true))
                                 ->columnSpanFull(),
+                            Forms\Components\Toggle::make('settings.thousands_separator')
+                                ->label('جداکننده هزارگان')
+                                ->default(false)
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'number'),
+                            Forms\Components\Toggle::make('settings.allow_decimals')
+                                ->label('اعشار')
+                                ->default(false)
+                                ->live()
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'number'),
+                            Forms\Components\Select::make('settings.decimal_places')
+                                ->label('تعداد ارقام اعشار')
+                                ->options([1 => '۱', 2 => '۲', 3 => '۳', 4 => '۴'])
+                                ->default(2)
+                                ->required(fn (Forms\Get $get): bool => $get('type') === 'number'
+                                    && (bool) $get('settings.allow_decimals'))
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'number'
+                                    && (bool) $get('settings.allow_decimals')),
+                            Forms\Components\Select::make('settings.file_type')
+                                ->label('نوع فایل مجاز')
+                                ->options([
+                                    'all' => 'فایل و تصویر',
+                                    'image' => 'فقط تصویر',
+                                    'document' => 'فقط سند',
+                                ])
+                                ->default('all')
+                                ->required(fn (Forms\Get $get): bool => $get('type') === 'file')
+                                ->visible(fn (Forms\Get $get): bool => $get('type') === 'file')
+                                ->native(false),
                             Repeater::make('options')
                                 ->label('گزینه‌ها')
-                                ->visible(fn (Forms\Get $get): bool => in_array($get('type'), ['select', 'image_choice', 'radio_card'], true))
+                                ->visible(fn (Forms\Get $get): bool => in_array($get('type'), ['select', 'radio', 'checkbox', 'image_choice', 'radio_card'], true))
                                 ->schema([
                                     Forms\Components\Hidden::make('option_id')
                                         ->default(fn (): string => strtoupper((string) Str::ulid())),
-                                    Forms\Components\Hidden::make('value'),
                                     Forms\Components\TextInput::make('label')
                                         ->label('عنوان گزینه')
                                         ->live(debounce: 300)
                                         ->required(),
+                                    Forms\Components\TextInput::make('value')
+                                        ->label('مقدار گزینه')
+                                        ->default(fn (Forms\Get $get): ?string => in_array($get('../../type'), ['select', 'radio', 'checkbox'], true)
+                                            ? static::newChoiceOptionValue()
+                                            : null)
+                                        ->hidden(fn (Forms\Get $get): bool => in_array($get('../../type'), ['select', 'radio', 'checkbox'], true))
+                                        ->dehydratedWhenHidden()
+                                        ->required(fn (Forms\Get $get): bool => ! in_array($get('../../type'), ['select', 'radio', 'checkbox'], true))
+                                        ->maxLength(255),
                                     Forms\Components\ViewField::make('image')
                                         ->label('تصویر گزینه')
                                         ->view('filament.forms.components.media-library-url-picker')
@@ -383,7 +440,7 @@ class FormResource extends Resource
                         ])
                         ->view('filament.forms.components.form-builder-editor', [
                             'fieldPalette' => static::fieldPalette(),
-                            'fieldTypeLabels' => static::fieldTypeLabels(),
+                            'fieldTypeLabels' => static::supportedFieldTypeLabels(),
                         ])
                         ->addAction(fn (Action $action): Action => $action->action(function (array $arguments, Repeater $component): void {
                             $type = array_key_exists($arguments['fieldType'] ?? '', static::fieldTypeLabels())
@@ -400,6 +457,18 @@ class FormResource extends Resource
                                 'layout' => ['span' => 12],
                             ];
 
+                            if ($type === 'number') {
+                                $item['settings'] = [
+                                    'thousands_separator' => false,
+                                    'allow_decimals' => false,
+                                    'decimal_places' => 2,
+                                ];
+                            }
+
+                            if ($type === 'file') {
+                                $item['settings'] = ['file_type' => 'all'];
+                            }
+
                             if ($newUuid) {
                                 $items[$newUuid] = $item;
                             } else {
@@ -410,6 +479,13 @@ class FormResource extends Resource
                             $component->state($items);
                             $component->getChildComponentContainer($newUuid)->fill();
                             $items = $component->getState();
+                            if (in_array($type, ['select', 'radio', 'checkbox'], true)) {
+                                foreach (is_array(data_get($items, "{$newUuid}.options")) ? $items[$newUuid]['options'] : [] as $optionKey => $option) {
+                                    if (blank($option['value'] ?? null)) {
+                                        $items[$newUuid]['options'][$optionKey]['value'] = static::newChoiceOptionValue();
+                                    }
+                                }
+                            }
                             $items[$newUuid] = array_merge($items[$newUuid] ?? [], $item);
                             $component->state($items);
                             $component->callAfterStateUpdated();
@@ -454,6 +530,16 @@ class FormResource extends Resource
                     Forms\Components\TextInput::make('settings.success_message')
                         ->label('پیام موفقیت')
                         ->default('اطلاعات شما با موفقیت دریافت شد.'),
+                    Forms\Components\Toggle::make('settings.submit_confirmation_enabled')
+                        ->label('تأیید قبل از ارسال')
+                        ->default(false)
+                        ->live(),
+                    Forms\Components\Textarea::make('settings.submit_confirmation_text')
+                        ->label('متن تأیید')
+                        ->rows(3)
+                        ->maxLength(1000)
+                        ->required(fn (Forms\Get $get): bool => (bool) $get('settings.submit_confirmation_enabled'))
+                        ->visible(fn (Forms\Get $get): bool => (bool) $get('settings.submit_confirmation_enabled')),
                 ])
                 ->columns(2),
             Forms\Components\Section::make('اعلان‌ها')

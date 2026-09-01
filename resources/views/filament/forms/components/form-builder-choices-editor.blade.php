@@ -107,7 +107,7 @@
                                         $components = collect($optionItem->getComponents(withHidden: true))
                                             ->filter(fn ($component): bool => method_exists($component, 'getName'))
                                             ->keyBy(fn ($component): string => $component->getName());
-                                        $labelComponent = $components->get('label');
+                                        $choiceComponents = $components->only(['label', 'value']);
                                         $itemDeleteAction = $deleteAction(['item' => $uuid]);
                                     @endphp
 
@@ -123,9 +123,11 @@
                                         @endif
 
                                         <div class="form-builder-choice-row__label">
-                                            @if ($labelComponent && ! $labelComponent->isHidden())
-                                                {{ $labelComponent }}
-                                            @endif
+                                            @foreach ($choiceComponents as $choiceComponent)
+                                                @if (! $choiceComponent->isHidden())
+                                                    {{ $choiceComponent }}
+                                                @endif
+                                            @endforeach
                                         </div>
 
                                         @if ($isDeletable && $itemDeleteAction->isVisible())

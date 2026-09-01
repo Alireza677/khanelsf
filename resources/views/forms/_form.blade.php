@@ -47,6 +47,11 @@
     }
 
     $isMultiStep = $hasStepMarkers && count($steps) > 1;
+    $submitConfirmationEnabled = \App\Support\FormSubmitConfirmation::enabled($form);
+    $submitConfirmationText = \App\Support\FormSubmitConfirmation::text($form);
+    $submitConfirmationKey = \App\Support\FormSubmitConfirmation::INPUT_KEY;
+    $submitConfirmationChecked = $ownsFeedback && (string) old($submitConfirmationKey) === '1';
+    $submitConfirmationHasError = $formErrors->has($submitConfirmationKey);
     $imageUrl = static function (?string $image): ?string {
         if ($image === null || str_starts_with($image, '/') || preg_match('#^https?://#i', $image) === 1) {
             return $image;
@@ -70,8 +75,10 @@
     id="{{ $formDomId }}"
     class="form-card"
     method="post"
+    enctype="multipart/form-data"
     action="{{ route('forms.submit', $form->slug) }}"
     @if($isMultiStep) data-multi-step-form @endif
+    @if($isMultiStep && $submitConfirmationHasError) data-submit-confirmation-error="true" @endif
     @if($isMultiStep && $calculatorResult) data-initial-step="last" @endif
 >
     @csrf
@@ -123,7 +130,7 @@
 
             @foreach ($step['fields'] as $field)
                 @php($inputId = $formDomId.'-field-'.strtolower($field['field_id']))
-                @php($fieldHasError = $formErrors->has($field['name']))
+                @php($fieldHasError = $formErrors->has($field['name']) || $formErrors->has($field['name'].'.*'))
                 @php($errorId = $inputId.'-error')
                 @php($columnSpan = \App\Services\FormSchema::normalizeColumnSpan(data_get($field, 'layout.span')))
                 <div class="form-field form-field--span-{{ $columnSpan }}">
@@ -173,9 +180,49 @@
                             </button>
                             <div class="form-date-picker__calendar" role="dialog" aria-modal="false" aria-label="انتخاب تاریخ شمسی" hidden data-form-date-calendar></div>
                         </div>
+                    @elseif ($field['type'] === 'number')
+                        @php($numberValue = \App\Support\FormNumber::format($oldValue($field['name']), $field['settings']['thousands_separator']))
+                        <label for="{{ $inputId }}">{{ $field['label'] }}</label>
+                        <input
+                            id="{{ $inputId }}"
+                            name="{{ $field['name'] }}"
+                            type="text"
+                            inputmode="{{ $field['settings']['allow_decimals'] ? 'decimal' : 'numeric' }}"
+                            dir="ltr"
+                            value="{{ $numberValue }}"
+                            placeholder="{{ $field['placeholder'] }}"
+                            data-form-number
+                            data-thousands-separator="{{ $field['settings']['thousands_separator'] ? 'true' : 'false' }}"
+                            data-allow-decimals="{{ $field['settings']['allow_decimals'] ? 'true' : 'false' }}"
+                            data-decimal-places="{{ $field['settings']['decimal_places'] }}"
+                            @required($field['required'])
+                            @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif
+                        >
                     @elseif ($field['type'] === 'textarea')
                         <label for="{{ $inputId }}">{{ $field['label'] }}</label>
                         <textarea id="{{ $inputId }}" name="{{ $field['name'] }}" rows="5" placeholder="{{ $field['placeholder'] }}" @required($field['required']) @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>{{ $oldValue($field['name']) }}</textarea>
+                    @elseif ($field['type'] === 'file')
+                        @php($fileStatusId = $inputId.'-status')
+                        <label id="{{ $inputId }}-label" for="{{ $inputId }}">{{ $field['label'] }}</label>
+                        <input
+                            id="{{ $inputId }}"
+                            class="sr-only form-file-input"
+                            name="{{ $field['name'] }}"
+                            type="file"
+                            accept="{{ collect($field['settings']['allowed_extensions'])->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
+                            @required($field['required'])
+                            aria-describedby="{{ $fileStatusId }}{{ $fieldHasError ? ' '.$errorId : '' }}"
+                            @if($fieldHasError) aria-invalid="true" @endif
+                            data-form-file-input
+                        >
+                        <div class="form-file-picker" data-form-file-picker>
+                            <label class="form-file-picker__button" for="{{ $inputId }}">انتخاب فایل</label>
+                            <span id="{{ $fileStatusId }}" class="form-file-picker__status" aria-live="polite" data-form-file-status>فایلی انتخاب نشده است</span>
+                        </div>
+                        <div class="form-file-help">
+                            <span>حداکثر حجم فایل: {{ \App\Support\PersianDate::digits($field['settings']['max_size_mb']) }} مگابایت</span>
+                            <span>فرمت‌های مجاز: {{ $field['settings']['allowed_extensions_label'] }}</span>
+                        </div>
                     @elseif ($field['type'] === 'select')
                         @php($selectedValue = $oldValue($field['name']) ?? '')
                         @php($selectLabelId = $inputId.'-label')
@@ -226,6 +273,46 @@
                                 @endforeach
                             </div>
                         </div>
+                    @elseif ($field['type'] === 'radio')
+                        <fieldset class="form-adaptive-choice-group form-radio-group" @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>
+                            <legend>{{ $field['label'] }}</legend>
+                            <div class="form-adaptive-choice-grid form-radio-options">
+                                @foreach ($field['options'] as $optionIndex => $option)
+                                    @php($optionId = $inputId.'-option-'.strtolower($option['option_id']))
+                                    <label class="form-adaptive-choice form-radio-option {{ \App\Support\FormChoicePresentation::sizeClass($option['label']) }}" for="{{ $optionId }}">
+                                        <input
+                                            id="{{ $optionId }}"
+                                            name="{{ $field['name'] }}"
+                                            type="radio"
+                                            value="{{ $option['value'] }}"
+                                            @checked($oldValue($field['name']) === $option['value'])
+                                            @required($field['required'])
+                                        >
+                                        <span>{{ $option['label'] }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </fieldset>
+                    @elseif ($field['type'] === 'checkbox')
+                        @php($selectedValues = is_array($oldValue($field['name'])) ? $oldValue($field['name']) : [])
+                        <fieldset class="form-adaptive-choice-group form-checkbox-group" @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>
+                            <legend>{{ $field['label'] }}</legend>
+                            <div class="form-adaptive-choice-grid form-checkbox-options">
+                                @foreach ($field['options'] as $optionIndex => $option)
+                                    @php($optionId = $inputId.'-option-'.strtolower($option['option_id']))
+                                    <label class="form-adaptive-choice form-checkbox-option {{ \App\Support\FormChoicePresentation::sizeClass($option['label']) }}" for="{{ $optionId }}">
+                                        <input
+                                            id="{{ $optionId }}"
+                                            name="{{ $field['name'] }}[]"
+                                            type="checkbox"
+                                            value="{{ $option['value'] }}"
+                                            @checked(in_array($option['value'], $selectedValues, true))
+                                        >
+                                        <span>{{ $option['label'] }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </fieldset>
                     @elseif (in_array($field['type'], ['image_choice', 'radio_card'], true))
                         <fieldset class="form-choice-group" @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>
                             <legend>{{ $field['label'] }}</legend>
@@ -248,21 +335,41 @@
                     @endif
 
                     @if ($fieldHasError)
-                        <p id="{{ $errorId }}" class="form-error">{{ $formErrors->first($field['name']) }}</p>
+                        <p id="{{ $errorId }}" class="form-error">{{ $formErrors->first($field['name']) ?: $formErrors->first($field['name'].'.*') }}</p>
                     @endif
                 </div>
             @endforeach
         </section>
     @endforeach
 
+    @if ($submitConfirmationEnabled)
+        <div class="form-submit-confirmation" data-submit-confirmation>
+            <label for="{{ $formDomId }}-submit-confirmation">
+                <input
+                    id="{{ $formDomId }}-submit-confirmation"
+                    name="{{ $submitConfirmationKey }}"
+                    type="checkbox"
+                    value="1"
+                    @checked($submitConfirmationChecked)
+                    @if($submitConfirmationHasError) aria-invalid="true" aria-describedby="{{ $formDomId }}-submit-confirmation-error" @endif
+                    data-submit-confirmation-input
+                >
+                <span>{{ $submitConfirmationText }}</span>
+            </label>
+            @if ($submitConfirmationHasError)
+                <p id="{{ $formDomId }}-submit-confirmation-error" class="form-error">{{ $formErrors->first($submitConfirmationKey) }}</p>
+            @endif
+        </div>
+    @endif
+
     @if ($isMultiStep)
         <div class="form-step-navigation">
             <button class="button" type="button" data-step-back hidden>قبلی</button>
             <button class="button" type="button" data-step-next>بعدی</button>
-            <button class="button" type="submit" data-step-submit hidden>{{ data_get($form->settings, 'submit_label', 'ارسال') }}</button>
+            <button class="button" type="submit" data-step-submit data-form-submit @disabled($submitConfirmationEnabled && ! $submitConfirmationChecked) hidden>{{ data_get($form->settings, 'submit_label', 'ارسال') }}</button>
         </div>
     @else
-        <button class="button" type="submit">{{ data_get($form->settings, 'submit_label', 'ارسال') }}</button>
+        <button class="button" type="submit" data-form-submit @disabled($submitConfirmationEnabled && ! $submitConfirmationChecked)>{{ data_get($form->settings, 'submit_label', 'ارسال') }}</button>
     @endif
 </form>
 

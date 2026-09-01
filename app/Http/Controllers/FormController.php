@@ -11,6 +11,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\UploadedFile;
+use App\Support\FormSubmitConfirmation;
 
 class FormController extends Controller
 {
@@ -74,14 +76,22 @@ class FormController extends Controller
         FormAttributionSession $attribution,
     ): RedirectResponse {
         $form = Form::query()->published()->where('slug', $slug)->firstOrFail();
+        $request->merge($schema->normalizeSubmissionInput($form, $request->all()));
         $validator = Validator::make($request->all(), [
             ...$schema->validationRules($form),
+            FormSubmitConfirmation::INPUT_KEY => FormSubmitConfirmation::enabled($form)
+                ? ['required', 'accepted']
+                : ['nullable'],
             'website' => ['prohibited'],
             '_context_page_id' => ['nullable', 'integer', 'exists:pages,id'],
             '_context_page_url' => ['nullable', 'string', 'max:2048'],
             '_context_block_id' => ['nullable', 'string', 'regex:/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i'],
             '_display_mode' => ['nullable', 'in:page,modal'],
             '_form_instance' => ['nullable', 'string', 'regex:/^[a-z0-9][a-z0-9_-]{0,99}$/'],
+        ], [
+            ...$schema->validationMessages($form),
+            FormSubmitConfirmation::INPUT_KEY.'.required' => 'برای ارسال فرم، تأیید این مورد الزامی است.',
+            FormSubmitConfirmation::INPUT_KEY.'.accepted' => 'برای ارسال فرم، تأیید این مورد الزامی است.',
         ]);
         $instanceToken = $this->instanceToken($request->all());
 
@@ -96,6 +106,7 @@ class FormController extends Controller
         $requestContext = $this->requestContext($validated);
 
         unset(
+            $validated[FormSubmitConfirmation::INPUT_KEY],
             $validated['website'],
             $validated['_context_page_id'],
             $validated['_context_page_url'],
@@ -103,6 +114,13 @@ class FormController extends Controller
             $validated['_display_mode'],
             $validated['_form_instance'],
         );
+
+        $files = collect($validated)
+            ->filter(fn (mixed $value): bool => $value instanceof UploadedFile)
+            ->all();
+        $validated = collect($validated)
+            ->reject(fn (mixed $value): bool => $value instanceof UploadedFile)
+            ->all();
 
         $hasExplicitContext = collect($requestContext)->contains(fn (mixed $value): bool => filled($value));
         $context = $hasExplicitContext
@@ -113,7 +131,14 @@ class FormController extends Controller
             $context = $attribution->normalize($this->requestContext($request->all()));
         }
 
-        $submission = $submissions->submit($form, $validated, $context);
+        $confirmationAudit = FormSubmitConfirmation::enabled($form)
+            ? [
+                'confirmed' => true,
+                'confirmation_text_snapshot' => FormSubmitConfirmation::text($form),
+            ]
+            : null;
+
+        $submission = $submissions->submit($form, $validated, $context, $files, $confirmationAudit);
         $attribution->forget($request, $form, $instanceToken);
 
         $redirect = $request->input('_display_mode') === 'modal'

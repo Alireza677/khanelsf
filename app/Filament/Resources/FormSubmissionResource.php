@@ -31,7 +31,9 @@ class FormSubmissionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['form', 'lead', 'page']);
+        return parent::getEloquentQuery()
+            ->with(['form', 'lead', 'page', 'attachments'])
+            ->withCount('attachments');
     }
 
     public static function canView(Model $record): bool
@@ -101,6 +103,9 @@ class FormSubmissionResource extends Resource
                     Infolists\Components\TextEntry::make('page_url')
                         ->label('نشانی صفحه')
                         ->visible(fn (FormSubmission $record): bool => filled($record->page_url)),
+                    Infolists\Components\TextEntry::make('attachments_count')
+                        ->label('فایل‌ها')
+                        ->state(fn (FormSubmission $record): string => $record->attachments->count().' فایل'),
                 ])
                 ->columns(2),
             Infolists\Components\Section::make('اطلاعات ارسال‌کننده')

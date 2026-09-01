@@ -6,6 +6,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\ClientProjectCycleResolver;
 use App\Services\CustomerMembershipManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,6 +31,7 @@ class PublicAccountServiceConvergenceTest extends TestCase
                 'end_date' => '2026-09-30',
                 'monthly_hour_limit_minutes' => 600,
             ]);
+            app(ClientProjectCycleResolver::class)->resolveForDate($running, CarbonImmutable::today());
             ClientProject::factory()->for($customer)->create([
                 'title' => 'پروژه آینده',
                 'start_date' => '2026-10-01',
@@ -50,7 +52,7 @@ class PublicAccountServiceConvergenceTest extends TestCase
             $this->actingAs($user, 'client')
                 ->get(route('account.services.index', ['customer' => $customer->id]))
                 ->assertOk()
-                ->assertSee('سقف خدمات هر ماه')
+                ->assertSee('سهم دوره جاری')
                 ->assertSee('وضعیت پرداخت')
                 ->assertSee('بدون صورتحساب')
                 ->assertSee('در حال اجرا')
@@ -133,32 +135,39 @@ class PublicAccountServiceConvergenceTest extends TestCase
     {
         $user = User::factory()->client()->create();
         $customer = Customer::factory()->create();
-        $project = ClientProject::factory()->for($customer)->create(['monthly_hour_limit_minutes' => 600]);
+        $project = ClientProject::factory()->for($customer)->create([
+            'monthly_hour_limit_minutes' => 600,
+            'start_date' => today(),
+        ]);
         app(CustomerMembershipManager::class)->assign($customer, $user, 'owner');
+        $cycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, now()->toImmutable());
 
         ClientProjectActivity::factory()->for($project, 'project')->publishedForClient()->create([
             'title' => 'فعالیت نمایشی',
             'internal_notes' => 'یادداشت کاملاً داخلی',
             'duration_minutes' => 60,
+            'client_project_cycle_id' => $cycle->id,
         ]);
         ClientProjectActivity::factory()->for($project, 'project')->create([
             'title' => 'فعالیت داخلی',
             'visibility' => ClientProjectActivity::VISIBILITY_INTERNAL,
             'status' => ClientProjectActivity::STATUS_PUBLISHED,
             'duration_minutes' => 120,
+            'client_project_cycle_id' => $cycle->id,
         ]);
         ClientProjectActivity::factory()->for($project, 'project')->create([
             'title' => 'فعالیت پیش‌نویس',
             'visibility' => ClientProjectActivity::VISIBILITY_CLIENT,
             'status' => ClientProjectActivity::STATUS_DRAFT,
             'duration_minutes' => 90,
+            'client_project_cycle_id' => $cycle->id,
         ]);
 
         $this->actingAs($user, 'client')
             ->get(route('account.projects.show', ['project' => $project, 'customer' => $customer->id]))
             ->assertOk()
             ->assertSee('فعالیت نمایشی')
-            ->assertSee('زمان مصرف‌شده پروژه')
+            ->assertSee('مصرف دوره جاری')
             ->assertSee('4 ساعت و 30 دقیقه')
             ->assertDontSee('یادداشت کاملاً داخلی')
             ->assertDontSee('فعالیت داخلی')
