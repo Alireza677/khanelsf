@@ -31,8 +31,16 @@ final class ClientProjectCycleUsage
 
     public function summary(ClientProjectCycle $cycle, ?int $excludeActivityId = null): array
     {
-        $consumed = $this->consumed($cycle, $excludeActivityId);
+        $used = $this->consumed($cycle, $excludeActivityId);
+        $allocated = (int) $cycle->allocated_minutes;
 
-        return ['allocated_minutes' => $cycle->allocated_minutes, 'consumed_minutes' => $consumed, 'remaining_minutes' => max(0, $cycle->allocated_minutes - $consumed)];
+        return [
+            'allocated_minutes' => $allocated,
+            'used_minutes' => $used,
+            // Kept for callers that still use the historical aggregate name.
+            'consumed_minutes' => $used,
+            'remaining_minutes' => max($allocated - $used, 0),
+            'overage_minutes' => max($used - $allocated, 0),
+        ];
     }
 }

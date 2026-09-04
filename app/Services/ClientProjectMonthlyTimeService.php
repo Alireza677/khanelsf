@@ -20,7 +20,7 @@ class ClientProjectMonthlyTimeService
             $allocated === null => null,
             $allocated === 0 && $used === 0 => 0,
             $allocated === 0 => 100,
-            default => (int) round(($used / $allocated) * 100),
+            default => min(100, (int) round(($used / $allocated) * 100)),
         };
 
         return [
@@ -64,7 +64,7 @@ class ClientProjectMonthlyTimeService
                 'used_minutes' => $used,
                 'remaining_minutes' => $allocated === null ? null : max(0, $allocated - $used),
                 'overage_minutes' => $allocated === null ? 0 : max(0, $used - $allocated),
-                'usage_percentage' => $allocated === null ? null : ($allocated === 0 ? ($used > 0 ? 100 : 0) : (int) round(($used / $allocated) * 100)),
+                'usage_percentage' => $allocated === null ? null : ($allocated === 0 ? ($used > 0 ? 100 : 0) : min(100, (int) round(($used / $allocated) * 100))),
                 'is_exceeded' => $allocated !== null && $used > $allocated,
                 'published_client_activity_count' => (int) ($row?->published_count ?? 0),
                 'admin_activity_count' => (int) ($row?->activity_count ?? 0),

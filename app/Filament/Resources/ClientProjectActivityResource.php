@@ -10,6 +10,7 @@ use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\ClientProjectActivityOverage;
 use App\Services\ClientProjectCycleResolver;
 use App\Services\ClientProjectCycleUsage;
 use App\Services\DurationFormatter;
@@ -96,12 +97,18 @@ class ClientProjectActivityResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
+        return $table->modifyQueryUsing(fn (Builder $query): Builder => $query->with('cycle'))->columns([
             Tables\Columns\TextColumn::make('activity_date')->label('تاریخ')->jalaliDate()->sortable(),
             Tables\Columns\TextColumn::make('title')->label('عنوان')->searchable(),
             Tables\Columns\TextColumn::make('project.title')->label('پروژه')->searchable(),
             Tables\Columns\TextColumn::make('project.customer.display_name')->label('مشتری')->searchable(),
             Tables\Columns\TextColumn::make('duration_minutes')->label('مدت')->formatStateUsing(fn (int $state): string => app(DurationFormatter::class)->format($state)),
+            Tables\Columns\TextColumn::make('overage_badge')
+                ->label('سهمیه')
+                ->getStateUsing(fn (ClientProjectActivity $record): ?string => app(ClientProjectActivityOverage::class)->isOverage($record)
+                    ? 'خدمات مازاد بر سهمیه'
+                    : null)
+                ->badge()->color('warning')->placeholder('—'),
             Tables\Columns\TextColumn::make('invoiceItems.invoice.invoice_number')->label('فاکتور')->placeholder('—')->badge(),
             Tables\Columns\TextColumn::make('visibility')->label('نمایش')->badge()->formatStateUsing(fn (string $state): string => self::visibilityOptions()[$state] ?? $state),
             Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge()->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
@@ -128,6 +135,12 @@ class ClientProjectActivityResource extends Resource
                 Infolists\Components\TextEntry::make('activity_date')->label('تاریخ')->jalaliDate(),
                 Infolists\Components\TextEntry::make('title')->label('عنوان'),
                 Infolists\Components\TextEntry::make('duration_minutes')->label('مدت')->formatStateUsing(fn (int $state): string => app(DurationFormatter::class)->format($state)),
+                Infolists\Components\TextEntry::make('overage_badge')
+                    ->label('سهمیه')
+                    ->getStateUsing(fn (ClientProjectActivity $record): ?string => app(ClientProjectActivityOverage::class)->isOverage($record)
+                        ? 'خدمات مازاد بر سهمیه'
+                        : null)
+                    ->badge()->color('warning')->placeholder('—'),
                 Infolists\Components\TextEntry::make('performedBy.name')->label('اجراکننده')->placeholder('—'),
                 Infolists\Components\TextEntry::make('invoiceItems.invoice.invoice_number')->label('ثبت‌شده در فاکتور')->placeholder('—')->badge(),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات مشتری')->placeholder('—')->columnSpanFull(),
@@ -230,13 +243,16 @@ class ClientProjectActivityResource extends Resource
 
     public static function cycleSummary(int|string|null $projectId): string
     {
-        $cycle = ClientProject::find($projectId)?->cycles()->whereIn('status', ['active', 'overdue'])->oldest('starts_at')->first();
+        $project = ClientProject::find($projectId);
+        $cycle = $project?->isRecurring()
+            ? $project->cycles()->containingDate(CarbonImmutable::today())->oldest('starts_at')->first()
+            : $project?->cycles()->oldest('starts_at')->first();
         if (! $cycle) {
             return 'پس از ثبت فعالیت، دوره مناسب براساس تعهد پروژه ساخته یا انتخاب می‌شود.';
         }
         $usage = app(ClientProjectCycleUsage::class)->summary($cycle);
 
-        return PersianDate::date($cycle->starts_at).' تا '.PersianDate::date($cycle->ends_at).' · تعهد: '.app(DurationFormatter::class)->format($cycle->allocated_minutes).' · مصرف: '.app(DurationFormatter::class)->format($usage['consumed_minutes']).' · باقی‌مانده: '.app(DurationFormatter::class)->format($usage['remaining_minutes']).($cycle->status->value === 'overdue' ? ' · عقب‌افتاده' : '');
+        return PersianDate::date($cycle->starts_at).' تا '.PersianDate::date($cycle->ends_at).' · تعهد: '.app(DurationFormatter::class)->format($cycle->allocated_minutes).' · مصرف: '.app(DurationFormatter::class)->format($usage['used_minutes']).' · باقی‌مانده: '.app(DurationFormatter::class)->format($usage['remaining_minutes']).($usage['overage_minutes'] > 0 ? ' · خدمات مازاد: '.app(DurationFormatter::class)->format($usage['overage_minutes']) : '').($cycle->status->value === 'overdue' ? ' · عقب‌افتاده' : '');
     }
 
     public static function serviceSummary(int|string|null $serviceId): string

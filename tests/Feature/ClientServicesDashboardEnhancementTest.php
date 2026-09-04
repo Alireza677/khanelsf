@@ -28,10 +28,16 @@ class ClientServicesDashboardEnhancementTest extends TestCase
         $this->actingAs($user, 'client')->get(route('account.services.index'))
             ->assertOk()
             ->assertSee('3 ساعت و 30 دقیقه')
-            ->assertSee('مازاد')
+            ->assertSee('خدمات مازاد')
             ->assertSee('30 دقیقه')
             ->assertSee('پروژه‌های فعال')
             ->assertSee('گزارش مجاز');
+
+        $this->actingAs($user, 'client')->get(route('account.projects.show', $first))
+            ->assertOk()
+            ->assertSee('خدمات مازاد')
+            ->assertSee('30 دقیقه')
+            ->assertSee('value="100" max="100"', false);
     }
 
     public function test_dashboard_uses_no_limit_state_without_a_fake_percentage(): void

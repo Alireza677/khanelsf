@@ -15,6 +15,7 @@ use App\Services\DraftInvoiceItems;
 use App\Services\InvoiceLifecycle;
 use App\Services\InvoiceTotalsCalculator;
 use App\Services\MonthlyInvoiceGenerator;
+use App\Services\ProjectCycleInvoiceGenerator;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -191,7 +192,7 @@ class ClientInvoiceFoundationTest extends TestCase
         $project = ClientProject::factory()->for($customer)->create(['monthly_hour_limit_minutes' => 60, 'start_date' => '2026-08-01']);
         $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-08-10'));
         ClientProjectActivity::factory()->for($project, 'project')->create(['client_project_cycle_id' => $cycle->id, 'activity_date' => '2026-08-10', 'duration_minutes' => 60, 'currency_snapshot' => 'IRT', 'unit_price_snapshot' => '100', 'total_amount' => '100', 'pricing_mode_snapshot' => 'fixed', 'service_unit_snapshot' => 'fixed']);
-        app(InvoiceLifecycle::class)->cancel($cycle->fresh()->invoice);
+        app(InvoiceLifecycle::class)->cancel(app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh()));
         $this->actingAs($admin);
 
         Livewire::test(CreateInvoice::class)->fillForm(['customer_id' => $customer->id, 'client_project_id' => $project->id, 'client_project_cycle_id' => $cycle->id])->call('create')->assertHasNoFormErrors();

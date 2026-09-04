@@ -31,7 +31,7 @@
                                         <div role="cell"><small>نوع پروژه</small><span>{{ $project['type'] ?: 'پروژه خدماتی' }}</span></div>
                                         <div role="cell"><small>وضعیت پروژه</small><span class="portal-badge">{{ $project['status_label'] }}</span></div>
                                         <div role="cell"><small>سهم دوره جاری</small><strong>{{ $project['limit_time'] ?? 'دوره جاری ندارد' }}</strong></div>
-                                        <div role="cell"><small>مصرف دوره جاری</small><strong>{{ $project['used_time'] }}</strong>@if($project['cycle_start'])<small>دوره جاری: {{ $project['cycle_start'] }} تا {{ $project['cycle_end'] }}</small>@endif</div>
+                                        <div role="cell"><small>مصرف دوره جاری</small><strong>{{ $project['used_time'] }}</strong>@if($project['overage_time'])<span class="portal-badge">خدمات مازاد: {{ $project['overage_time'] }}</span>@endif @if($project['cycle_start'])<small>دوره جاری: {{ $project['cycle_start'] }} تا {{ $project['cycle_end'] }}</small>@endif</div>
                                         <div role="cell"><small>وضعیت پرداخت</small><span class="services-payment services-payment--{{ $project['payment']['state'] }}">{{ $project['payment']['label'] }}</span></div>
                                     </div>
                                     <div class="services-project-timeline">
@@ -94,12 +94,12 @@
                             <div class="services-activity-list">
                                 @foreach ($recentActivities as $activity)
                                     <button class="services-activity-row" type="button" data-activity-open="activity-{{ $activity['id'] }}">
-                                        <div><strong>{{ $activity['title'] }}</strong>@if($activity['description'])<span>{{ Str::limit($activity['description'], 90) }}</span>@endif</div>
+                                        <div><strong>{{ $activity['title'] }}</strong>@if($activity['is_overage'])<span class="portal-badge">{{ $activity['overage_label'] }}</span>@endif @if($activity['description'])<span>{{ Str::limit($activity['description'], 90) }}</span>@endif</div>
                                         <span>{{ $activity['project_title'] }}</span><time>{{ $activity['activity_date'] }}</time><span>{{ $activity['duration'] }}</span><em>{{ $activity['status_label'] }}</em>
                                     </button>
                                     <dialog class="services-activity-dialog" id="activity-{{ $activity['id'] }}" aria-labelledby="activity-title-{{ $activity['id'] }}">
                                         <form method="dialog"><button class="services-dialog-close" aria-label="بستن">×</button></form>
-                                        <span class="portal-badge">{{ $activity['status_label'] }}</span><h2 id="activity-title-{{ $activity['id'] }}">{{ $activity['title'] }}</h2>
+                                        <span class="portal-badge">{{ $activity['status_label'] }}</span>@if($activity['is_overage']) <span class="portal-badge">{{ $activity['overage_label'] }}</span>@endif<h2 id="activity-title-{{ $activity['id'] }}">{{ $activity['title'] }}</h2>
                                         <dl><div><dt>پروژه</dt><dd>{{ $activity['project_title'] }}</dd></div><div><dt>تاریخ انجام</dt><dd>{{ $activity['activity_date'] }}</dd></div><div><dt>مدت زمان</dt><dd>{{ $activity['duration'] }}</dd></div></dl>
                                         @if($activity['description'])<div class="services-dialog-description"><h3>توضیحات</h3><p>{{ $activity['description'] }}</p></div>@endif
                                     </dialog>

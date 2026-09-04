@@ -7,7 +7,10 @@ use App\Support\PersianDate;
 
 class ClientProjectActivityPresenter
 {
-    public function __construct(private readonly DurationFormatter $durations) {}
+    public function __construct(
+        private readonly DurationFormatter $durations,
+        private readonly ClientProjectActivityOverage $overage,
+    ) {}
 
     public function present(ClientProjectActivity $activity): array
     {
@@ -19,6 +22,8 @@ class ClientProjectActivityPresenter
             'duration' => $this->durations->format($activity->duration_minutes),
             'project_title' => $activity->project?->title,
             'status_label' => 'منتشرشده',
+            'is_overage' => $this->overage->isOverage($activity),
+            'overage_label' => 'خدمات مازاد بر سهمیه',
         ];
     }
 }

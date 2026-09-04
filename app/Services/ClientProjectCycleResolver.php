@@ -41,13 +41,7 @@ final class ClientProjectCycleResolver
             return null;
         }
 
-        $cycle ??= $this->createForPeriod($project, $period);
-        $remaining = $this->usage->summary($cycle, $excludeActivityId)['remaining_minutes'];
-        if ($durationMinutes > $remaining) {
-            throw new DomainException('activity_exceeds_cycle_remaining_minutes');
-        }
-
-        return $cycle;
+        return $cycle ?? $this->createForPeriod($project, $period);
     }
 
     public function createNext(ClientProject $project, CarbonImmutable $reference): ClientProjectCycle

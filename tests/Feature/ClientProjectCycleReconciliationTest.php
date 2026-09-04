@@ -13,6 +13,7 @@ use App\Services\ClientProjectCycleResolver;
 use App\Services\ClientProjectCycleUsage;
 use App\Services\CustomerMembershipManager;
 use App\Services\InvoiceLifecycle;
+use App\Services\ProjectCycleInvoiceGenerator;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -160,6 +161,7 @@ class ClientProjectCycleReconciliationTest extends TestCase
         $project = $this->project(Customer::factory()->create(), 60, '2026-08-28');
         $cycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, CarbonImmutable::parse('2026-08-30'));
         $activity = $this->billableActivity($project, '2026-08-30', 60, $cycle->id);
+        app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh());
         $this->assertDatabaseHas('invoice_activity_claims', ['client_project_activity_id' => $activity->id]);
 
         $this->expectException(LogicException::class);
@@ -171,7 +173,7 @@ class ClientProjectCycleReconciliationTest extends TestCase
         $project = $this->project(Customer::factory()->create(), 60, '2026-08-28');
         $cycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, CarbonImmutable::parse('2026-08-30'));
         $this->billableActivity($project, '2026-08-30', 60, $cycle->id);
-        app(InvoiceLifecycle::class)->issue($cycle->fresh()->invoice);
+        app(InvoiceLifecycle::class)->issue(app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh()));
 
         try {
             app(ClientProjectCycleReconciler::class)->updateProject($project, ['start_date' => '2026-08-29']);

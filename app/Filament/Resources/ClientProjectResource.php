@@ -178,6 +178,18 @@ class ClientProjectResource extends Resource
                             app(ClientProjectCycleUsage::class)->consumed($record->currentCycle),
                         );
                     }),
+                Tables\Columns\TextColumn::make('current_cycle_overage')
+                    ->label('خدمات مازاد')
+                    ->getStateUsing(function (ClientProject $record): ?string {
+                        if (! $record->currentCycle) {
+                            return null;
+                        }
+
+                        $overage = app(ClientProjectCycleUsage::class)->summary($record->currentCycle)['overage_minutes'];
+
+                        return $overage > 0 ? app(DurationFormatter::class)->format($overage) : null;
+                    })
+                    ->badge()->color('warning')->placeholder('—'),
                 Tables\Columns\TextColumn::make('start_date')->label('شروع')->jalaliDate()->placeholder('—')->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->jalaliDateTime()->sortable(),
             ])
@@ -218,9 +230,11 @@ class ClientProjectResource extends Resource
                     Infolists\Components\TextEntry::make('ends_at')->label('Deadline')->formatStateUsing(fn ($state) => PersianDate::date($state)),
                     Infolists\Components\TextEntry::make('allocated_minutes')->label('تعهد')->formatStateUsing(fn ($state) => app(DurationFormatter::class)->format($state)),
                     Infolists\Components\TextEntry::make('id')->label('انجام‌شده')->formatStateUsing(fn ($state, $record) => app(DurationFormatter::class)->format(app(ClientProjectCycleUsage::class)->consumed($record))),
+                    Infolists\Components\TextEntry::make('remaining_minutes')->label('باقی‌مانده')->getStateUsing(fn ($record) => app(ClientProjectCycleUsage::class)->summary($record)['remaining_minutes'])->formatStateUsing(fn ($state) => app(DurationFormatter::class)->format($state)),
+                    Infolists\Components\TextEntry::make('overage_minutes')->label('خدمات مازاد')->getStateUsing(fn ($record) => app(ClientProjectCycleUsage::class)->summary($record)['overage_minutes'])->formatStateUsing(fn ($state) => app(DurationFormatter::class)->format($state))->badge()->color(fn ($state): string => (int) $state > 0 ? 'warning' : 'gray'),
                     Infolists\Components\TextEntry::make('status')->label('وضعیت')->formatStateUsing(fn ($state) => $state->label())->badge(),
                     Infolists\Components\TextEntry::make('invoice.invoice_number')->label('فاکتور')->placeholder('—'),
-                ])->columns(3)->columnSpanFull(),
+                ])->columns(4)->columnSpanFull(),
             ])->columns(2),
         ]);
     }

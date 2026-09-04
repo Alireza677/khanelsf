@@ -10,6 +10,8 @@ class ActivityWizardProjectContext
 {
     public function __construct(
         private readonly ClientProjectMonthlyTimeService $time,
+        private readonly ClientProjectCycleResolver $cycles,
+        private readonly ClientProjectCycleUsage $cycleUsage,
         private readonly DurationFormatter $durations,
     ) {}
 
@@ -56,6 +58,35 @@ class ActivityWizardProjectContext
                 ? $this->durations->format($summary['used_minutes']).' ثبت شده · بدون محدودیت ماهانه'
                 : $this->durations->format($summary['used_minutes']).' از '.$this->durations->format($project->monthly_hour_limit_minutes).' مصرف شده',
         ];
+    }
+
+    public function overageWarning(
+        int|string|null $projectId,
+        mixed $activityDate,
+        int $durationMinutes,
+    ): ?string {
+        $project = $this->find($projectId);
+        if (! $project || ! $project->monthly_hour_limit_minutes || $durationMinutes < 1 || blank($activityDate)) {
+            return null;
+        }
+
+        $date = CarbonImmutable::parse($activityDate)->startOfDay();
+        $period = $this->cycles->periodForDate($project, $date);
+        if (! $period) {
+            return null;
+        }
+
+        $cycle = $project->cycles()
+            ->whereDate('starts_at', $period['starts_at']->toDateString())
+            ->whereDate('ends_at', $period['ends_at']->toDateString())
+            ->first();
+        $allocated = (int) ($cycle?->allocated_minutes ?? $project->monthly_hour_limit_minutes);
+        $used = $cycle ? $this->cycleUsage->summary($cycle)['used_minutes'] : 0;
+        $overage = max(($used + $durationMinutes) - $allocated, 0);
+
+        return $overage > 0
+            ? 'هشدار: با ثبت این فعالیت، خدمات مازاد بر سهمیه دوره به '.$this->durations->format($overage).' می‌رسد. ثبت فعالیت مجاز است.'
+            : null;
     }
 
     private function query()

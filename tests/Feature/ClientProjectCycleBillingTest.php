@@ -8,13 +8,13 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\ClientProjectCycle;
 use App\Models\Customer;
+use App\Services\ClientProjectActivityOverage;
 use App\Services\ClientProjectCycleResolver;
 use App\Services\ClientProjectCycleUsage;
 use App\Services\InvoiceLifecycle;
 use App\Services\ProjectCycleInvoiceGenerator;
 use App\Services\RecalculateClientProjectCycle;
 use Carbon\CarbonImmutable;
-use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -46,7 +46,7 @@ class ClientProjectCycleBillingTest extends TestCase
         $this->assertDatabaseCount('invoices', 0);
     }
 
-    public function test_completion_before_or_after_deadline_creates_one_cycle_scoped_draft(): void
+    public function test_reaching_allocation_completes_quota_without_automatically_freezing_cycle(): void
     {
         $customer = Customer::factory()->create();
         $project = $this->project(900, '2026-08-05', $customer);
@@ -55,9 +55,12 @@ class ClientProjectCycleBillingTest extends TestCase
         $otherCycle = app(ClientProjectCycleResolver::class)->resolve($other, CarbonImmutable::parse('2026-08-10'));
         $this->activity($other, $otherCycle->id, 300);
         $this->activity($project, $cycle->id, 840);
-        $this->assertDatabaseCount('invoices', 1); // other project only
+        $this->assertDatabaseCount('invoices', 0);
         $this->activity($project, $cycle->id, 60);
-        $invoice = $cycle->fresh()->invoice;
+        $this->assertSame(ClientProjectCycleStatus::Completed, $cycle->fresh()->status);
+        $this->assertDatabaseCount('invoices', 0);
+
+        $invoice = app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh());
         $this->assertSame(InvoiceStatus::Draft, $invoice->status);
         $this->assertSame($cycle->id, $invoice->client_project_cycle_id);
         $this->assertSame($cycle->starts_at->toDateString(), $invoice->period_start->toDateString());
@@ -79,13 +82,24 @@ class ClientProjectCycleBillingTest extends TestCase
         $this->assertSame(ClientProjectCycleStatus::Overdue, $cycle->fresh()->status);
     }
 
-    public function test_activity_cannot_silently_overflow_remaining_allocation(): void
+    public function test_activity_can_overflow_allocation_and_usage_reports_overage(): void
     {
         $project = $this->project(60, '2026-08-05');
         $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-08-10'));
-        $this->activity($project, $cycle->id, 30);
-        $this->expectException(DomainException::class);
-        app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-08-11'), 31);
+        $withinQuota = $this->activity($project, $cycle->id, 30);
+        $resolved = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-08-11'), 31);
+        $crossingQuota = $this->activity($project, $resolved->id, 31);
+        $overage = $this->activity($project, $resolved->id, 10);
+
+        $summary = app(ClientProjectCycleUsage::class)->summary($cycle->fresh());
+        $this->assertSame(60, $summary['allocated_minutes']);
+        $this->assertSame(71, $summary['used_minutes']);
+        $this->assertSame(0, $summary['remaining_minutes']);
+        $this->assertSame(11, $summary['overage_minutes']);
+        $this->assertFalse(app(ClientProjectActivityOverage::class)->isOverage($withinQuota));
+        $this->assertTrue(app(ClientProjectActivityOverage::class)->isOverage($crossingQuota));
+        $this->assertTrue(app(ClientProjectActivityOverage::class)->isOverage($overage));
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_issue_and_cancel_update_cycle_and_release_for_replacement(): void
@@ -93,7 +107,7 @@ class ClientProjectCycleBillingTest extends TestCase
         $project = $this->project(60, '2026-08-05');
         $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-08-10'));
         $this->activity($project, $cycle->id, 60);
-        $invoice = app(InvoiceLifecycle::class)->issue($cycle->fresh()->invoice);
+        $invoice = app(InvoiceLifecycle::class)->issue(app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh()));
         $this->assertSame(ClientProjectCycleStatus::Invoiced, $cycle->fresh()->status);
         app(InvoiceLifecycle::class)->cancel($invoice);
         $this->assertSame(ClientProjectCycleStatus::Completed, $cycle->fresh()->status);
@@ -106,6 +120,7 @@ class ClientProjectCycleBillingTest extends TestCase
         $project = $this->project(60, '2026-08-05');
         $cycle = app(ClientProjectCycleResolver::class)->resolve($project, CarbonImmutable::parse('2026-08-10'));
         $activity = $this->activity($project, $cycle->id, 60);
+        app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh());
         $activity->update(['internal_notes' => 'مجاز']);
         $this->assertSame('مجاز', $activity->fresh()->internal_notes);
         $this->expectException(\LogicException::class);

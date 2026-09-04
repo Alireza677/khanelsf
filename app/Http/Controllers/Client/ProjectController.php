@@ -44,7 +44,7 @@ class ProjectController extends Controller
         $project = $access->findFor($request->attributes->get('portalCustomer'), $project);
         Gate::forUser($request->user('client'))->authorize('view', $project);
         $month = $months->resolveRange($request->query('month'));
-        $activities = $project->activities()->publishedForClient()->inMonth($month['start'], $month['end'])
+        $activities = $project->activities()->with('cycle')->publishedForClient()->inMonth($month['start'], $month['end'])
             ->latest('activity_date')->latest('id')->paginate(10)->withQueryString();
         $activities->through(fn ($activity): array => $activityPresenter->present($activity));
         $summary = $timeService->summarize($project, $month['start'], $month['end']);
@@ -68,8 +68,9 @@ class ProjectController extends Controller
                 'allocated' => $durations->format($usage['allocated_minutes']),
                 'used' => $durations->format($usage['consumed_minutes']),
                 'remaining' => $durations->format($usage['remaining_minutes']),
+                'overage' => $durations->format($usage['overage_minutes']),
                 'percentage' => $usage['allocated_minutes'] > 0
-                    ? (int) round(($usage['consumed_minutes'] / $usage['allocated_minutes']) * 100)
+                    ? min(100, (int) round(($usage['used_minutes'] / $usage['allocated_minutes']) * 100))
                     : 0,
             ];
         }

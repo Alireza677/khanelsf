@@ -7,6 +7,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\ActivityWizardProjectContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -91,6 +92,42 @@ class ActivityCreationWizardTest extends TestCase
         $this->assertNotNull($activity->client_project_cycle_id);
         $this->assertTrue($activity->cycle->containsDate($activity->activity_date));
         $this->assertArrayNotHasKey('internal_notes', $activity->toArray());
+    }
+
+    public function test_wizard_warns_in_persian_but_allows_overage(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $project = ClientProject::factory()->create([
+            'monthly_hour_limit_minutes' => 60,
+            'start_date' => today(),
+        ]);
+
+        $warning = app(ActivityWizardProjectContext::class)->overageWarning(
+            $project->id,
+            today()->toDateString(),
+            61,
+        );
+
+        $this->assertStringContainsString('هشدار', $warning);
+        $this->assertStringContainsString('ثبت فعالیت مجاز است', $warning);
+
+        Livewire::test(ListClientProjectActivities::class)
+            ->callAction('quickCreateActivity', data: [
+                'client_project_id' => $project->id,
+                'activity_date' => today()->toDateString(),
+                'title' => 'فعالیت مازاد',
+                'duration_hours' => 1,
+                'duration_remainder_minutes' => 1,
+                'visibility' => ClientProjectActivity::VISIBILITY_INTERNAL,
+                'activity_status' => ClientProjectActivity::STATUS_DRAFT,
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('client_project_activities', [
+            'client_project_id' => $project->id,
+            'title' => 'فعالیت مازاد',
+            'duration_minutes' => 61,
+        ]);
     }
 
     public function test_jalali_date_picker_frontend_asset_is_published(): void

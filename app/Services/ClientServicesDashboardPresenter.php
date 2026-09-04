@@ -34,6 +34,10 @@ class ClientServicesDashboardPresenter
                 'limit_minutes' => $summary['allocated_minutes'] ?? null,
                 'limit_time' => $summary ? $this->durations->format($summary['allocated_minutes']) : null,
                 'remaining_time' => $summary ? $this->durations->format($summary['remaining_minutes']) : null,
+                'overage_minutes' => $summary['overage_minutes'] ?? 0,
+                'overage_time' => ($summary['overage_minutes'] ?? 0) > 0
+                    ? $this->durations->format($summary['overage_minutes'])
+                    : null,
                 'cycle_start' => $cycle ? PersianDate::date($cycle->starts_at) : null,
                 'cycle_end' => $cycle ? PersianDate::date($cycle->ends_at) : null,
                 'payment' => $this->payment($project),
@@ -46,7 +50,7 @@ class ClientServicesDashboardPresenter
         $limit = $hasLimit ? (int) $projectCards->sum('limit_minutes') : null;
         $remaining = $limit === null ? null : max(0, $limit - $used);
         $overage = $limit === null ? 0 : max(0, $used - $limit);
-        $percentage = $limit === null ? null : ($limit === 0 ? ($used > 0 ? 100 : 0) : (int) round(($used / $limit) * 100));
+        $percentage = $limit === null ? null : ($limit === 0 ? ($used > 0 ? 100 : 0) : min(100, (int) round(($used / $limit) * 100)));
 
         return [
             'projects' => $projectCards,
@@ -58,7 +62,7 @@ class ClientServicesDashboardPresenter
                 'remaining_time' => $remaining === null ? null : $this->durations->format($remaining),
                 'overage_time' => $overage > 0 ? $this->durations->format($overage) : null,
                 'percentage' => $percentage,
-                'chart_percentage' => min(100, $percentage ?? 0),
+                'chart_percentage' => $percentage ?? 0,
                 'has_limit' => $limit !== null,
             ],
         ];

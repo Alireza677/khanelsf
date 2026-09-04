@@ -5,11 +5,10 @@ namespace App\Services;
 use App\Enums\ClientProjectCycleStatus;
 use App\Events\ClientProjectCycleBecameOverdue;
 use App\Models\ClientProjectCycle;
-use DomainException;
 
 final class RecalculateClientProjectCycle
 {
-    public function __construct(private ClientProjectCycleUsage $usage, private ProjectCycleInvoiceGenerator $invoices) {}
+    public function __construct(private ClientProjectCycleUsage $usage) {}
 
     public function handle(ClientProjectCycle $cycle): ClientProjectCycle
     {
@@ -17,16 +16,10 @@ final class RecalculateClientProjectCycle
         $consumed = $this->usage->consumed($cycle);
         if ($consumed >= $cycle->allocated_minutes) {
             if (! in_array($cycle->status, [ClientProjectCycleStatus::Completed, ClientProjectCycleStatus::Invoiced], true)) {
-                try {
-                    $this->invoices->generate($cycle, auth()->user());
-                } catch (DomainException $exception) {
-                    if (! in_array($exception->getMessage(), ['cycle_has_no_billable_activities', 'currency_inconsistency'], true)) {
-                        throw $exception;
-                    }
-                    // Work completion must remain durable even when financial
-                    // snapshots need explicit admin repair before invoicing.
-                    $cycle->update(['status' => ClientProjectCycleStatus::Completed, 'completed_at' => $cycle->completed_at ?: now()]);
-                }
+                // Reaching the contractual allocation completes the quota, but
+                // must not freeze the cycle: overage can still be recorded until
+                // an admin explicitly creates/issues its invoice.
+                $cycle->update(['status' => ClientProjectCycleStatus::Completed, 'completed_at' => $cycle->completed_at ?: now()]);
             }
         } elseif ($cycle->status !== ClientProjectCycleStatus::Invoiced) {
             $cycle->update(['status' => $cycle->ends_at->isPast() ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active, 'completed_at' => null]);

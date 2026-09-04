@@ -51,6 +51,13 @@
                     <div><small>زمان ثبت‌شده</small><strong>{{ $currentCycleSummary['used'] }}</strong></div>
                     <div><small>زمان باقی‌مانده</small><strong>{{ $currentCycleSummary['remaining'] }}</strong></div>
                     <div><small>مصرف</small><strong>{{ $currentCycleSummary['percentage'] }}٪</strong></div>
+                    @if ($currentCycleSummary['overage_minutes'] > 0)
+                        <div><small>خدمات مازاد</small><strong class="portal-badge">{{ $currentCycleSummary['overage'] }}</strong></div>
+                    @endif
+                </div>
+                <div class="portal-progress portal-progress--detail">
+                    <div><span>مصرف سهمیه</span><strong>{{ $currentCycleSummary['percentage'] }}٪</strong></div>
+                    <progress value="{{ $currentCycleSummary['percentage'] }}" max="100">{{ $currentCycleSummary['percentage'] }}٪</progress>
                 </div>
                 <p class="portal-privacy-note">دوره جاری: {{ $currentCycleSummary['starts_at'] }} تا {{ $currentCycleSummary['ends_at'] }}</p>
                 <p class="portal-privacy-note">مجموع زمان شامل تمام کار ثبت‌شده غیرلغوشده است؛ جزئیات فعالیت‌های داخلی و پیش‌نویس خصوصی باقی می‌ماند.</p>
@@ -68,7 +75,7 @@
                 <div class="portal-activity-list">
                     @foreach ($activities as $activity)
                         <article class="portal-activity-item">
-                            <div><h3>{{ $activity['title'] }}</h3><time>{{ $activity['activity_date'] }}</time></div>
+                            <div><h3>{{ $activity['title'] }}</h3><time>{{ $activity['activity_date'] }}</time>@if ($activity['is_overage']) <span class="portal-badge">{{ $activity['overage_label'] }}</span>@endif</div>
                             <strong>{{ $activity['duration'] }}</strong>
                             @if ($activity['description'])<p>{{ $activity['description'] }}</p>@endif
                         </article>

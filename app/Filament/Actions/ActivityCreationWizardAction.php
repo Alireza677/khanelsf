@@ -181,9 +181,18 @@ class ActivityCreationWizardAction
     private static function finalSummary(Get $get): HtmlString
     {
         $project = app(ActivityWizardProjectContext::class)->find($get('client_project_id'));
-        $duration = app(DurationFormatter::class)->format(((int) $get('duration_hours') * 60) + (int) $get('duration_remainder_minutes'));
+        $durationMinutes = ((int) $get('duration_hours') * 60) + (int) $get('duration_remainder_minutes');
+        $duration = app(DurationFormatter::class)->format($durationMinutes);
         $service = ClientProjectActivityResource::serviceSummary($get('service_id'));
+        $warning = app(ActivityWizardProjectContext::class)->overageWarning(
+            $get('client_project_id'),
+            $get('activity_date'),
+            $durationMinutes,
+        );
+        $warningHtml = $warning
+            ? '<span class="text-warning-600 dark:text-warning-400">'.e($warning).'</span>'
+            : '';
 
-        return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($project?->title ?? '—').'</strong><span>خدمت: '.e($service).'</span><span>زمان: '.e($duration).'</span><span>تاریخ: '.e(PersianDate::date($get('activity_date')) ?? '—').'</span></div>');
+        return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($project?->title ?? '—').'</strong><span>خدمت: '.e($service).'</span><span>زمان: '.e($duration).'</span><span>تاریخ: '.e(PersianDate::date($get('activity_date')) ?? '—').'</span>'.$warningHtml.'</div>');
     }
 }

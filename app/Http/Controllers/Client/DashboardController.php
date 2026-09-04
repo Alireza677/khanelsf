@@ -34,7 +34,7 @@ class DashboardController extends Controller
         $dashboardStats['worked_time'] = $dashboard['current_cycles']['used_time'];
         $projectFilter = $request->integer('project') ?: null;
         $range = in_array($request->query('range'), ['current', 'previous', 'all'], true) ? $request->query('range') : 'current';
-        $activityQuery = ClientProjectActivity::query()->with('project:id,title,customer_id')
+        $activityQuery = ClientProjectActivity::query()->with(['project:id,title,customer_id', 'cycle'])
             ->when($customer, fn ($query) => $query->forCustomer($customer), fn ($query) => $query->whereRaw('1 = 0'))
             ->publishedForClient()
             ->when($projectFilter && $projects->contains('id', $projectFilter), fn ($query) => $query->forProject($projectFilter))

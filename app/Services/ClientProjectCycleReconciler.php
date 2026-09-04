@@ -238,9 +238,7 @@ final class ClientProjectCycleReconciler
                 }
 
                 throw ValidationException::withMessages([
-                    'start_date' => $exception->getMessage() === 'activity_exceeds_cycle_remaining_minutes'
-                        ? 'جابجایی دوره‌ها باعث می‌شود زمان ثبت‌شده از سهم دوره بیشتر شود.'
-                        : 'دوره‌های پروژه با تاریخ جدید قابل بازسازی نیستند.',
+                    'start_date' => 'دوره‌های پروژه با تاریخ جدید قابل بازسازی نیستند.',
                 ]);
             }
 
@@ -289,21 +287,6 @@ final class ClientProjectCycleReconciler
                 || $cycle->ends_at->isAfter(CarbonImmutable::today()))
             ->reject(fn (ClientProjectCycle $cycle): bool => $protectedCycleIds->has($cycle->id));
         $allocation = $project->monthly_hour_limit_minutes;
-        $consumedMinutesByCycle = $project->activities
-            ->where('status', '!=', ClientProjectActivity::STATUS_CANCELLED)
-            ->groupBy('client_project_cycle_id')
-            ->map(fn (Collection $activities): int => (int) $activities->sum('duration_minutes'));
-
-        if ($allocation !== null) {
-            foreach ($cycles as $cycle) {
-                if ($consumedMinutesByCycle->get($cycle->id, 0) > $allocation) {
-                    throw ValidationException::withMessages([
-                        'monthly_limit_hours' => 'سهم دوره نمی‌تواند کمتر از زمان مصرف‌شده در دوره جاری یا آینده باشد.',
-                    ]);
-                }
-            }
-        }
-
         if ($allocation === null || $allocation <= 0) {
             $cycles->each->delete();
 

@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\ClientProjectResource\Pages\CreateClientProject;
 use App\Filament\Resources\ClientProjectResource\Pages\EditClientProject;
+use App\Filament\Resources\ClientProjectResource\Pages\ViewClientProject;
 use App\Models\ClientProject;
+use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\ClientProjectCycleResolver;
 use App\Services\CustomerMembershipManager;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,6 +31,26 @@ class ClientProjectManagementFoundationTest extends TestCase
         Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
             ->assertOk()
             ->assertFormSet(['customer_id' => $customer->getKey()]);
+    }
+
+    public function test_admin_project_view_displays_derived_cycle_overage(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $project = ClientProject::factory()->create([
+            'monthly_hour_limit_minutes' => 60,
+            'start_date' => today(),
+        ]);
+        $cycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, now()->toImmutable());
+        ClientProjectActivity::factory()->for($project, 'project')->create([
+            'client_project_cycle_id' => $cycle->id,
+            'activity_date' => today(),
+            'duration_minutes' => 75,
+        ]);
+
+        Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()])
+            ->assertOk()
+            ->assertSee('خدمات مازاد')
+            ->assertSee('15 دقیقه');
     }
 
     public function test_admin_can_create_a_project_for_the_correct_customer(): void

@@ -5,7 +5,6 @@ use App\Http\Middleware\EnsureCustomerServiceCapability;
 use App\Http\Middleware\LogLivewireRequests;
 use App\Http\Middleware\ResolveRedirects;
 use App\Http\Middleware\ShareClientPortalContext;
-use App\Support\TemporaryDebugLogger;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -40,8 +39,5 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // TEMP DEBUG - remove after production save issue is fixed.
-        $exceptions->report(function (Throwable $exception): void {
-            TemporaryDebugLogger::logException('TEMP DEBUG - global throwable reported', $exception);
-        });
+        // Use Laravel's default exception reporting and rendering.
     })->create();
