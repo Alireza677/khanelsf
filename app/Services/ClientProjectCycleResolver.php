@@ -27,7 +27,8 @@ final class ClientProjectCycleResolver
         }
 
         $activityDate = CarbonImmutable::instance($activityDate)->startOfDay();
-        if ($project->start_date && $activityDate->lt($project->start_date->startOfDay())) {
+        $period = $this->periodForDate($project, $activityDate);
+        if ($period === null) {
             return null;
         }
 
@@ -36,7 +37,11 @@ final class ClientProjectCycleResolver
             throw new DomainException('activity_date_in_protected_cycle');
         }
 
-        $cycle ??= $this->createThroughDate($project, $activityDate);
+        if (! $cycle && $project->isRecurring() && ! $project->isActive()) {
+            return null;
+        }
+
+        $cycle ??= $this->createForPeriod($project, $period);
         $remaining = $this->usage->summary($cycle, $excludeActivityId)['remaining_minutes'];
         if ($durationMinutes > $remaining) {
             throw new DomainException('activity_exceeds_cycle_remaining_minutes');
@@ -47,7 +52,13 @@ final class ClientProjectCycleResolver
 
     public function createNext(ClientProject $project, CarbonImmutable $reference): ClientProjectCycle
     {
-        return $this->createThroughDate($project, $reference);
+        $period = $this->periodForDate($project, $reference);
+
+        if ($period === null) {
+            throw new DomainException('date_outside_project_schedule');
+        }
+
+        return $this->createForPeriod($project, $period);
     }
 
     public function findForDate(ClientProject $project, CarbonInterface $date): ?ClientProjectCycle
@@ -59,6 +70,52 @@ final class ClientProjectCycleResolver
     public function periodForDate(ClientProject $project, CarbonInterface $date, CarbonInterface|string|null $anchorOverride = null): ?array
     {
         $date = CarbonImmutable::instance($date)->startOfDay();
+
+        if ($project->isFixedPeriod()) {
+            return $this->fixedPeriodForDate($project, $date);
+        }
+
+        if ($project->cycle_anchor_day) {
+            return $this->recurringPeriodForDate($date, $project->cycle_anchor_day);
+        }
+
+        return $this->legacyRecurringPeriodForDate($project, $date, $anchorOverride);
+    }
+
+    /** @return array{starts_at: CarbonImmutable, ends_at: CarbonImmutable}|null */
+    private function fixedPeriodForDate(ClientProject $project, CarbonImmutable $date): ?array
+    {
+        $start = $project->start_date?->toImmutable()->startOfDay();
+        $end = $project->end_date?->toImmutable()->startOfDay();
+
+        if (! $start || ! $end || ! $end->isAfter($start) || $date->lt($start) || ! $date->lt($end)) {
+            return null;
+        }
+
+        return ['starts_at' => $start, 'ends_at' => $end];
+    }
+
+    /** @return array{starts_at: CarbonImmutable, ends_at: CarbonImmutable} */
+    private function recurringPeriodForDate(CarbonImmutable $date, int $anchorDay): array
+    {
+        $jalaliDate = Jalalian::fromDateTime($date);
+        $month = $jalaliDate->getFirstDayOfMonth();
+        $start = $this->jalaliMonthBoundary($month, $anchorDay);
+
+        if ($date->lt($start)) {
+            $month = $month->subMonths();
+            $start = $this->jalaliMonthBoundary($month, $anchorDay);
+        }
+
+        return [
+            'starts_at' => $start,
+            'ends_at' => $this->jalaliMonthBoundary($month->addMonths(), $anchorDay),
+        ];
+    }
+
+    /** @return array{starts_at: CarbonImmutable, ends_at: CarbonImmutable}|null */
+    private function legacyRecurringPeriodForDate(ClientProject $project, CarbonImmutable $date, CarbonInterface|string|null $anchorOverride = null): ?array
+    {
         $anchor = $anchorOverride === null
             ? $this->anchorFor($project, $date)
             : CarbonImmutable::parse($anchorOverride)->startOfDay();
@@ -77,28 +134,21 @@ final class ClientProjectCycleResolver
         return ['starts_at' => $start, 'ends_at' => $end];
     }
 
-    private function createThroughDate(ClientProject $project, CarbonImmutable $reference): ClientProjectCycle
+    /** @param array{starts_at: CarbonImmutable, ends_at: CarbonImmutable} $period */
+    private function createForPeriod(ClientProject $project, array $period): ClientProjectCycle
     {
-        $period = $this->periodForDate($project, $reference);
-        if ($period === null) {
-            throw new DomainException('activity_date_before_project_start');
+        $start = $period['starts_at'];
+        $end = $period['ends_at'];
+        $cycle = $project->cycles()->whereDate('starts_at', $start->toDateString())->first();
+        if ($cycle && $cycle->ends_at->toDateString() !== $end->toDateString()) {
+            throw new DomainException('cycle_schedule_conflict');
         }
-
-        $start = $this->anchorFor($project, $reference);
-        do {
-            $end = $this->jalaliNext($start);
-            $cycle = $project->cycles()->whereDate('starts_at', $start->toDateString())->first();
-            if ($cycle && $cycle->ends_at->toDateString() !== $end->toDateString()) {
-                throw new DomainException('cycle_schedule_conflict');
-            }
-            $cycle ??= $project->cycles()->create([
-                'starts_at' => $start->toDateString(),
-                'ends_at' => $end->toDateString(),
-                'allocated_minutes' => $project->monthly_hour_limit_minutes,
-                'status' => $end->isPast() ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active,
-            ]);
-            $start = $end;
-        } while (! $cycle->containsDate($reference));
+        $cycle ??= $project->cycles()->create([
+            'starts_at' => $start->toDateString(),
+            'ends_at' => $end->toDateString(),
+            'allocated_minutes' => $project->monthly_hour_limit_minutes,
+            'status' => $end->isPast() ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active,
+        ]);
 
         if ($cycle->status === ClientProjectCycleStatus::Invoiced
             || $this->isClaimed($cycle)) {
@@ -106,6 +156,18 @@ final class ClientProjectCycleResolver
         }
 
         return $cycle;
+    }
+
+    private function jalaliMonthBoundary(Jalalian $month, int $anchorDay): CarbonImmutable
+    {
+        $boundary = new Jalalian(
+            $month->getYear(),
+            $month->getMonth(),
+            min(max(1, $anchorDay), $month->getMonthDays()),
+            timezone: $month->getTimezone(),
+        );
+
+        return CarbonImmutable::instance($boundary->toCarbon())->startOfDay();
     }
 
     private function mutableCycles(ClientProject $project)

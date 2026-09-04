@@ -26,21 +26,30 @@ final class ClientProjectCycleReconciler
             $proposed = clone $project;
             $proposed->forceFill($attributes);
             $startChanged = $this->dateValue($project->start_date) !== $this->dateValue($proposed->start_date);
+            $endChanged = $this->dateValue($project->end_date) !== $this->dateValue($proposed->end_date);
+            $modeChanged = $project->schedule_mode !== $proposed->schedule_mode;
+            $anchorChanged = $project->cycle_anchor_day !== $proposed->cycle_anchor_day;
+            $scheduleChanged = $startChanged || $endChanged || $modeChanged || $anchorChanged;
             $allocationChanged = $project->monthly_hour_limit_minutes !== $proposed->monthly_hour_limit_minutes;
+            $becameActive = ! $project->isActive() && $proposed->isActive();
 
-            if ($startChanged) {
+            if ($scheduleChanged) {
                 $this->assertProtectedHistoryCompatible($project, $proposed);
             }
 
             $project->fill($attributes)->save();
             $project = $project->fresh();
 
-            if ($startChanged) {
+            if ($scheduleChanged) {
                 $this->reconcileLocked($project, true);
             }
 
             if ($allocationChanged) {
                 $this->synchronizeMutableCycleAllocations($project->fresh());
+            }
+
+            if ($becameActive && ! $scheduleChanged && ! $allocationChanged) {
+                $this->ensureScheduledCycle($project->fresh());
             }
 
             return $project->fresh();
@@ -149,6 +158,25 @@ final class ClientProjectCycleReconciler
         }, 3);
     }
 
+    public function ensureActiveRecurringCycles(): int
+    {
+        $ensured = 0;
+
+        ClientProject::query()
+            ->where('status', ClientProject::STATUS_ACTIVE)
+            ->where('schedule_mode', ClientProject::SCHEDULE_RECURRING)
+            ->where('monthly_hour_limit_minutes', '>', 0)
+            ->orderBy('id')
+            ->chunkById(100, function (Collection $projects) use (&$ensured): void {
+                foreach ($projects as $project) {
+                    $this->ensureScheduledCycle($project);
+                    $ensured++;
+                }
+            });
+
+        return $ensured;
+    }
+
     private function reconcileLocked(ClientProject $project, bool $strictProtected): void
     {
         $project->load(['activities.cycle', 'cycles']);
@@ -225,15 +253,7 @@ final class ClientProjectCycleReconciler
             $activity->forceFill(['client_project_cycle_id' => $newCycleId])->saveQuietly();
         }
 
-        if ($project->monthly_hour_limit_minutes && (! $project->start_date || CarbonImmutable::today()->gte($project->start_date))) {
-            try {
-                $this->resolver->resolveForDate($project, CarbonImmutable::today());
-            } catch (\DomainException $exception) {
-                if ($strictProtected || $exception->getMessage() !== 'activity_date_in_protected_cycle') {
-                    throw $exception;
-                }
-            }
-        }
+        $this->ensureScheduledCycle($project, $strictProtected);
 
         ClientProjectCycle::query()->whereIn('id', $affectedCycleIds->filter()->unique()->all())->get()
             ->each(fn (ClientProjectCycle $cycle) => $this->recalculate->handle($cycle));
@@ -265,7 +285,8 @@ final class ClientProjectCycleReconciler
         $project->load(['activities', 'cycles']);
         $protectedCycleIds = $this->protectedCycleIds($project);
         $cycles = $project->cycles
-            ->filter(fn (ClientProjectCycle $cycle): bool => $cycle->ends_at->isAfter(CarbonImmutable::today()))
+            ->filter(fn (ClientProjectCycle $cycle): bool => $project->isFixedPeriod()
+                || $cycle->ends_at->isAfter(CarbonImmutable::today()))
             ->reject(fn (ClientProjectCycle $cycle): bool => $protectedCycleIds->has($cycle->id));
         $allocation = $project->monthly_hour_limit_minutes;
         $consumedMinutesByCycle = $project->activities
@@ -294,13 +315,28 @@ final class ClientProjectCycleReconciler
             $this->recalculate->handle($cycle);
         }
 
-        if (! $project->start_date || CarbonImmutable::today()->gte($project->start_date)) {
-            try {
-                $this->resolver->resolveForDate($project, CarbonImmutable::today());
-            } catch (\DomainException $exception) {
-                if ($exception->getMessage() !== 'activity_date_in_protected_cycle') {
-                    throw $exception;
-                }
+        $this->ensureScheduledCycle($project);
+    }
+
+    private function ensureScheduledCycle(ClientProject $project, bool $strictProtected = false): void
+    {
+        if (! $project->monthly_hour_limit_minutes || ($project->isRecurring() && ! $project->isActive())) {
+            return;
+        }
+
+        $reference = $project->isFixedPeriod()
+            ? $project->start_date
+            : CarbonImmutable::today();
+
+        if (! $reference || $this->resolver->periodForDate($project, $reference) === null) {
+            return;
+        }
+
+        try {
+            $this->resolver->resolveForDate($project, CarbonImmutable::parse($reference));
+        } catch (\DomainException $exception) {
+            if ($strictProtected || $exception->getMessage() !== 'activity_date_in_protected_cycle') {
+                throw $exception;
             }
         }
     }

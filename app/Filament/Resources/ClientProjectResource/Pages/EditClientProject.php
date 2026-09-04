@@ -15,11 +15,21 @@ class EditClientProject extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        return [...$data, ...ClientProjectResource::allocationFormState($data['monthly_hour_limit_minutes'])];
+        return [
+            ...$data,
+            ...ClientProjectResource::allocationFormState($data['monthly_hour_limit_minutes']),
+            ...ClientProjectResource::scheduleFormState($data),
+        ];
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        if ($this->record->cycle_anchor_day === null
+            && ($data['schedule_mode'] ?? null) === ClientProject::SCHEDULE_RECURRING
+            && (int) ($data['cycle_anchor_day'] ?? 0) === ClientProjectResource::scheduleFormState($this->record->attributesToArray())['cycle_anchor_day']) {
+            unset($data['cycle_anchor_day']);
+        }
+
         return ClientProjectResource::applyAllocationFormState($data);
     }
 

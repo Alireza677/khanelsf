@@ -18,6 +18,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Morilog\Jalali\Jalalian;
 
 class ClientProjectResource extends Resource
 {
@@ -68,16 +69,35 @@ class ClientProjectResource extends Resource
                         ->options(self::statusOptions())
                         ->default(ClientProject::STATUS_DRAFT)
                         ->required(),
+                    Forms\Components\Select::make('schedule_mode')
+                        ->label('نوع زمان‌بندی')
+                        ->options(self::scheduleModeOptions())
+                        ->default(ClientProject::SCHEDULE_RECURRING)
+                        ->live()
+                        ->required()
+                        ->afterStateUpdated(function (Forms\Set $set, mixed $state, Forms\Get $get): void {
+                            if ($state === ClientProject::SCHEDULE_RECURRING && ! $get('cycle_anchor_day')) {
+                                $set('cycle_anchor_day', 1);
+                            }
+                        }),
                     Forms\Components\TextInput::make('progress')
                         ->label('پیشرفت')
                         ->numeric()
                         ->minValue(0)
                         ->maxValue(100)
                         ->suffix('٪')
-                        ->default(0)
-                        ->required(),
+                        ->default(0),
+                    Forms\Components\Select::make('cycle_anchor_day')
+                        ->label('روز دوره ماهانه')
+                        ->options(array_combine(range(1, 31), range(1, 31)))
+                        ->default(1)
+                        ->visible(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING)
+                        ->dehydrated(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING)
+                        ->required(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING),
                     Forms\Components\TextInput::make('monthly_limit_hours')
-                        ->label('سهم ماهانه — ساعت')
+                        ->label(fn (Forms\Get $get): string => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD
+                            ? 'سهم کل پروژه — ساعت'
+                            : 'سهم هر دوره — ساعت')
                         ->numeric()->minValue(0)->maxValue(71582788)->default(0)
                         ->live(onBlur: true)
                         ->disabled(fn (Forms\Get $get): bool => (bool) $get('has_unlimited_monthly_hours'))
@@ -87,7 +107,9 @@ class ClientProjectResource extends Resource
                             }
                         }),
                     Forms\Components\TextInput::make('monthly_limit_remainder_minutes')
-                        ->label('سهم ماهانه — دقیقه')
+                        ->label(fn (Forms\Get $get): string => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD
+                            ? 'سهم کل پروژه — دقیقه'
+                            : 'سهم هر دوره — دقیقه')
                         ->numeric()->minValue(0)->maxValue(59)->default(0)
                         ->helperText('برای پروژه بدون محدودیت، گزینه زیر را فعال کنید.')
                         ->live(onBlur: true)
@@ -107,10 +129,17 @@ class ClientProjectResource extends Resource
                                 $set('monthly_limit_remainder_minutes', 0);
                             }
                         }),
-                    Forms\Components\DatePicker::make('start_date')->jalali()->label('تاریخ شروع'),
+                    Forms\Components\DatePicker::make('start_date')->jalali()
+                        ->label('تاریخ شروع')
+                        ->visible(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD)
+                        ->dehydratedWhenHidden()
+                        ->required(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD),
                     Forms\Components\DatePicker::make('end_date')->jalali()
                         ->label('تاریخ پایان')
-                        ->afterOrEqual('start_date'),
+                        ->visible(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD)
+                        ->dehydratedWhenHidden()
+                        ->required(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD)
+                        ->after('start_date'),
                     Forms\Components\Textarea::make('description')
                         ->label('توضیحات')
                         ->rows(6)
@@ -134,27 +163,9 @@ class ClientProjectResource extends Resource
                     ->label('وضعیت')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
-                Tables\Columns\TextColumn::make('end_date')
+                Tables\Columns\TextColumn::make('deadline')
                     ->label('ددلاین')
-                    ->formatStateUsing(function ($state): string {
-                        if (! $state) {
-                            return 'بدون ددلاین';
-                        }
-
-                        $today = CarbonImmutable::today();
-                        $deadline = CarbonImmutable::parse($state)->startOfDay();
-
-                        if ($deadline->isSameDay($today)) {
-                            return 'امروز';
-                        }
-
-                        if ($deadline->isFuture()) {
-                            return ((int) $today->diffInDays($deadline)).' روز باقی‌مانده';
-                        }
-
-                        return ((int) $deadline->diffInDays($today)).' روز گذشته';
-                    })
-                    ->sortable(),
+                    ->getStateUsing(fn (ClientProject $record): string => self::deadlineLabel($record)),
                 Tables\Columns\TextColumn::make('current_cycle_usage')
                     ->label('مصرف دوره جاری')
                     ->getStateUsing(function (ClientProject $record): string {
@@ -185,12 +196,21 @@ class ClientProjectResource extends Resource
                 Infolists\Components\TextEntry::make('customer.display_name')->label('مشتری'),
                 Infolists\Components\TextEntry::make('type')->label('نوع پروژه')->placeholder('—'),
                 Infolists\Components\TextEntry::make('status')->label('وضعیت')->badge()->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
+                Infolists\Components\TextEntry::make('schedule_mode')
+                    ->label('نوع زمان‌بندی')
+                    ->formatStateUsing(fn (string $state): string => self::scheduleModeOptions()[$state] ?? $state),
+                Infolists\Components\TextEntry::make('cycle_anchor_day')
+                    ->label('روز دوره ماهانه')
+                    ->visible(fn (ClientProject $record): bool => $record->isRecurring())
+                    ->placeholder('بر اساس زمان‌بندی قبلی'),
                 Infolists\Components\TextEntry::make('progress')->label('پیشرفت')->suffix('٪'),
                 Infolists\Components\TextEntry::make('monthly_hour_limit_minutes')
-                    ->label('سهم ماهانه')
+                    ->label(fn (ClientProject $record): string => $record->isFixedPeriod() ? 'سهم کل پروژه' : 'سهم هر دوره')
                     ->formatStateUsing(fn (?int $state): string => $state === null ? 'بدون محدودیت' : app(DurationFormatter::class)->format($state)),
-                Infolists\Components\TextEntry::make('start_date')->label('تاریخ شروع')->jalaliDate()->placeholder('—'),
-                Infolists\Components\TextEntry::make('end_date')->label('تاریخ پایان')->jalaliDate()->placeholder('—'),
+                Infolists\Components\TextEntry::make('start_date')->label('تاریخ شروع')->jalaliDate()->placeholder('—')
+                    ->visible(fn (ClientProject $record): bool => $record->isFixedPeriod()),
+                Infolists\Components\TextEntry::make('end_date')->label('تاریخ پایان')->jalaliDate()->placeholder('—')
+                    ->visible(fn (ClientProject $record): bool => $record->isFixedPeriod()),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات')->placeholder('—')->columnSpanFull(),
                 Infolists\Components\RepeatableEntry::make('cycles')->label('دوره‌های تعهد زمانی')->schema([
                     Infolists\Components\TextEntry::make('starts_at')->label('شروع')->formatStateUsing(fn ($state) => PersianDate::date($state)),
@@ -225,6 +245,29 @@ class ClientProjectResource extends Resource
         ];
     }
 
+    public static function scheduleModeOptions(): array
+    {
+        return [
+            ClientProject::SCHEDULE_RECURRING => 'مستمر / دوره‌ای',
+            ClientProject::SCHEDULE_FIXED_PERIOD => 'مدت‌دار / یک‌باره',
+        ];
+    }
+
+    public static function scheduleFormState(array $data): array
+    {
+        $mode = $data['schedule_mode'] ?? ClientProject::SCHEDULE_RECURRING;
+        $anchorDay = $data['cycle_anchor_day'] ?? null;
+
+        if ($mode === ClientProject::SCHEDULE_RECURRING && ! $anchorDay && ! empty($data['start_date'])) {
+            $anchorDay = Jalalian::fromDateTime($data['start_date'])->getDay();
+        }
+
+        return [
+            'schedule_mode' => $mode,
+            'cycle_anchor_day' => $anchorDay ?: 1,
+        ];
+    }
+
     public static function allocationFormState(?int $minutes): array
     {
         return [
@@ -236,6 +279,10 @@ class ClientProjectResource extends Resource
 
     public static function applyAllocationFormState(array $data): array
     {
+        if (array_key_exists('progress', $data)) {
+            $data['progress'] = (int) ($data['progress'] ?? 0);
+        }
+
         $allocationMinutes = ((int) ($data['monthly_limit_hours'] ?? 0) * 60)
             + (int) ($data['monthly_limit_remainder_minutes'] ?? 0);
         $isUnlimited = (bool) ($data['has_unlimited_monthly_hours'] ?? false);
@@ -247,5 +294,33 @@ class ClientProjectResource extends Resource
         unset($data['monthly_limit_hours'], $data['monthly_limit_remainder_minutes'], $data['has_unlimited_monthly_hours']);
 
         return $data;
+    }
+
+    private static function deadlineLabel(ClientProject $project): string
+    {
+        if ($project->status === ClientProject::STATUS_COMPLETED) {
+            return 'تکمیل شده';
+        }
+
+        $deadline = $project->isRecurring()
+            ? $project->currentCycle?->ends_at
+            : $project->end_date;
+
+        if (! $deadline) {
+            return 'بدون ددلاین';
+        }
+
+        $today = CarbonImmutable::today();
+        $deadline = CarbonImmutable::parse($deadline)->startOfDay();
+
+        if ($deadline->isSameDay($today)) {
+            return 'امروز';
+        }
+
+        if ($deadline->isAfter($today)) {
+            return ((int) $today->diffInDays($deadline)).' روز باقی‌مانده';
+        }
+
+        return ((int) $deadline->diffInDays($today)).' روز گذشته';
     }
 }

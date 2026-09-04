@@ -24,14 +24,20 @@ class ClientProject extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const SCHEDULE_RECURRING = 'recurring';
+
+    public const SCHEDULE_FIXED_PERIOD = 'fixed_period';
+
     protected $fillable = [
         'customer_id',
         'title',
         'description',
         'type',
         'status',
+        'schedule_mode',
         'progress',
         'monthly_hour_limit_minutes',
+        'cycle_anchor_day',
         'start_date',
         'end_date',
     ];
@@ -41,6 +47,7 @@ class ClientProject extends Model
         return [
             'progress' => 'integer',
             'monthly_hour_limit_minutes' => 'integer',
+            'cycle_anchor_day' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
         ];
@@ -78,5 +85,15 @@ class ClientProject extends Model
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function isRecurring(): bool
+    {
+        return $this->schedule_mode !== self::SCHEDULE_FIXED_PERIOD;
+    }
+
+    public function isFixedPeriod(): bool
+    {
+        return $this->schedule_mode === self::SCHEDULE_FIXED_PERIOD;
     }
 }
