@@ -7,9 +7,9 @@ use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Models\ClientProject;
 use App\Models\Customer;
 use App\Services\ClientProjectCycleUsage;
+use App\Services\ClientProjectSchedulePresenter;
 use App\Services\DurationFormatter;
 use App\Support\PersianDate;
-use Carbon\CarbonImmutable;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -88,7 +88,7 @@ class ClientProjectResource extends Resource
                         ->suffix('٪')
                         ->default(0),
                     Forms\Components\Select::make('cycle_anchor_day')
-                        ->label('روز دوره ماهانه')
+                        ->label('موعد تحویل ماهیانه')
                         ->options(array_combine(range(1, 31), range(1, 31)))
                         ->default(1)
                         ->visible(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING)
@@ -165,7 +165,8 @@ class ClientProjectResource extends Resource
                     ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
                 Tables\Columns\TextColumn::make('deadline')
                     ->label('ددلاین')
-                    ->getStateUsing(fn (ClientProject $record): string => self::deadlineLabel($record)),
+                    ->getStateUsing(fn (ClientProject $record): string => app(ClientProjectSchedulePresenter::class)
+                        ->deadlineLabel($record, $record->currentCycle)),
                 Tables\Columns\TextColumn::make('current_cycle_usage')
                     ->label('مصرف دوره جاری')
                     ->getStateUsing(function (ClientProject $record): string {
@@ -200,7 +201,7 @@ class ClientProjectResource extends Resource
                     ->label('نوع زمان‌بندی')
                     ->formatStateUsing(fn (string $state): string => self::scheduleModeOptions()[$state] ?? $state),
                 Infolists\Components\TextEntry::make('cycle_anchor_day')
-                    ->label('روز دوره ماهانه')
+                    ->label('موعد تحویل ماهیانه')
                     ->visible(fn (ClientProject $record): bool => $record->isRecurring())
                     ->placeholder('بر اساس زمان‌بندی قبلی'),
                 Infolists\Components\TextEntry::make('progress')->label('پیشرفت')->suffix('٪'),
@@ -294,33 +295,5 @@ class ClientProjectResource extends Resource
         unset($data['monthly_limit_hours'], $data['monthly_limit_remainder_minutes'], $data['has_unlimited_monthly_hours']);
 
         return $data;
-    }
-
-    private static function deadlineLabel(ClientProject $project): string
-    {
-        if ($project->status === ClientProject::STATUS_COMPLETED) {
-            return 'تکمیل شده';
-        }
-
-        $deadline = $project->isRecurring()
-            ? $project->currentCycle?->ends_at
-            : $project->end_date;
-
-        if (! $deadline) {
-            return 'بدون ددلاین';
-        }
-
-        $today = CarbonImmutable::today();
-        $deadline = CarbonImmutable::parse($deadline)->startOfDay();
-
-        if ($deadline->isSameDay($today)) {
-            return 'امروز';
-        }
-
-        if ($deadline->isAfter($today)) {
-            return ((int) $today->diffInDays($deadline)).' روز باقی‌مانده';
-        }
-
-        return ((int) $deadline->diffInDays($today)).' روز گذشته';
     }
 }

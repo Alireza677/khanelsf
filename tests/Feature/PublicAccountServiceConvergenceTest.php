@@ -34,11 +34,13 @@ class PublicAccountServiceConvergenceTest extends TestCase
             app(ClientProjectCycleResolver::class)->resolveForDate($running, CarbonImmutable::today());
             ClientProject::factory()->for($customer)->create([
                 'title' => 'پروژه آینده',
+                'schedule_mode' => ClientProject::SCHEDULE_FIXED_PERIOD,
                 'start_date' => '2026-10-01',
                 'end_date' => '2026-12-01',
             ]);
             ClientProject::factory()->for($customer)->create([
                 'title' => 'پروژه دیرکرد',
+                'schedule_mode' => ClientProject::SCHEDULE_FIXED_PERIOD,
                 'start_date' => '2026-06-01',
                 'end_date' => '2026-08-01',
             ]);

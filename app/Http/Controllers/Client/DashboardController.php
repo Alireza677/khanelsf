@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientProjectActivity;
 use App\Services\ClientPortalDashboardStats;
 use App\Services\ClientProjectActivityPresenter;
+use App\Services\ClientProjectCycleUsage;
 use App\Services\ClientServicesDashboardPresenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class DashboardController extends Controller
         Request $request,
         ClientPortalDashboardStats $stats,
         ClientProjectActivityPresenter $activityPresenter,
+        ClientProjectCycleUsage $cycleUsage,
         ClientServicesDashboardPresenter $presenter,
     ): View {
         $customers = $request->attributes->get('portalCustomers');
@@ -24,7 +26,10 @@ class DashboardController extends Controller
 
         $customer?->load('users');
         $dashboardStats = $stats->forCustomer($customer, CarbonImmutable::now()->startOfMonth());
-        $projects = $customer?->clientProjects()->with('cycles.invoice')->latest('updated_at')->get() ?? collect();
+        $projects = $customer?->clientProjects()->with([
+            'cycles.invoice',
+            'currentCycle' => fn ($query) => $cycleUsage->withConsumedAggregate($query),
+        ])->latest('updated_at')->get() ?? collect();
         $dashboard = $presenter->present($projects, CarbonImmutable::today());
         $dashboardStats['worked_time'] = $dashboard['current_cycles']['used_time'];
         $projectFilter = $request->integer('project') ?: null;

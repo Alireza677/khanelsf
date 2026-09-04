@@ -35,12 +35,12 @@
                                         <div role="cell"><small>وضعیت پرداخت</small><span class="services-payment services-payment--{{ $project['payment']['state'] }}">{{ $project['payment']['label'] }}</span></div>
                                     </div>
                                     <div class="services-project-timeline">
-                                        <div class="services-timeline-date"><small>شروع پروژه</small><strong>{{ $project['start_date'] ?: 'تعیین نشده' }}</strong></div>
+                                        <div class="services-timeline-date"><small>{{ $project['timeline']['start_label'] }}</small><strong>{{ $project['timeline']['start_date'] ?: 'تعیین نشده' }}</strong></div>
                                         <div class="services-timeline-track" style="--timeline-progress: {{ $project['timeline']['percentage'] }}%; --today-position: {{ $project['timeline']['today_percentage'] ?? 0 }}%">
                                             <span class="services-timeline-track__base"></span><span class="services-timeline-track__progress"></span><i class="is-start"></i><i class="is-end"></i>
                                             @if ($project['timeline']['today_percentage'] !== null && $project['timeline']['state'] === 'active')<b class="services-timeline-today"><span>امروز</span></b>@endif
                                         </div>
-                                        <div class="services-timeline-date services-timeline-date--end"><small>تحویل پروژه</small><strong>{{ $project['end_date'] ?: 'تعیین نشده' }}</strong></div>
+                                        <div class="services-timeline-date services-timeline-date--end"><small>{{ $project['timeline']['end_label'] }}</small><strong>{{ $project['timeline']['end_date'] ?: 'تعیین نشده' }}</strong></div>
                                         <p class="services-timeline-status"><span>{{ $project['timeline']['label'] }}</span>{{ $project['timeline']['detail'] }}</p>
                                     </div>
                                 </a>
