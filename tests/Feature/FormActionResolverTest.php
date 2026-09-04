@@ -60,7 +60,7 @@ class FormActionResolverTest extends TestCase
         ];
     }
 
-    public function test_null_display_uses_form_fallback(): void
+    public function test_null_display_uses_page_default_without_reading_form_display_mode(): void
     {
         $pageForm = $this->form('published', 'page', 'page-fallback');
         $modalForm = $this->form('published', 'modal', 'modal-fallback');
@@ -70,7 +70,7 @@ class FormActionResolverTest extends TestCase
             new ActionDestination('form', $pageForm->getKey()),
             new ResolutionContext,
         )->metadata['display']);
-        $this->assertSame('modal', $resolver->resolve(
+        $this->assertSame('page', $resolver->resolve(
             new ActionDestination('form', $modalForm->getKey()),
             new ResolutionContext,
         )->metadata['display']);

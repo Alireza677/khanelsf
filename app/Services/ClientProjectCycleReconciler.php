@@ -26,15 +26,21 @@ final class ClientProjectCycleReconciler
             $proposed = clone $project;
             $proposed->forceFill($attributes);
             $startChanged = $this->dateValue($project->start_date) !== $this->dateValue($proposed->start_date);
+            $allocationChanged = $project->monthly_hour_limit_minutes !== $proposed->monthly_hour_limit_minutes;
 
             if ($startChanged) {
                 $this->assertProtectedHistoryCompatible($project, $proposed);
             }
 
             $project->fill($attributes)->save();
+            $project = $project->fresh();
 
             if ($startChanged) {
-                $this->reconcileLocked($project->fresh(), true);
+                $this->reconcileLocked($project, true);
+            }
+
+            if ($allocationChanged) {
+                $this->synchronizeMutableCycleAllocations($project->fresh());
             }
 
             return $project->fresh();
@@ -250,6 +256,51 @@ final class ClientProjectCycleReconciler
         foreach ($current->activities->whereIn('id', $claimedIds) as $activity) {
             if (! $this->activityMatchesSchedule($proposed, $activity)) {
                 $this->throwProtectedHistoryError();
+            }
+        }
+    }
+
+    private function synchronizeMutableCycleAllocations(ClientProject $project): void
+    {
+        $project->load(['activities', 'cycles']);
+        $protectedCycleIds = $this->protectedCycleIds($project);
+        $cycles = $project->cycles
+            ->filter(fn (ClientProjectCycle $cycle): bool => $cycle->ends_at->isAfter(CarbonImmutable::today()))
+            ->reject(fn (ClientProjectCycle $cycle): bool => $protectedCycleIds->has($cycle->id));
+        $allocation = $project->monthly_hour_limit_minutes;
+        $consumedMinutesByCycle = $project->activities
+            ->where('status', '!=', ClientProjectActivity::STATUS_CANCELLED)
+            ->groupBy('client_project_cycle_id')
+            ->map(fn (Collection $activities): int => (int) $activities->sum('duration_minutes'));
+
+        if ($allocation !== null) {
+            foreach ($cycles as $cycle) {
+                if ($consumedMinutesByCycle->get($cycle->id, 0) > $allocation) {
+                    throw ValidationException::withMessages([
+                        'monthly_limit_hours' => 'سهم دوره نمی‌تواند کمتر از زمان مصرف‌شده در دوره جاری یا آینده باشد.',
+                    ]);
+                }
+            }
+        }
+
+        if ($allocation === null || $allocation <= 0) {
+            $cycles->each->delete();
+
+            return;
+        }
+
+        foreach ($cycles as $cycle) {
+            $cycle->update(['allocated_minutes' => $allocation]);
+            $this->recalculate->handle($cycle);
+        }
+
+        if (! $project->start_date || CarbonImmutable::today()->gte($project->start_date)) {
+            try {
+                $this->resolver->resolveForDate($project, CarbonImmutable::today());
+            } catch (\DomainException $exception) {
+                if ($exception->getMessage() !== 'activity_date_in_protected_cycle') {
+                    throw $exception;
+                }
             }
         }
     }

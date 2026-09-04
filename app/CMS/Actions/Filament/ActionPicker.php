@@ -201,7 +201,7 @@ final class ActionPicker extends Fieldset
                 ->label('نحوه نمایش فرم')
                 ->options([
                     'modal' => 'بازکردن فرم در پنجره',
-                    'page' => 'بازکردن صفحه فرم',
+                    'page' => 'بازکردن فرم در صفحه جدید',
                 ])
                 ->default('modal')
                 ->native(false)

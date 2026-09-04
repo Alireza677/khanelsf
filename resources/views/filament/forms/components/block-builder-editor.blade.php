@@ -35,6 +35,7 @@
                 this.activeInspectorTab = 'content'
             },
         }"
+        data-form-builder-select-overlays
         {{ $attributes->merge($getExtraAttributes(), escape: false)->class(['block-builder-editor']) }}
     >
         <aside class="block-builder-inspector" aria-label="Selected Block Inspector">

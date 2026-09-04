@@ -4,11 +4,15 @@ namespace App\Services;
 
 use App\Models\FormSubmission;
 use App\Models\FormSubmissionAttachment;
+use App\Services\Calculators\CalculationResultRows;
 use Illuminate\Support\Collection;
 
 final class FormSubmissionPresenter
 {
-    public function __construct(private readonly FormSchema $schema) {}
+    public function __construct(
+        private readonly FormSchema $schema,
+        private readonly CalculationResultRows $calculationRows,
+    ) {}
 
     /** @return list<array{label: string, value: string}> */
     public function answers(FormSubmission $submission): array
@@ -119,29 +123,21 @@ final class FormSubmissionPresenter
         return is_array($submission->calculation_result) ? $submission->calculation_result : [];
     }
 
-    /** @return list<array{label: string, value: string}> */
+    /** @return list<array{label: string, value: string, rank: int|null, eligible: bool|null, eligibility_label: string, reason_text: string}> */
     public function calculationScores(FormSubmission $submission): array
     {
-        $result = $this->calculationResult($submission);
-        $scores = data_get($result, 'scores', []);
-
-        if (! is_array($scores)) {
-            return [];
-        }
-
-        $labels = data_get($result, 'score_labels', []);
-
-        $labels = is_array($labels) ? $labels : [];
-
-        return collect($scores)
-            ->map(fn (mixed $score, string|int $key): array => [
-                'label' => filled($labels[$key] ?? null)
-                    ? (string) $labels[$key]
-                    : 'نتیجه '.(array_search($key, array_keys($scores), true) + 1),
-                'value' => $this->displayValue($score),
-            ])
-            ->values()
-            ->all();
+        return array_map(fn (array $row): array => [
+            'label' => $row['label'],
+            'value' => $this->displayValue($row['score']),
+            'rank' => $row['rank'],
+            'eligible' => $row['eligible'],
+            'eligibility_label' => match ($row['eligible']) {
+                true => 'واجد شرایط',
+                false => 'خارج‌شده',
+                null => 'ارزیابی‌نشده',
+            },
+            'reason_text' => collect($row['reasons'])->pluck('message')->implode('، '),
+        ], $this->calculationRows->fromSnapshot($this->calculationResult($submission)));
     }
 
     /** @return array<string, mixed> */

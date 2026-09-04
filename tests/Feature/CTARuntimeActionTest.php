@@ -87,7 +87,7 @@ class CTARuntimeActionTest extends TestCase
         }
     }
 
-    public function test_cta_form_page_modal_and_legacy_fallback_use_generic_trigger(): void
+    public function test_cta_form_page_modal_and_legacy_page_default_use_generic_trigger(): void
     {
         $pageForm = $this->form('page', 'cta-page-form');
         $modalForm = $this->form('modal', 'cta-modal-form');
@@ -113,7 +113,7 @@ class CTARuntimeActionTest extends TestCase
             'data-form-action-modal-url="'.route('forms.modal', $modalForm->slug).'"',
             $modal,
         );
-        $this->assertStringContainsString('data-form-action-modal-url', $fallback);
+        $this->assertStringNotContainsString('data-form-action-modal-url', $fallback);
         $this->assertStringContainsString('name="_context_page_url" value="/source"', $modal);
         $this->assertStringContainsString('name="_context_block_id"', $modal);
     }

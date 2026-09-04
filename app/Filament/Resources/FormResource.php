@@ -6,6 +6,7 @@ use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\FormResource\Pages;
 use App\Models\Form as FormModel;
+use App\Services\Calculators\CalculatorEligibilityRuleSchema;
 use App\Services\FormSchema;
 use App\Services\FormSchemaIdentityManager;
 use Filament\Forms;
@@ -23,6 +24,8 @@ class FormResource extends Resource
 {
     use UsesMediaLibraryImages;
     use UsesPersianResourceLabels;
+
+    private const SYSTEM_MANAGED_CHOICE_VALUE_TYPES = ['select', 'radio', 'checkbox', 'image_choice'];
 
     protected static ?string $model = FormModel::class;
 
@@ -127,6 +130,11 @@ class FormResource extends Resource
         return 'option_'.strtolower((string) Str::ulid());
     }
 
+    private static function hasSystemManagedChoiceValue(mixed $type): bool
+    {
+        return in_array($type, self::SYSTEM_MANAGED_CHOICE_VALUE_TYPES, true);
+    }
+
     public static function prepareSchemaForEditor(array $data): array
     {
         $fields = data_get($data, 'schema.fields', []);
@@ -165,11 +173,20 @@ class FormResource extends Resource
             }
         }
 
-        data_set(
-            $data,
-            'schema.fields',
-            app(FormSchemaIdentityManager::class)->canonicalize($fields),
-        );
+        $fields = app(FormSchemaIdentityManager::class)->canonicalize($fields);
+        data_set($data, 'schema.fields', $fields);
+
+        if ($isCalculator) {
+            data_set(
+                $data,
+                'schema.calculator.eligibility_rules',
+                app(CalculatorEligibilityRuleSchema::class)->normalize(
+                    $fields,
+                    data_get($data, 'schema.calculator.recommendations', []),
+                    data_get($data, 'schema.calculator.eligibility_rules', []),
+                ),
+            );
+        }
 
         return $data;
     }
@@ -204,7 +221,20 @@ class FormResource extends Resource
             }
         }
 
-        data_set($data, 'schema.fields', app(FormSchemaIdentityManager::class)->canonicalize($fields));
+        $fields = app(FormSchemaIdentityManager::class)->canonicalize($fields);
+        data_set($data, 'schema.fields', $fields);
+
+        if ($isCalculator) {
+            data_set(
+                $data,
+                'schema.calculator.eligibility_rules',
+                app(CalculatorEligibilityRuleSchema::class)->normalize(
+                    $fields,
+                    data_get($data, 'schema.calculator.recommendations', []),
+                    data_get($data, 'schema.calculator.eligibility_rules', []),
+                ),
+            );
+        }
 
         return $data;
     }
@@ -231,14 +261,6 @@ class FormResource extends Resource
                             'archived' => 'بایگانی‌شده',
                         ])
                         ->default('draft'),
-                    Forms\Components\Select::make('display_mode')
-                        ->label('نحوه نمایش')
-                        ->required()
-                        ->options([
-                            'page' => 'صفحه مستقل',
-                            'modal' => 'مودال',
-                        ])
-                        ->default('page'),
                     Forms\Components\Select::make('type')
                         ->label('نوع فرم')
                         ->required()
@@ -370,12 +392,12 @@ class FormResource extends Resource
                                         ->required(),
                                     Forms\Components\TextInput::make('value')
                                         ->label('مقدار گزینه')
-                                        ->default(fn (Forms\Get $get): ?string => in_array($get('../../type'), ['select', 'radio', 'checkbox'], true)
+                                        ->default(fn (Forms\Get $get): ?string => static::hasSystemManagedChoiceValue($get('../../type'))
                                             ? static::newChoiceOptionValue()
                                             : null)
-                                        ->hidden(fn (Forms\Get $get): bool => in_array($get('../../type'), ['select', 'radio', 'checkbox'], true))
+                                        ->hidden(fn (Forms\Get $get): bool => static::hasSystemManagedChoiceValue($get('../../type')))
                                         ->dehydratedWhenHidden()
-                                        ->required(fn (Forms\Get $get): bool => ! in_array($get('../../type'), ['select', 'radio', 'checkbox'], true))
+                                        ->required(fn (Forms\Get $get): bool => ! static::hasSystemManagedChoiceValue($get('../../type')))
                                         ->maxLength(255),
                                     Forms\Components\ViewField::make('image')
                                         ->label('تصویر گزینه')
@@ -402,7 +424,7 @@ class FormResource extends Resource
                                         ->addActionLabel('افزودن امتیاز')
                                         ->reorderable()
                                         ->columns(2)
-                                        ->visible(fn (Forms\Get $get, $livewire): bool => in_array($get('../../type'), ['image_choice', 'radio_card'], true)
+                                        ->visible(fn (Forms\Get $get, $livewire): bool => in_array($get('../../type'), ['image_choice', 'radio_card', 'radio', 'checkbox'], true)
                                             && data_get($livewire, 'data.type') === 'calculator')
                                         ->columnSpanFull(),
                                 ])
@@ -479,7 +501,7 @@ class FormResource extends Resource
                             $component->state($items);
                             $component->getChildComponentContainer($newUuid)->fill();
                             $items = $component->getState();
-                            if (in_array($type, ['select', 'radio', 'checkbox'], true)) {
+                            if (static::hasSystemManagedChoiceValue($type)) {
                                 foreach (is_array(data_get($items, "{$newUuid}.options")) ? $items[$newUuid]['options'] : [] as $optionKey => $option) {
                                     if (blank($option['value'] ?? null)) {
                                         $items[$newUuid]['options'][$optionKey]['value'] = static::newChoiceOptionValue();
@@ -521,6 +543,96 @@ class FormResource extends Resource
                         ->reorderable()
                         ->required()
                         ->columns(1),
+                ]),
+            Forms\Components\Section::make('قوانین صلاحیت گزینه‌ها')
+                ->description('این قوانین مستقل از امتیازدهی هستند و فقط گزینه‌های پیشنهادی را از نتیجه نهایی خارج می‌کنند.')
+                ->visible(fn (Forms\Get $get): bool => $get('type') === 'calculator')
+                ->schema([
+                    Repeater::make('schema.calculator.eligibility_rules')
+                        ->label('قوانین Hard Eligibility')
+                        ->defaultItems(0)
+                        ->schema([
+                            Forms\Components\Hidden::make('rule_id')
+                                ->default(fn (): string => strtoupper((string) Str::ulid())),
+                            Forms\Components\Hidden::make('effect')->default('exclude'),
+                            Forms\Components\Select::make('field_id')
+                                ->label('فیلد مبنا')
+                                ->options(fn ($livewire): array => static::eligibilityFieldOptions(
+                                    data_get($livewire, 'data.schema.fields', []),
+                                ))
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set): void {
+                                    $set('operator', null);
+                                    $set('option_id', null);
+                                    $set('number_value', null);
+                                })
+                                ->required()
+                                ->native(false),
+                            Forms\Components\Select::make('operator')
+                                ->label('عملگر')
+                                ->options(fn (Forms\Get $get, $livewire): array => static::eligibilityOperatorOptions(
+                                    static::eligibilityFieldType(
+                                        data_get($livewire, 'data.schema.fields', []),
+                                        $get('field_id'),
+                                    ),
+                                ))
+                                ->required()
+                                ->native(false),
+                            Forms\Components\Select::make('option_id')
+                                ->label('گزینه مقایسه')
+                                ->options(fn (Forms\Get $get, $livewire): array => static::eligibilityChoiceOptions(
+                                    data_get($livewire, 'data.schema.fields', []),
+                                    $get('field_id'),
+                                ))
+                                ->required(fn (Forms\Get $get, $livewire): bool => app(CalculatorEligibilityRuleSchema::class)->isChoice(
+                                    static::eligibilityFieldType(
+                                        data_get($livewire, 'data.schema.fields', []),
+                                        $get('field_id'),
+                                    ),
+                                ))
+                                ->visible(fn (Forms\Get $get, $livewire): bool => app(CalculatorEligibilityRuleSchema::class)->isChoice(
+                                    static::eligibilityFieldType(
+                                        data_get($livewire, 'data.schema.fields', []),
+                                        $get('field_id'),
+                                    ),
+                                ))
+                                ->native(false),
+                            Forms\Components\TextInput::make('number_value')
+                                ->label('مقدار مقایسه')
+                                ->numeric()
+                                ->required(fn (Forms\Get $get, $livewire): bool => static::eligibilityFieldType(
+                                    data_get($livewire, 'data.schema.fields', []),
+                                    $get('field_id'),
+                                ) === CalculatorEligibilityRuleSchema::NUMBER_TYPE)
+                                ->visible(fn (Forms\Get $get, $livewire): bool => static::eligibilityFieldType(
+                                    data_get($livewire, 'data.schema.fields', []),
+                                    $get('field_id'),
+                                ) === CalculatorEligibilityRuleSchema::NUMBER_TYPE),
+                            Forms\Components\Select::make('profiles')
+                                ->label('گزینه‌های خارج‌شونده')
+                                ->options(fn ($livewire): array => static::calculatorResultOptions(
+                                    data_get($livewire, 'data.schema.calculator.recommendations', []),
+                                    null,
+                                ))
+                                ->multiple()
+                                ->minItems(1)
+                                ->required()
+                                ->native(false),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('دلیل خارج‌شدن')
+                                ->rows(2)
+                                ->maxLength(1000)
+                                ->required()
+                                ->columnSpanFull(),
+                        ])
+                        ->addActionLabel('افزودن قانون')
+                        ->reorderable()
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): string => filled($state['reason'] ?? null)
+                            ? str($state['reason'])->limit(70)->toString()
+                            : 'قانون جدید')
+                        ->columns(2)
+                        ->columnSpanFull(),
                 ]),
             Forms\Components\Section::make('پیام‌ها')
                 ->schema([
@@ -701,6 +813,83 @@ class FormResource extends Resource
         return $options;
     }
 
+    private static function eligibilityFieldOptions(mixed $fields): array
+    {
+        $options = [];
+
+        foreach (is_array($fields) ? $fields : [] as $field) {
+            if (! is_array($field)
+                || ! in_array($field['type'] ?? null, CalculatorEligibilityRuleSchema::SUPPORTED_TYPES, true)
+                || ! is_string($field['field_id'] ?? null)) {
+                continue;
+            }
+
+            $options[strtoupper($field['field_id'])] = (string) ($field['label'] ?? $field['key'] ?? 'فیلد');
+        }
+
+        return $options;
+    }
+
+    private static function eligibilityFieldType(mixed $fields, mixed $fieldId): ?string
+    {
+        if (! is_string($fieldId)) {
+            return null;
+        }
+
+        foreach (is_array($fields) ? $fields : [] as $field) {
+            if (is_array($field)
+                && strtoupper((string) ($field['field_id'] ?? '')) === strtoupper($fieldId)
+                && is_string($field['type'] ?? null)) {
+                return $field['type'];
+            }
+        }
+
+        return null;
+    }
+
+    private static function eligibilityChoiceOptions(mixed $fields, mixed $fieldId): array
+    {
+        if (! is_string($fieldId)) {
+            return [];
+        }
+
+        foreach (is_array($fields) ? $fields : [] as $field) {
+            if (! is_array($field) || strtoupper((string) ($field['field_id'] ?? '')) !== strtoupper($fieldId)) {
+                continue;
+            }
+
+            $options = [];
+
+            foreach (is_array($field['options'] ?? null) ? $field['options'] : [] as $option) {
+                if (is_array($option) && is_string($option['option_id'] ?? null)) {
+                    $options[strtoupper($option['option_id'])] = (string) ($option['label'] ?? 'گزینه');
+                }
+            }
+
+            return $options;
+        }
+
+        return [];
+    }
+
+    private static function eligibilityOperatorOptions(?string $type): array
+    {
+        $labels = [
+            'equals' => 'برابر است با',
+            'not_equals' => 'برابر نیست با',
+            'contains' => 'شامل است',
+            'not_contains' => 'شامل نیست',
+            'greater_than' => 'بزرگ‌تر از',
+            'greater_than_or_equal' => 'بزرگ‌تر یا مساوی',
+            'less_than' => 'کوچک‌تر از',
+            'less_than_or_equal' => 'کوچک‌تر یا مساوی',
+        ];
+
+        return collect(app(CalculatorEligibilityRuleSchema::class)->operatorsFor($type))
+            ->mapWithKeys(fn (string $operator): array => [$operator => $labels[$operator]])
+            ->all();
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -712,11 +901,6 @@ class FormResource extends Resource
                 Tables\Columns\TextColumn::make('type')
                     ->label('نوع')
                     ->formatStateUsing(fn (string $state): string => $state === 'calculator' ? 'محاسبه‌گر' : 'عادی')
-                    ->badge()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('display_mode')
-                    ->label('نحوه نمایش')
-                    ->formatStateUsing(fn (string $state): string => $state === 'modal' ? 'مودال' : 'صفحه')
                     ->badge()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('submissions_count')->label('ورودی‌ها')->sortable(),

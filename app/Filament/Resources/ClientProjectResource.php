@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Services\ClientProjectCycleUsage;
 use App\Services\DurationFormatter;
 use App\Support\PersianDate;
+use Carbon\CarbonImmutable;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -77,14 +78,35 @@ class ClientProjectResource extends Resource
                         ->required(),
                     Forms\Components\TextInput::make('monthly_limit_hours')
                         ->label('سهم ماهانه — ساعت')
-                        ->numeric()->minValue(0)->maxValue(71582788)->default(0),
+                        ->numeric()->minValue(0)->maxValue(71582788)->default(0)
+                        ->live(onBlur: true)
+                        ->disabled(fn (Forms\Get $get): bool => (bool) $get('has_unlimited_monthly_hours'))
+                        ->afterStateUpdated(function (Forms\Set $set, mixed $state): void {
+                            if ((int) $state > 0) {
+                                $set('has_unlimited_monthly_hours', false);
+                            }
+                        }),
                     Forms\Components\TextInput::make('monthly_limit_remainder_minutes')
                         ->label('سهم ماهانه — دقیقه')
                         ->numeric()->minValue(0)->maxValue(59)->default(0)
-                        ->helperText('برای پروژه بدون محدودیت، گزینه زیر را فعال کنید.'),
+                        ->helperText('برای پروژه بدون محدودیت، گزینه زیر را فعال کنید.')
+                        ->live(onBlur: true)
+                        ->disabled(fn (Forms\Get $get): bool => (bool) $get('has_unlimited_monthly_hours'))
+                        ->afterStateUpdated(function (Forms\Set $set, mixed $state): void {
+                            if ((int) $state > 0) {
+                                $set('has_unlimited_monthly_hours', false);
+                            }
+                        }),
                     Forms\Components\Toggle::make('has_unlimited_monthly_hours')
                         ->label('بدون محدودیت زمانی ماهانه')
-                        ->default(true),
+                        ->default(true)
+                        ->live()
+                        ->afterStateUpdated(function (Forms\Set $set, mixed $state): void {
+                            if ((bool) $state) {
+                                $set('monthly_limit_hours', 0);
+                                $set('monthly_limit_remainder_minutes', 0);
+                            }
+                        }),
                     Forms\Components\DatePicker::make('start_date')->jalali()->label('تاریخ شروع'),
                     Forms\Components\DatePicker::make('end_date')->jalali()
                         ->label('تاریخ پایان')
@@ -100,6 +122,10 @@ class ClientProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'currentCycle' => fn ($query) => app(ClientProjectCycleUsage::class)
+                    ->withConsumedAggregate($query),
+            ]))
             ->columns([
                 Tables\Columns\TextColumn::make('title')->label('عنوان پروژه')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('customer.display_name')->label('مشتری')->searchable()->sortable(),
@@ -108,7 +134,38 @@ class ClientProjectResource extends Resource
                     ->label('وضعیت')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => self::statusOptions()[$state] ?? $state),
-                Tables\Columns\TextColumn::make('progress')->label('پیشرفت')->suffix('٪')->sortable(),
+                Tables\Columns\TextColumn::make('end_date')
+                    ->label('ددلاین')
+                    ->formatStateUsing(function ($state): string {
+                        if (! $state) {
+                            return 'بدون ددلاین';
+                        }
+
+                        $today = CarbonImmutable::today();
+                        $deadline = CarbonImmutable::parse($state)->startOfDay();
+
+                        if ($deadline->isSameDay($today)) {
+                            return 'امروز';
+                        }
+
+                        if ($deadline->isFuture()) {
+                            return ((int) $today->diffInDays($deadline)).' روز باقی‌مانده';
+                        }
+
+                        return ((int) $deadline->diffInDays($today)).' روز گذشته';
+                    })
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('current_cycle_usage')
+                    ->label('مصرف دوره جاری')
+                    ->getStateUsing(function (ClientProject $record): string {
+                        if (! $record->currentCycle) {
+                            return 'دوره جاری ندارد';
+                        }
+
+                        return app(DurationFormatter::class)->format(
+                            app(ClientProjectCycleUsage::class)->consumed($record->currentCycle),
+                        );
+                    }),
                 Tables\Columns\TextColumn::make('start_date')->label('شروع')->jalaliDate()->placeholder('—')->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->jalaliDateTime()->sortable(),
             ])
@@ -179,9 +236,13 @@ class ClientProjectResource extends Resource
 
     public static function applyAllocationFormState(array $data): array
     {
-        $data['monthly_hour_limit_minutes'] = ($data['has_unlimited_monthly_hours'] ?? false)
+        $allocationMinutes = ((int) ($data['monthly_limit_hours'] ?? 0) * 60)
+            + (int) ($data['monthly_limit_remainder_minutes'] ?? 0);
+        $isUnlimited = (bool) ($data['has_unlimited_monthly_hours'] ?? false);
+
+        $data['monthly_hour_limit_minutes'] = $isUnlimited && $allocationMinutes === 0
             ? null
-            : ((int) ($data['monthly_limit_hours'] ?? 0) * 60) + (int) ($data['monthly_limit_remainder_minutes'] ?? 0);
+            : $allocationMinutes;
 
         unset($data['monthly_limit_hours'], $data['monthly_limit_remainder_minutes'], $data['has_unlimited_monthly_hours']);
 

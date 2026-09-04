@@ -14,7 +14,9 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentAsset;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\View\TablesRenderHook;
@@ -31,6 +33,13 @@ class AdminPanelProvider extends PanelProvider
 {
     public function boot(): void
     {
+        FilamentAsset::register([
+            Js::make(
+                'form-builder-select-overlays',
+                resource_path('js/filament/form-builder-select-overlays.js'),
+            )->module(),
+        ]);
+
         FormComponent::configureUsing(fn (FormComponent $component) => $this->applyPersianLabel($component));
         Column::configureUsing(fn (Column $column) => $this->applyPersianLabel($column));
         BaseFilter::configureUsing(fn (BaseFilter $filter) => $this->applyPersianLabel($filter));

@@ -646,6 +646,31 @@
         display: none !important;
     }
 
+    /* Filament v3 renders non-native Select menus inside the field with
+       position:absolute. Builder inspectors are intentionally scroll-clipped,
+       so open menus are promoted to the browser top layer by the shared
+       form-builder-select-overlays asset and positioned against their trigger. */
+    [data-form-builder-select-overlay] {
+        position: fixed !important;
+        inset: auto !important;
+        margin: 0 !important;
+        width: var(--form-builder-select-overlay-width) !important;
+        min-width: var(--form-builder-select-overlay-width) !important;
+        max-width: calc(100vw - 1rem) !important;
+        max-height: var(--form-builder-select-overlay-max-height) !important;
+        overflow: hidden !important;
+        border: 0;
+        box-sizing: border-box;
+        direction: var(--form-builder-select-overlay-direction, rtl);
+        text-align: start;
+        z-index: 70;
+    }
+
+    [data-form-builder-select-overlay] > .choices__list {
+        max-height: var(--form-builder-select-overlay-list-max-height, 15rem) !important;
+        overscroll-behavior: contain;
+    }
+
     .form-builder-editor {
         direction: ltr;
         display: grid;

@@ -33,7 +33,7 @@ final class FormActionResolver implements ActionTargetResolver
 
         $form = Form::query()
             ->whereKey($destination->referenceId)
-            ->first(['id', 'slug', 'status', 'display_mode']);
+            ->first(['id', 'slug', 'status']);
 
         if (! $form instanceof Form) {
             return ResolvedAction::unresolved(
@@ -60,7 +60,6 @@ final class FormActionResolver implements ActionTargetResolver
         }
 
         $display = FormDisplay::tryFrom((string) $destination->display)
-            ?? FormDisplay::tryFrom((string) $form->display_mode)
             ?? FormDisplay::Page;
 
         if ($display === FormDisplay::Modal && ! Route::has('forms.modal')) {

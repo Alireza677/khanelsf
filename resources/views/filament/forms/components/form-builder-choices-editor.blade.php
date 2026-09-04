@@ -25,7 +25,12 @@
         </button>
 
         @if (count($containers))
-            <details class="form-builder-choice-metadata">
+            <details
+                class="form-builder-choice-metadata"
+                wire:key="form-builder-choice-metadata-{{ $statePath }}"
+                x-bind:open="metadataOpen[@js($fieldKey)] === true"
+                x-on:toggle="metadataOpen[@js($fieldKey)] = $el.open"
+            >
                 <summary>تنظیمات تکمیلی موجود</summary>
                 <p>تصویر و امتیازهای فعلی بدون تغییر در این بخش باقی مانده‌اند.</p>
 

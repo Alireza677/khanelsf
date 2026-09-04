@@ -1,9 +1,10 @@
 @php
-    $recommendations = data_get($calculationResult, 'score_labels', data_get($form->schema, 'calculator.recommendations', []));
-    $recommendations = is_array($recommendations) ? $recommendations : [];
-    $scores = data_get($calculationResult, 'scores', []);
-    $scores = is_array($scores) ? $scores : [];
-    $recommendedMethod = data_get($calculationResult, 'recommended_method');
+    $scoreRows = app(\App\Services\Calculators\CalculationResultRows::class)->fromSnapshot(
+        is_array($calculationResult) ? $calculationResult : [],
+    );
+    $eligibleScoreRows = array_values(array_filter($scoreRows, fn (array $row): bool => $row['eligible'] !== false));
+    $excludedScoreRows = array_values(array_filter($scoreRows, fn (array $row): bool => $row['eligible'] === false));
+    $noEligibleRecommendation = data_get($calculationResult, 'no_eligible_recommendation') === true;
     $resultLabel = data_get($calculationResult, 'result');
     $answerLabels = data_get($calculationResult, 'answer_labels', []);
     $answerLabels = is_array($answerLabels) ? $answerLabels : [];
@@ -20,7 +21,6 @@
     $outputs = is_array($outputs)
         ? array_values(array_filter($outputs, fn (mixed $output): bool => is_array($output) && filled($output['label'] ?? null) && filled($output['value'] ?? null)))
         : [];
-    $scoreMaximum = collect($scores)->filter(fn (mixed $score): bool => is_numeric($score))->map(fn ($score): float => max(0, (float) $score))->max() ?: 0;
     $settings = app(\App\Services\SettingsService::class);
     $contactPhone = $settings->contactPhone();
     $ctaUrl = filled($contactPhone)
@@ -53,9 +53,15 @@
         </header>
 
         <section class="calculator-result-card__hero" aria-label="پیشنهاد اصلی">
-            <span>پیشنهاد مناسب برای شما</span>
-            <strong>{{ $resultLabel }}</strong>
-            @if (filled($resultReason))
+            @if ($noEligibleRecommendation)
+                <span>نیازمند بررسی کارشناسی</span>
+                <strong>هیچ گزینه واجد شرایطی یافت نشد</strong>
+                <p>بر اساس پاسخ‌های واردشده، هیچ‌یک از گزینه‌های تعریف‌شده شرایط لازم را ندارند.</p>
+            @else
+                <span>پیشنهاد مناسب برای شما</span>
+                <strong>{{ $resultLabel }}</strong>
+            @endif
+            @if (! $noEligibleRecommendation && filled($resultReason))
                 <p>{{ $resultReason }}</p>
             @endif
         </section>
@@ -93,26 +99,50 @@
             </section>
         @endif
 
-        @if ($scores !== [])
+        @if ($eligibleScoreRows !== [])
             <section class="calculator-result-card__section calculator-result-card__scores">
-                <h3>مقایسه نتایج</h3>
+                <h3>{{ $excludedScoreRows === [] ? 'مقایسه نتایج' : 'رتبه‌بندی گزینه‌های واجد شرایط' }}</h3>
+                @if (collect($eligibleScoreRows)->contains(fn (array $row): bool => $row['rank'] !== null))
+                    <p>رتبه‌بندی بر اساس امتیاز تطابق محاسباتی</p>
+                @endif
                 <div class="calculator-result-card__score-list">
-                    @foreach ($scores as $key => $score)
-                        @php
-                            $scoreLabel = $recommendations[$key]
-                                ?? ($key === $recommendedMethod ? $resultLabel : 'نتیجه '.$loop->iteration);
-                            $scoreWidth = $scoreMaximum > 0 && is_numeric($score)
-                                ? max(0, min(100, ((float) $score / $scoreMaximum) * 100))
-                                : 0;
-                        @endphp
-                        <div @class(['is-recommended' => $key === $recommendedMethod])>
+                    @foreach ($eligibleScoreRows as $scoreRow)
+                        <div @class(['is-recommended' => $scoreRow['recommended']])>
                             <div class="calculator-result-card__score-heading">
-                                <span>{{ $scoreLabel }}</span>
-                                <strong>{{ $score }}</strong>
+                                <span>
+                                    @if ($scoreRow['rank'] !== null)
+                                        رتبه {{ $scoreRow['rank'] }} —
+                                    @endif
+                                    {{ $scoreRow['label'] }}
+                                    @if ($scoreRow['recommended'])
+                                        — پیشنهاد نهایی
+                                    @endif
+                                </span>
+                                <strong>امتیاز {{ $scoreRow['score'] }}</strong>
                             </div>
-                            <span class="calculator-result-card__score-track" aria-hidden="true">
-                                <span style="width: {{ $scoreWidth }}%"></span>
-                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        @if ($excludedScoreRows !== [])
+            <section class="calculator-result-card__section calculator-result-card__scores">
+                <h3>گزینه‌های خارج‌شده</h3>
+                <div class="calculator-result-card__score-list">
+                    @foreach ($excludedScoreRows as $scoreRow)
+                        <div>
+                            <div class="calculator-result-card__score-heading">
+                                <span>{{ $scoreRow['label'] }} — خارج از شرایط</span>
+                                <strong>امتیاز {{ $scoreRow['score'] }}</strong>
+                            </div>
+                            @if ($scoreRow['reasons'] !== [])
+                                <ul class="calculator-result-card__benefits">
+                                    @foreach ($scoreRow['reasons'] as $reason)
+                                        <li>{{ $reason['message'] }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     @endforeach
                 </div>

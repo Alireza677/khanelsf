@@ -3,10 +3,14 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use App\Services\Calculators\CalculationResultRows;
 
 final class LeadSubmissionPresenter
 {
-    public function __construct(private readonly FormSubmissionPresenter $submissions) {}
+    public function __construct(
+        private readonly FormSubmissionPresenter $submissions,
+        private readonly CalculationResultRows $calculationRows,
+    ) {}
 
     public function answers(Lead $lead): array
     {
@@ -24,28 +28,18 @@ final class LeadSubmissionPresenter
 
     public function scores(Lead $lead): array
     {
-        $result = $this->calculationResult($lead);
-        $scores = data_get($result, 'scores', []);
-
-        if (! is_array($scores)) {
-            return [];
-        }
-
-        $recommendations = data_get($result, 'score_labels', []);
-
-        $recommendations = is_array($recommendations) ? $recommendations : [];
-        $rows = [];
-
-        foreach ($scores as $key => $score) {
-            $rows[] = [
-                'label' => filled($recommendations[$key] ?? null)
-                    ? $recommendations[$key]
-                    : 'نتیجه '.(count($rows) + 1),
-                'value' => $this->displayValue($score),
-            ];
-        }
-
-        return $rows;
+        return array_map(fn (array $row): array => [
+            'label' => $row['label'],
+            'value' => $this->displayValue($row['score']),
+            'rank' => $row['rank'],
+            'eligible' => $row['eligible'],
+            'eligibility_label' => match ($row['eligible']) {
+                true => 'واجد شرایط',
+                false => 'خارج‌شده',
+                null => 'ارزیابی‌نشده',
+            },
+            'reason_text' => collect($row['reasons'])->pluck('message')->implode('، '),
+        ], $this->calculationRows->fromSnapshot($this->calculationResult($lead)));
     }
 
     private function displayValue(mixed $value): string

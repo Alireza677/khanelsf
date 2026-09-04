@@ -43,8 +43,11 @@
 @endif
 @if ($calculation->result || $calculation->scores !== [])
 <details class=submission-card><summary>نتیجه محاسبه</summary>
-<p>{{ $calculation->result }}</p>
-@foreach ($calculation->scores as $score)<p>{{ $score['label'] }}: {{ $score['value'] }}</p>@endforeach
+<p>{{ $calculation->result ?: 'هیچ گزینه واجد شرایطی یافت نشد؛ بررسی کارشناسی لازم است.' }}</p>
+@foreach ($calculation->scores as $score)
+<p>@if ($score['rank'] !== null)رتبه {{ $score['rank'] }} — @endif{{ $score['label'] }}: {{ $score['value'] }} @if ($score['eligible'] === false)— خارج از شرایط @endif</p>
+@if ($score['reason_text'] !== '')<p>علت: {{ $score['reason_text'] }}</p>@endif
+@endforeach
 </details>
 @endif
 <details class=submission-card><summary>اطلاعات فنی</summary>

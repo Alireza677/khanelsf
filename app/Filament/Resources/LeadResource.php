@@ -192,16 +192,18 @@ class LeadResource extends Resource
                         ->state(fn (Lead $record): string => data_get(
                             app(LeadSubmissionPresenter::class)->calculationResult($record),
                             'result',
-                            '—',
-                        )),
+                        ) ?? 'نیازمند بررسی کارشناسی'),
                     Infolists\Components\RepeatableEntry::make('calculation_scores')
                         ->label('امتیاز نتایج')
                         ->state(fn (Lead $record): array => app(LeadSubmissionPresenter::class)->scores($record))
                         ->schema([
+                            Infolists\Components\TextEntry::make('rank')->label('رتبه')->placeholder('—'),
                             Infolists\Components\TextEntry::make('label')->label('نتیجه'),
                             Infolists\Components\TextEntry::make('value')->label('امتیاز'),
+                            Infolists\Components\TextEntry::make('eligibility_label')->label('وضعیت صلاحیت'),
+                            Infolists\Components\TextEntry::make('reason_text')->label('دلیل')->placeholder('—')->columnSpanFull(),
                         ])
-                        ->columns(2)
+                        ->columns(4)
                         ->columnSpanFull(),
                 ])
                 ->visible(fn (Lead $record): bool => app(LeadSubmissionPresenter::class)->calculationResult($record) !== []),

@@ -21,6 +21,7 @@
             choicesOpen: false,
             choicesItem: null,
             choicesDrawerStyle: '',
+            metadataOpen: {},
             selectField(key) {
                 if (this.choicesOpen && this.choicesItem !== key) this.closeChoices()
                 this.activeItem = key
@@ -58,6 +59,7 @@
         }"
         x-on:form-builder-field-added.window="selectField($event.detail.key)"
         x-on:resize.window="choicesOpen && positionChoicesDrawer()"
+        data-form-builder-select-overlays
         {{ $attributes->merge($getExtraAttributes(), escape: false)->class(['form-builder-editor']) }}
     >
         <aside x-ref="inspector" class="form-builder-inspector" aria-label="ویرایشگر فیلد">

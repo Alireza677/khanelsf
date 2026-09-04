@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FormSubmission;
+use App\Services\Calculators\CalculationResultRows;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
@@ -12,6 +13,7 @@ final class CalculatorSubmissionReport
     public function __construct(
         private readonly SettingsService $settings,
         private readonly PersianPdfHtml $persianPdf,
+        private readonly CalculationResultRows $calculationRows,
     ) {}
 
     public function download(FormSubmission $submission): Response
@@ -53,6 +55,7 @@ final class CalculatorSubmissionReport
             ], fn (?string $value): bool => filled($value)),
             'inputs' => $this->inputs($payload, $result),
             'recommendation' => $this->scalar($result['result'] ?? null),
+            'noEligibleRecommendation' => ($result['no_eligible_recommendation'] ?? false) === true,
             'scores' => $this->scores($result),
             'explanation' => $this->scalar($result['reason'] ?? $result['explanation'] ?? null),
             'summary' => $this->scalar($result['project_summary'] ?? $result['summary'] ?? null),
@@ -132,31 +135,17 @@ final class CalculatorSubmissionReport
         return $inputs;
     }
 
-    /** @return list<array{label: string, value: int|float|string, recommended: bool}> */
+    /** @return list<array{label: string, value: mixed, rank: int|null, recommended: bool, eligible: bool|null, reasons: list<string>}> */
     private function scores(array $result): array
     {
-        $scores = is_array($result['scores'] ?? null) ? $result['scores'] : [];
-        $labels = is_array($result['score_labels'] ?? null) ? $result['score_labels'] : [];
-        $recommendedKey = $this->scalar($result['recommended_method'] ?? null);
-        $recommendation = $this->scalar($result['result'] ?? null);
-        $rows = [];
-
-        foreach ($scores as $key => $score) {
-            if (! is_scalar($score)) {
-                continue;
-            }
-
-            $isRecommended = (string) $key === $recommendedKey;
-            $rows[] = [
-                'label' => $this->scalar($labels[$key] ?? null)
-                    ?? ($isRecommended ? $recommendation : null)
-                    ?? 'گزینه پیشنهادی '.(count($rows) + 1),
-                'value' => $score,
-                'recommended' => $isRecommended,
-            ];
-        }
-
-        return $rows;
+        return array_map(static fn (array $row): array => [
+            'label' => $row['label'],
+            'value' => $row['score'],
+            'rank' => $row['rank'],
+            'recommended' => $row['recommended'],
+            'eligible' => $row['eligible'],
+            'reasons' => array_column($row['reasons'], 'message'),
+        ], $this->calculationRows->fromSnapshot($result, 'گزینه پیشنهادی'));
     }
 
     /** @return list<array{label: string, value: string}> */

@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ClientProject extends Model
 {
@@ -57,6 +59,15 @@ class ClientProject extends Model
     public function cycles(): HasMany
     {
         return $this->hasMany(ClientProjectCycle::class);
+    }
+
+    public function currentCycle(): HasOne
+    {
+        return $this->hasOne(ClientProjectCycle::class)
+            ->ofMany(
+                ['starts_at' => 'min'],
+                fn (Builder $query): Builder => $query->containingDate(CarbonImmutable::today()),
+            );
     }
 
     public function scopeForCustomer(Builder $query, Customer|int $customer): Builder

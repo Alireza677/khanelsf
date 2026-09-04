@@ -85,6 +85,10 @@
     </style>
 </head>
 <body>
+    @php
+        $eligibleScores = array_values(array_filter($scores, fn (array $score): bool => $score['eligible'] !== false));
+        $excludedScores = array_values(array_filter($scores, fn (array $score): bool => $score['eligible'] === false));
+    @endphp
     <header class="header">
         <div class="brand">{{ $brand['name'] }}</div>
         <h1>گزارش نتیجه محاسبه</h1>
@@ -94,9 +98,15 @@
     <div class="meta">شماره گزارش: {{ $submission->getKey() }} | تاریخ ثبت: {{ \App\Support\PersianDate::dateTime($submission->submitted_at) }}</div>
 
     <section class="hero">
-        <span>پیشنهاد مناسب برای شما</span>
-        <strong>{{ $recommendation }}</strong>
-        @if ($explanation)
+        @if ($noEligibleRecommendation)
+            <span>نیازمند بررسی کارشناسی</span>
+            <strong>هیچ گزینه واجد شرایطی یافت نشد</strong>
+            <p>بر اساس پاسخ‌های ثبت‌شده، هیچ‌یک از گزینه‌ها شرایط لازم را ندارند.</p>
+        @else
+            <span>پیشنهاد مناسب برای شما</span>
+            <strong>{{ $recommendation }}</strong>
+        @endif
+        @if (! $noEligibleRecommendation && $explanation)
             <p>{{ $explanation }}</p>
         @endif
     </section>
@@ -146,15 +156,36 @@
         </section>
     @endif
 
-    @if ($scores !== [])
+    @if ($eligibleScores !== [])
         <section class="section">
-            <h2>خلاصه امتیازها</h2>
+            <h2>{{ $excludedScores === [] ? 'خلاصه امتیازها' : 'رتبه‌بندی گزینه‌های واجد شرایط' }}</h2>
             <table class="scores-table">
-                @foreach ($scores as $score)
+                @foreach ($eligibleScores as $score)
                     <tr @class(['recommended' => $score['recommended']])>
                         <td class="report-table__value">{{ $score['value'] }}</td>
-                        <td class="report-table__label">{{ $score['label'] }}</td>
+                        <td class="report-table__label">
+                            @if ($score['rank'] !== null)رتبه {{ $score['rank'] }} — @endif{{ $score['label'] }}
+                        </td>
                     </tr>
+                @endforeach
+            </table>
+        </section>
+    @endif
+
+    @if ($excludedScores !== [])
+        <section class="section">
+            <h2>گزینه‌های خارج‌شده</h2>
+            <table class="scores-table">
+                @foreach ($excludedScores as $score)
+                    <tr>
+                        <td class="report-table__value">{{ $score['value'] }}</td>
+                        <td class="report-table__label">{{ $score['label'] }} — خارج از شرایط</td>
+                    </tr>
+                    @foreach ($score['reasons'] as $reason)
+                        <tr>
+                            <td class="report-table__value" colspan="2">علت: {{ $reason }}</td>
+                        </tr>
+                    @endforeach
                 @endforeach
             </table>
         </section>

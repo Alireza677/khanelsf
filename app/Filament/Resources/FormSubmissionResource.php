@@ -181,10 +181,13 @@ class FormSubmissionResource extends Resource
                         ->label('جزئیات محاسبه')
                         ->state(fn (FormSubmission $record): array => app(FormSubmissionPresenter::class)->calculationScores($record))
                         ->schema([
+                            Infolists\Components\TextEntry::make('rank')->label('رتبه')->placeholder('—'),
                             Infolists\Components\TextEntry::make('label')->label('عنوان'),
                             Infolists\Components\TextEntry::make('value')->label('مقدار'),
+                            Infolists\Components\TextEntry::make('eligibility_label')->label('وضعیت صلاحیت'),
+                            Infolists\Components\TextEntry::make('reason_text')->label('دلیل')->placeholder('—')->columnSpanFull(),
                         ])
-                        ->columns(2)
+                        ->columns(4)
                         ->columnSpanFull(),
                 ])
                 ->visible(fn (FormSubmission $record): bool => app(FormSubmissionPresenter::class)->calculationResult($record) !== []),
