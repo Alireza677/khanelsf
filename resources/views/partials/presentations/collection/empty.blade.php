@@ -3,5 +3,8 @@
         @if (filled($collection->emptyState->icon)) <span aria-hidden="true">@include('partials.blocks._icon', ['icon' => $collection->emptyState->icon])</span> @endif
         <p>{{ $collection->emptyState->title }}</p>
         @if (filled($collection->emptyState->description)) <small>{{ $collection->emptyState->description }}</small> @endif
+        @isset($projectGalleryFilters)
+            <button type="button" class="project-filters__empty-reset" data-project-filter-reset>پاک کردن فیلترها</button>
+        @endisset
     </div>
 @endif

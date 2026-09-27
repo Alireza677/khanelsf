@@ -1,4 +1,4 @@
-<section class="shared-collection shared-collection--{{ $collection->variant }}" dir="{{ $collection->direction === 'ltr' ? 'ltr' : 'rtl' }}" aria-labelledby="shared-collection-title">
+<section class="shared-collection shared-collection--{{ $collection->variant }}" dir="{{ $collection->direction === 'ltr' ? 'ltr' : 'rtl' }}" aria-labelledby="shared-collection-title" @isset($projectGalleryFilters) data-project-gallery-results tabindex="-1" @endisset>
     @include('partials.presentations.collection.header', ['collection' => $collection])
 
     @if ($collection->items !== [])

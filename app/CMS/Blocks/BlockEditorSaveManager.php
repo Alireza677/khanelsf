@@ -32,6 +32,11 @@ final class BlockEditorSaveManager
                 continue;
             }
 
+            // Canonicalize only on an editor save; loading legacy data keeps its stored alignment.
+            if (($block['data']['template'] ?? null) === 'hero_3') {
+                $blocks[$key]['data']['settings']['alignment'] = 'right';
+            }
+
             $selector = $block['data']['content']['selector'] ?? null;
 
             if (is_array($selector)

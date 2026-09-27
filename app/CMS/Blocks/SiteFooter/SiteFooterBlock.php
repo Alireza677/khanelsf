@@ -29,6 +29,11 @@ final class SiteFooterBlock extends AbstractBlock implements BlockNormalizer
         private readonly SiteFooterDataNormalizer $normalizer,
     ) {}
 
+    public function templateTargets(): ?array
+    {
+        return ['site_footer'];
+    }
+
     public function key(): string
     {
         return 'site_footer';

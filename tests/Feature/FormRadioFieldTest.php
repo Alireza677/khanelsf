@@ -11,17 +11,20 @@ class FormRadioFieldTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_radio_renders_as_standard_single_selection_in_frontend_and_modal_preview(): void
+    public function test_radio_keeps_single_selection_in_page_cards_and_modal_preview(): void
     {
         $form = $this->radioForm();
 
         $frontend = $this->get(route('forms.show', $form->slug))->assertOk()->getContent();
         $preview = $this->post(route('forms.modal', $form->slug))->assertOk()->getContent();
 
+        $this->assertStringContainsString('form-page__choice', $frontend);
+        $this->assertStringContainsString('form-radio-group', $preview);
+
         foreach ([$frontend, $preview] as $html) {
-            $this->assertStringContainsString('form-radio-group', $html);
             $this->assertSame(2, substr_count($html, 'name="contact_method"'));
-            $this->assertSame(2, substr_count($html, 'type="radio"'));
+            preg_match_all('/.{0,80}type="radio".{0,80}/u', $html, $radioContexts);
+            $this->assertSame(2, substr_count($html, 'type="radio"'), implode("\n", $radioContexts[0]));
             $this->assertStringContainsString('value="phone"', $html);
             $this->assertStringContainsString('value="email"', $html);
             $this->assertStringContainsString('تماس تلفنی', $html);
@@ -29,10 +32,10 @@ class FormRadioFieldTest extends TestCase
         }
     }
 
-    public function test_radio_uses_the_shared_adaptive_grid_without_changing_input_contract(): void
+    public function test_modal_radio_uses_the_shared_adaptive_grid_without_changing_input_contract(): void
     {
         $form = $this->radioForm();
-        $html = $this->get(route('forms.show', $form->slug))->assertOk()->getContent();
+        $html = $this->post(route('forms.modal', $form->slug))->assertOk()->getContent();
 
         $this->assertStringContainsString('form-adaptive-choice-grid form-radio-options', $html);
         $this->assertStringContainsString('form-adaptive-choice form-radio-option choice-grid-item--short', $html);
@@ -91,7 +94,7 @@ class FormRadioFieldTest extends TestCase
         $form = $this->radioForm('radio_card');
         $html = $this->get(route('forms.show', $form->slug))->assertOk()->getContent();
 
-        $this->assertStringContainsString('class="form-choice-card"', $html);
+        $this->assertStringContainsString('class="form-choice-card form-page__choice no-media"', $html);
         $this->assertStringContainsString('type="radio"', $html);
         $this->assertArrayNotHasKey('radio_card', \App\Filament\Resources\FormResource::fieldTypeLabels());
         $this->assertContains('radio_card', \App\Services\FormSchema::supportedTypes());

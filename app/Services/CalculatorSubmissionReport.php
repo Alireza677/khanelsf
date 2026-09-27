@@ -4,29 +4,45 @@ namespace App\Services;
 
 use App\Models\FormSubmission;
 use App\Services\Calculators\CalculationResultRows;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Spatie\LaravelPdf\Facades\Pdf;
+use Throwable;
 
 final class CalculatorSubmissionReport
 {
     public function __construct(
         private readonly SettingsService $settings,
-        private readonly PersianPdfHtml $persianPdf,
         private readonly CalculationResultRows $calculationRows,
     ) {}
 
     public function download(FormSubmission $submission): Response
     {
-        File::ensureDirectoryExists(
-            config('dompdf.options.font_dir', storage_path('fonts')),
-        );
-
         $html = view('reports.calculator-submission', $this->data($submission))->render();
-        $pdf = Pdf::loadHTML($this->persianPdf->shape($html))
-            ->setPaper('a4');
 
-        return $pdf->download("calculator-report-{$submission->getKey()}.pdf");
+        try {
+            return Pdf::html($html)
+                ->format('a4')
+                ->margins(10, 10, 12, 10)
+                ->waitUntilReady("document.fonts.status === 'loaded'", timeout: 30000)
+                ->download("calculator-report-{$submission->getKey()}.pdf")
+                ->toResponse(request());
+        } catch (Throwable $exception) {
+            Log::error('Calculator PDF renderer failed', [
+                'driver' => config('laravel-pdf.driver'),
+                'submission_id' => $submission->getKey(),
+                'exception_class' => $exception::class,
+                'exception_message' => $exception->getMessage(),
+                'exception_code' => $exception->getCode(),
+                'chrome_binary' => config('laravel-pdf.chrome.chrome_binary'),
+                'php_version' => PHP_VERSION,
+                'php_sapi' => PHP_SAPI,
+                'sockets_loaded' => extension_loaded('sockets'),
+                'exception' => $exception,
+            ]);
+
+            abort(503, 'سرویس تولید گزارش PDF در دسترس نیست. لطفاً دوباره تلاش کنید.');
+        }
     }
 
     /**
@@ -54,8 +70,12 @@ final class CalculatorSubmissionReport
                 'ایمیل' => $this->scalar($payload['email'] ?? null),
             ], fn (?string $value): bool => filled($value)),
             'inputs' => $this->inputs($payload, $result),
-            'recommendation' => $this->scalar($result['result'] ?? null),
+            'recommendation' => $this->scalar($result['result_title'] ?? $result['result'] ?? null),
+            'resultSummary' => $this->scalar($result['result_summary'] ?? null),
+            'resultDescription' => $this->scalar($result['result_description'] ?? $result['description'] ?? null),
+            'resultNote' => $this->scalar($result['result_note'] ?? null),
             'noEligibleRecommendation' => ($result['no_eligible_recommendation'] ?? false) === true,
+            'weighted' => $this->calculationRows->weightedSummary($result),
             'scores' => $this->scores($result),
             'explanation' => $this->scalar($result['reason'] ?? $result['explanation'] ?? null),
             'summary' => $this->scalar($result['project_summary'] ?? $result['summary'] ?? null),
@@ -140,7 +160,12 @@ final class CalculatorSubmissionReport
     {
         return array_map(static fn (array $row): array => [
             'label' => $row['label'],
-            'value' => $row['score'],
+            'value' => $row['suitability_label'] ?? $row['score'],
+            ...(array_key_exists('raw_score_label', $row) ? [
+                'raw_score_label' => $row['raw_score_label'],
+                'raw_score' => $row['raw_score'],
+                'suitability_percentage' => $row['suitability_percentage'],
+            ] : []),
             'rank' => $row['rank'],
             'recommended' => $row['recommended'],
             'eligible' => $row['eligible'],

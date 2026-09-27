@@ -2,11 +2,16 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Forms\Components\CalculatorPerformanceMatrix;
+use App\Filament\Support\CalculatorDecisionReportEditor;
+use App\Filament\Support\CalculatorResultContentEditor;
+use App\Filament\Support\CalculatorWeightedEditor;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\FormResource\Pages;
 use App\Models\Form as FormModel;
 use App\Services\Calculators\CalculatorEligibilityRuleSchema;
+use App\Services\Calculators\CalculatorScoringSchema;
 use App\Services\FormSchema;
 use App\Services\FormSchemaIdentityManager;
 use Filament\Forms;
@@ -137,6 +142,16 @@ class FormResource extends Resource
 
     public static function prepareSchemaForEditor(array $data): array
     {
+        foreach (['show_hero', 'show_stepper', 'show_step_counter', 'show_step_description'] as $key) {
+            data_set($data, 'settings.presentation.'.$key, data_get($data, 'settings.presentation.'.$key) ?? true);
+        }
+
+        if (($data['type'] ?? null) === 'calculator') {
+            $data['schema'] = app(CalculatorScoringSchema::class)->normalize(
+                CalculatorWeightedEditor::pruneReferences($data['schema'] ?? []), 'data.schema',
+            );
+        }
+
         $fields = data_get($data, 'schema.fields', []);
         $fields = is_array($fields) ? $fields : [];
         $isCalculator = data_get($data, 'type') === 'calculator';
@@ -169,6 +184,9 @@ class FormResource extends Resource
             foreach ($options as $optionIndex => $option) {
                 if ($isCalculator && is_array($option)) {
                     $fields[$index]['options'][$optionIndex]['scores'] = static::scoresForEditor($option['scores'] ?? []);
+                    if (array_key_exists('criterion_weights', $option)) {
+                        $fields[$index]['options'][$optionIndex]['criterion_weights'] = CalculatorWeightedEditor::effectsForEditor($option['criterion_weights']);
+                    }
                 }
             }
         }
@@ -198,6 +216,11 @@ class FormResource extends Resource
         $isCalculator = data_get($data, 'type') === 'calculator';
 
         if ($isCalculator) {
+            // Hidden repeaters retain their UUID row keys until this boundary.
+            $criteria = data_get($data, 'schema.calculator.criteria');
+            if (is_array($criteria)) {
+                data_set($data, 'schema.calculator.criteria', array_values($criteria));
+            }
             data_set(
                 $data,
                 'schema.calculator.recommendations',
@@ -218,6 +241,11 @@ class FormResource extends Resource
                 if ($isCalculator || array_key_exists('scores', $option)) {
                     $fields[$fieldIndex]['options'][$optionIndex]['scores'] = static::scoresForStorage($option['scores'] ?? []);
                 }
+                if ($isCalculator && array_key_exists('criterion_weights', $option)) {
+                    $fields[$fieldIndex]['options'][$optionIndex]['criterion_weights'] = CalculatorWeightedEditor::effectsForStorage(
+                        $option['criterion_weights'], "data.schema.fields.{$fieldIndex}.options.{$optionIndex}.criterion_weights",
+                    );
+                }
             }
         }
 
@@ -236,12 +264,57 @@ class FormResource extends Resource
             );
         }
 
+        if ($isCalculator) {
+            $data['schema'] = app(CalculatorScoringSchema::class)->normalize($data['schema'], 'data.schema');
+        }
+
         return $data;
     }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Tabs::make('form_tabs')->tabs([
+                Forms\Components\Tabs\Tab::make('ساختار و تنظیمات فرم')->schema(static::definitionSchema()),
+                Forms\Components\Tabs\Tab::make('نمایش و صفحه فرم')->schema([
+                    Forms\Components\Section::make('Hero')
+                        ->description('این تنظیمات فقط در صفحه مستقل فرم استفاده می‌شوند. انتخاب صفحه یا مودال همچنان در Action انجام می‌شود.')
+                        ->schema([
+                            Forms\Components\Toggle::make('settings.presentation.show_hero')
+                                ->label('نمایش Hero')->default(true),
+                            Forms\Components\TextInput::make('settings.presentation.title')
+                                ->label('عنوان عمومی صفحه')->maxLength(255)
+                                ->helperText('در صورت خالی بودن، نام داخلی فرم نمایش داده می‌شود.'),
+                            Forms\Components\Textarea::make('settings.presentation.description')
+                                ->label('توضیح کوتاه')->rows(3)->maxLength(2000),
+                            Forms\Components\TextInput::make('settings.presentation.eyebrow')
+                                ->label('متن بالای عنوان')->maxLength(255),
+                            Forms\Components\ViewField::make('settings.presentation.hero_media_id')
+                                ->label('تصویر Hero از کتابخانه رسانه')
+                                ->view('filament.forms.components.media-library-picker')
+                                ->viewData(fn (): array => ['images' => static::mediaLibraryImageItems()])
+                                ->columnSpanFull(),
+                        ])->columns(2),
+                    Forms\Components\Section::make('تجربه فرم')->schema([
+                        Forms\Components\Toggle::make('settings.presentation.show_stepper')
+                            ->label('نمایش Stepper')->default(true),
+                        Forms\Components\Toggle::make('settings.presentation.show_step_counter')
+                            ->label('نمایش مرحله X از Y')->default(true),
+                        Forms\Components\Toggle::make('settings.presentation.show_step_description')
+                            ->label('نمایش توضیح سؤال / مرحله')->default(true),
+                        Forms\Components\TextInput::make('settings.presentation.previous_button_label')
+                            ->label('متن دکمه مرحله قبل')->placeholder('مرحله قبل')->maxLength(100),
+                        Forms\Components\TextInput::make('settings.presentation.next_button_label')
+                            ->label('متن دکمه مرحله بعد')->placeholder('مرحله بعد')->maxLength(100),
+                    ])->columns(2),
+                ]),
+            ])->columnSpanFull(),
+        ]);
+    }
+
+    private static function definitionSchema(): array
+    {
+        return [
             Forms\Components\Section::make('تعریف فرم')
                 ->schema([
                     Forms\Components\TextInput::make('name')
@@ -351,6 +424,7 @@ class FormResource extends Resource
                             Forms\Components\Textarea::make('description')
                                 ->label('توضیح مرحله')
                                 ->visible(fn (Forms\Get $get): bool => in_array($get('type'), ['page', 'step'], true))
+                                ->dehydratedWhenHidden()
                                 ->columnSpanFull(),
                             Forms\Components\Toggle::make('settings.thousands_separator')
                                 ->label('جداکننده هزارگان')
@@ -386,6 +460,8 @@ class FormResource extends Resource
                                 ->schema([
                                     Forms\Components\Hidden::make('option_id')
                                         ->default(fn (): string => strtoupper((string) Str::ulid())),
+                                    Forms\Components\Hidden::make('description'),
+                                    Forms\Components\Hidden::make('icon'),
                                     Forms\Components\TextInput::make('label')
                                         ->label('عنوان گزینه')
                                         ->live(debounce: 300)
@@ -424,8 +500,46 @@ class FormResource extends Resource
                                         ->addActionLabel('افزودن امتیاز')
                                         ->reorderable()
                                         ->columns(2)
+                                        ->dehydratedWhenHidden(fn ($livewire): bool => data_get($livewire, 'data.type') === 'calculator'
+                                            && data_get($livewire, 'data.schema.calculator.scoring_mode') === CalculatorScoringSchema::WEIGHTED)
                                         ->visible(fn (Forms\Get $get, $livewire): bool => in_array($get('../../type'), ['image_choice', 'radio_card', 'radio', 'checkbox'], true)
-                                            && data_get($livewire, 'data.type') === 'calculator')
+                                            && data_get($livewire, 'data.type') === 'calculator'
+                                            && data_get($livewire, 'data.schema.calculator.scoring_mode', CalculatorScoringSchema::SIMPLE) !== CalculatorScoringSchema::WEIGHTED)
+                                        ->columnSpanFull(),
+                                    Repeater::make('criterion_weights')
+                                        ->label('تأثیر این پاسخ بر معیارها')
+                                        ->helperText(fn ($livewire): string => CalculatorWeightedEditor::criteriaOptions(data_get($livewire, 'data.schema.calculator.criteria', [])) === []
+                                            ? 'ابتدا در بخش «معیارهای تصمیم‌گیری» معیار اضافه کنید.'
+                                            : 'فقط معیارهای مرتبط را اضافه کنید. معیارهای انتخاب‌نشده و وزن‌های خالی معادل صفر هستند.')
+                                        ->defaultItems(0)
+                                        ->schema([
+                                            Forms\Components\Select::make('criterion_id')
+                                                ->label('معیار')
+                                                ->options(fn ($livewire): array => CalculatorWeightedEditor::criteriaOptions(data_get($livewire, 'data.schema.calculator.criteria', [])))
+                                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                                ->required()
+                                                ->validationMessages([
+                                                    'required' => 'انتخاب معیار الزامی است.',
+                                                    'in' => 'معیار انتخاب‌شده دیگر در فهرست معیارها وجود ندارد.',
+                                                    'distinct' => 'هر معیار را برای یک پاسخ فقط یک‌بار انتخاب کنید.',
+                                                ])
+                                                ->native(false),
+                                            Forms\Components\TextInput::make('weight')
+                                                ->label('میزان تأثیر')
+                                                ->numeric()->minValue(0)->maxValue(10)->step('any')
+                                                ->default(0)->placeholder('۰')
+                                                ->dehydrateStateUsing(fn (mixed $state): mixed => $state === null || $state === '' ? 0 : $state)
+                                                ->validationMessages(static::criterionWeightMessages()),
+                                        ])
+                                        ->addActionLabel('افزودن تأثیر معیار')
+                                        ->addable(fn ($livewire): bool => CalculatorWeightedEditor::criteriaOptions(data_get($livewire, 'data.schema.calculator.criteria', [])) !== [])
+                                        ->reorderable(false)
+                                        ->collapsible()
+                                        ->itemLabel(fn (array $state, $livewire): string => CalculatorWeightedEditor::criteriaOptions(data_get($livewire, 'data.schema.calculator.criteria', []))[$state['criterion_id'] ?? ''] ?? 'تأثیر معیار')
+                                        ->dehydratedWhenHidden()
+                                        ->visible(fn (Forms\Get $get, $livewire): bool => static::isWeightedCalculator($livewire)
+                                            && in_array($get('../../type'), ['select', 'image_choice', 'radio_card', 'radio', 'checkbox'], true))
+                                        ->columns(2)
                                         ->columnSpanFull(),
                                 ])
                                 ->view('filament.forms.components.form-builder-choices-editor')
@@ -514,12 +628,42 @@ class FormResource extends Resource
                             $component->getLivewire()->dispatch('form-builder-field-added', key: $newUuid);
                         }))
                         ->cloneable()
+                        ->cloneAction(fn (Action $action): Action => $action->after(function (Repeater $component): void {
+                            // Filament copies hidden identities too. Assign the clone its own references
+                            // before dependent Eligibility selects read the unsaved schema.
+                            $items = $component->getState();
+                            $cloneKey = array_key_last($items);
+                            $items[$cloneKey]['field_id'] = strtoupper((string) Str::ulid());
+                            foreach (array_keys($items[$cloneKey]['options'] ?? []) as $optionKey) {
+                                $items[$cloneKey]['options'][$optionKey]['option_id'] = strtoupper((string) Str::ulid());
+                            }
+                            $component->state($items);
+                        }))
                         ->columns(2)
                         ->columnSpanFull(),
                 ]),
             Forms\Components\Section::make('نتایج محاسبه')
                 ->visible(fn (Forms\Get $get): bool => $get('type') === 'calculator')
                 ->schema([
+                    Forms\Components\Select::make('schema.calculator.scoring_mode')
+                        ->label('روش محاسبه')
+                        ->options([
+                            CalculatorScoringSchema::SIMPLE => 'امتیازدهی ساده',
+                            CalculatorScoringSchema::WEIGHTED => 'امتیازدهی وزنی چندمعیاره',
+                        ])
+                        ->default(CalculatorScoringSchema::SIMPLE)
+                        ->live()
+                        ->formatStateUsing(fn (mixed $state): mixed => $state ?? CalculatorScoringSchema::SIMPLE)
+                        ->required()
+                        ->validationMessages([
+                            'required' => 'انتخاب روش امتیازدهی الزامی است.',
+                            'in' => 'روش امتیازدهی معتبر نیست.',
+                        ])
+                        ->helperText(fn (Forms\Get $get): ?string => $get('schema.calculator.scoring_mode') === CalculatorScoringSchema::WEIGHTED
+                            ? 'در این روش، پاسخ‌های کاربر اهمیت معیارهای تصمیم‌گیری را تعیین می‌کنند و هر نتیجه بر اساس عملکرد آن در هر معیار امتیاز نهایی می‌گیرد.'
+                            : null)
+                        ->extraAttributes(['dir' => 'rtl'])
+                        ->native(false),
                     Repeater::make('schema.calculator.recommendations')
                         ->label('نتایج پیشنهادی')
                         ->schema([
@@ -544,6 +688,56 @@ class FormResource extends Resource
                         ->required()
                         ->columns(1),
                 ]),
+            Forms\Components\Section::make('معیارهای تصمیم‌گیری')
+                ->visible(fn ($livewire): bool => static::isWeightedCalculator($livewire))
+                ->dehydratedWhenHidden()
+                ->extraAttributes(['dir' => 'rtl'])
+                ->schema([
+                    Repeater::make('schema.calculator.criteria')
+                        ->label('معیارها')
+                        ->defaultItems(0)
+                        ->schema([
+                            Forms\Components\Hidden::make('id')->default(fn (): string => (string) Str::ulid()),
+                            Forms\Components\TextInput::make('label')
+                                ->label('عنوان معیار')
+                                ->placeholder('برای مثال: سرعت اجرا')
+                                ->required()->maxLength(255)->live(onBlur: true)
+                                ->validationMessages([
+                                    'required' => 'عنوان معیار الزامی است.',
+                                    'max' => 'عنوان معیار باید حداکثر ۲۵۵ نویسه باشد.',
+                                ]),
+                            Forms\Components\TextInput::make('base_weight')
+                                ->label('وزن پایه')
+                                ->helperText('اهمیت اولیهٔ معیار، پیش از درنظرگرفتن پاسخ‌ها؛ از ۰ تا ۱۰.')
+                                ->numeric()->minValue(0)->maxValue(10)->step('any')->default(0)->required()
+                                ->validationMessages(static::criterionWeightMessages()),
+                            Forms\Components\Textarea::make('description')
+                                ->label('توضیح معیار (اختیاری)')
+                                ->rows(2)->maxLength(2000)->columnSpanFull()
+                                ->validationMessages(['max' => 'توضیح معیار باید حداکثر ۲۰۰۰ نویسه باشد.']),
+                        ])
+                        ->addActionLabel('افزودن معیار')
+                        ->deleteAction(fn (Action $action): Action => $action
+                            ->label('حذف معیار')->requiresConfirmation()
+                            ->modalHeading('حذف معیار تصمیم‌گیری')
+                            ->modalDescription('این معیار و امتیازهای وابسته به آن در پاسخ‌ها و ماتریس نتایج حذف می‌شوند. ادامه می‌دهید؟')
+                            ->modalSubmitActionLabel('حذف معیار')->modalCancelActionLabel('انصراف'))
+                        ->reorderable()->reorderableWithButtons()->collapsible()
+                        ->itemLabel(fn (array $state): string => filled($state['label'] ?? null) ? $state['label'] : 'معیار جدید')
+                        ->afterStateUpdated(fn ($livewire) => static::pruneWeightedEditorReferences($livewire))
+                        ->dehydratedWhenHidden()
+                        ->columns(2),
+                ]),
+            Forms\Components\Section::make('ماتریس امتیاز نتایج')
+                ->description('عدد بالاتر یعنی این نتیجه در معیار موردنظر عملکرد بهتری دارد. بازه مجاز از ۰ تا ۵ است.')
+                ->visible(fn ($livewire): bool => static::isWeightedCalculator($livewire))
+                ->dehydratedWhenHidden()
+                ->extraAttributes(['dir' => 'rtl', 'style' => 'min-width: 0;'])
+                ->schema([
+                    CalculatorPerformanceMatrix::make('schema.calculator.criterion_scores'),
+                ]),
+            CalculatorResultContentEditor::section(),
+            CalculatorDecisionReportEditor::section(),
             Forms\Components\Section::make('قوانین صلاحیت گزینه‌ها')
                 ->description('این قوانین مستقل از امتیازدهی هستند و فقط گزینه‌های پیشنهادی را از نتیجه نهایی خارج می‌کنند.')
                 ->visible(fn (Forms\Get $get): bool => $get('type') === 'calculator')
@@ -557,22 +751,35 @@ class FormResource extends Resource
                             Forms\Components\Hidden::make('effect')->default('exclude'),
                             Forms\Components\Select::make('field_id')
                                 ->label('فیلد مبنا')
-                                ->options(fn ($livewire): array => static::eligibilityFieldOptions(
-                                    data_get($livewire, 'data.schema.fields', []),
+                                ->options(fn (Forms\Get $get): array => static::eligibilityFieldOptions(
+                                    $get('data.schema.fields', isAbsolute: true),
                                 ))
                                 ->live()
-                                ->afterStateUpdated(function (Forms\Set $set): void {
-                                    $set('operator', null);
-                                    $set('option_id', null);
+                                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, Forms\Components\Select $component): void {
+                                    $fields = $get('data.schema.fields', isAbsolute: true);
+                                    $type = static::eligibilityFieldType($fields, $get('field_id'));
+                                    if (! array_key_exists((string) $get('operator'), static::eligibilityOperatorOptions($type))) {
+                                        $set('operator', null);
+                                    }
+                                    if (! array_key_exists(strtoupper((string) $get('option_id')), static::eligibilityChoiceOptions($fields, $get('field_id')))) {
+                                        $set('option_id', null);
+                                    }
                                     $set('number_value', null);
+                                    // The enhanced Select is wire:ignore. Refresh even if its state was already null.
+                                    foreach (['operator', 'option_id'] as $name) {
+                                        $component->getContainer()->getComponent(
+                                            fn ($field): bool => $field instanceof Forms\Components\Select && $field->getName() === $name,
+                                            withHidden: true,
+                                        )?->refreshSelectedOptionLabel();
+                                    }
                                 })
                                 ->required()
                                 ->native(false),
                             Forms\Components\Select::make('operator')
                                 ->label('عملگر')
-                                ->options(fn (Forms\Get $get, $livewire): array => static::eligibilityOperatorOptions(
+                                ->options(fn (Forms\Get $get): array => static::eligibilityOperatorOptions(
                                     static::eligibilityFieldType(
-                                        data_get($livewire, 'data.schema.fields', []),
+                                        $get('data.schema.fields', isAbsolute: true),
                                         $get('field_id'),
                                     ),
                                 ))
@@ -580,19 +787,19 @@ class FormResource extends Resource
                                 ->native(false),
                             Forms\Components\Select::make('option_id')
                                 ->label('گزینه مقایسه')
-                                ->options(fn (Forms\Get $get, $livewire): array => static::eligibilityChoiceOptions(
-                                    data_get($livewire, 'data.schema.fields', []),
+                                ->options(fn (Forms\Get $get): array => static::eligibilityChoiceOptions(
+                                    $get('data.schema.fields', isAbsolute: true),
                                     $get('field_id'),
                                 ))
-                                ->required(fn (Forms\Get $get, $livewire): bool => app(CalculatorEligibilityRuleSchema::class)->isChoice(
+                                ->required(fn (Forms\Get $get): bool => app(CalculatorEligibilityRuleSchema::class)->isChoice(
                                     static::eligibilityFieldType(
-                                        data_get($livewire, 'data.schema.fields', []),
+                                        $get('data.schema.fields', isAbsolute: true),
                                         $get('field_id'),
                                     ),
                                 ))
-                                ->visible(fn (Forms\Get $get, $livewire): bool => app(CalculatorEligibilityRuleSchema::class)->isChoice(
+                                ->visible(fn (Forms\Get $get): bool => app(CalculatorEligibilityRuleSchema::class)->isChoice(
                                     static::eligibilityFieldType(
-                                        data_get($livewire, 'data.schema.fields', []),
+                                        $get('data.schema.fields', isAbsolute: true),
                                         $get('field_id'),
                                     ),
                                 ))
@@ -600,12 +807,12 @@ class FormResource extends Resource
                             Forms\Components\TextInput::make('number_value')
                                 ->label('مقدار مقایسه')
                                 ->numeric()
-                                ->required(fn (Forms\Get $get, $livewire): bool => static::eligibilityFieldType(
-                                    data_get($livewire, 'data.schema.fields', []),
+                                ->required(fn (Forms\Get $get): bool => static::eligibilityFieldType(
+                                    $get('data.schema.fields', isAbsolute: true),
                                     $get('field_id'),
                                 ) === CalculatorEligibilityRuleSchema::NUMBER_TYPE)
-                                ->visible(fn (Forms\Get $get, $livewire): bool => static::eligibilityFieldType(
-                                    data_get($livewire, 'data.schema.fields', []),
+                                ->visible(fn (Forms\Get $get): bool => static::eligibilityFieldType(
+                                    $get('data.schema.fields', isAbsolute: true),
                                     $get('field_id'),
                                 ) === CalculatorEligibilityRuleSchema::NUMBER_TYPE),
                             Forms\Components\Select::make('profiles')
@@ -676,7 +883,28 @@ class FormResource extends Resource
                             && (bool) $get('settings.notifications.notify_admin')),
                 ])
                 ->columns(2),
-        ]);
+        ];
+    }
+
+    private static function isWeightedCalculator($livewire): bool
+    {
+        return data_get($livewire, 'data.type') === 'calculator'
+            && data_get($livewire, 'data.schema.calculator.scoring_mode') === CalculatorScoringSchema::WEIGHTED;
+    }
+
+    private static function criterionWeightMessages(): array
+    {
+        return [
+            'required' => 'واردکردن وزن معیار الزامی است.',
+            'numeric' => 'وزن معیار باید عدد باشد.',
+            'min' => 'وزن معیار باید بین ۰ تا ۱۰ باشد.',
+            'max' => 'وزن معیار باید بین ۰ تا ۱۰ باشد.',
+        ];
+    }
+
+    private static function pruneWeightedEditorReferences($livewire): void
+    {
+        $livewire->data['schema'] = CalculatorWeightedEditor::pruneReferences($livewire->data['schema'] ?? [], editorRows: true);
     }
 
     private static function recommendationsForEditor(mixed $recommendations): array
@@ -820,7 +1048,10 @@ class FormResource extends Resource
         foreach (is_array($fields) ? $fields : [] as $field) {
             if (! is_array($field)
                 || ! in_array($field['type'] ?? null, CalculatorEligibilityRuleSchema::SUPPORTED_TYPES, true)
-                || ! is_string($field['field_id'] ?? null)) {
+                || ! is_string($field['field_id'] ?? null)
+                || trim($field['field_id']) === ''
+                || ($field['type'] !== CalculatorEligibilityRuleSchema::NUMBER_TYPE
+                    && static::eligibilityChoiceOptions([$field], $field['field_id']) === [])) {
                 continue;
             }
 
@@ -861,8 +1092,11 @@ class FormResource extends Resource
             $options = [];
 
             foreach (is_array($field['options'] ?? null) ? $field['options'] : [] as $option) {
-                if (is_array($option) && is_string($option['option_id'] ?? null)) {
-                    $options[strtoupper($option['option_id'])] = (string) ($option['label'] ?? 'گزینه');
+                if (is_array($option) && is_string($option['option_id'] ?? null)
+                    && trim($option['option_id']) !== ''
+                    && is_string($option['value'] ?? null) && trim($option['value']) !== '') {
+                    // Rules store canonical option identities; the evaluator resolves their internal value.
+                    $options[strtoupper($option['option_id'])] = (string) ($option['label'] ?? $option['value']);
                 }
             }
 

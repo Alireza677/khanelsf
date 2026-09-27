@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Form;
+use App\Services\Calculators\CalculatorManager;
+use App\Services\Calculators\InvalidCalculatorConfiguration;
 use App\Services\FormAttributionSession;
 use App\Services\FormSchema;
 use App\Services\FormSubmissionService;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\UploadedFile;
 use App\Support\FormSubmitConfirmation;
+use App\Support\FormPagePresentation;
+use Illuminate\Validation\ValidationException;
 
 class FormController extends Controller
 {
@@ -31,10 +35,24 @@ class FormController extends Controller
             return redirect()->route('forms.show', $form->slug);
         }
 
+        $presentation = FormPagePresentation::settings($form);
+        $instanceToken = $this->instanceToken($request->all()) ?? $attribution->activeInstance($request, $form);
+        if ((int) $request->session()->get('_form_feedback_form_id') === (int) $form->getKey()) {
+            $instanceToken = $this->instanceToken(['_form_instance' => $request->session()->get('_form_feedback_instance')]);
+        }
+        $resultRedirect = $request->session()->get('calculator_result_redirect');
+        if ($form->isCalculator() && (int) data_get($resultRedirect, 'form_id') === (int) $form->getKey()) {
+            // Attribution is consumed after submission. Its instance must still own the result GET.
+            $instanceToken = $this->instanceToken(['_form_instance' => data_get($resultRedirect, 'instance_token')]);
+            $request->session()->forget('calculator_result_redirect');
+        }
+
         return view('forms.show', [
             'form' => $form,
+            'presentation' => $presentation,
+            'hero' => FormPagePresentation::hero($presentation),
             'fields' => $schema->fields($form),
-            'instanceToken' => $this->instanceToken($request->all()) ?? $attribution->activeInstance($request, $form),
+            'instanceToken' => $instanceToken,
         ]);
     }
 
@@ -74,8 +92,32 @@ class FormController extends Controller
         FormSchema $schema,
         FormSubmissionService $submissions,
         FormAttributionSession $attribution,
+        CalculatorManager $calculators,
     ): RedirectResponse {
         $form = Form::query()->published()->where('slug', $slug)->firstOrFail();
+        $instanceToken = $this->instanceToken($request->all());
+        if ($form->isCalculator()) {
+            // Retain ownership of validation feedback even after a previous success consumed attribution.
+            $request->session()->flash('_form_feedback_form_id', $form->getKey());
+            // A failed or new attempt must never display the preceding attempt's result.
+            foreach (['calculator_result_state', ...array_map(
+                fn (string $token): string => "calculator_result_instances.{$token}",
+                array_keys((array) $request->session()->get('calculator_result_instances', [])),
+            )] as $key) {
+                if ((int) data_get($request->session()->get($key), 'form_id') === (int) $form->getKey()) {
+                    $request->session()->forget($key);
+                }
+            }
+            if ((int) data_get($request->session()->get('calculator_result_redirect'), 'form_id') === (int) $form->getKey()) {
+                $request->session()->forget('calculator_result_redirect');
+            }
+        }
+        try {
+            $calculators->assertConfiguration($form);
+        } catch (InvalidCalculatorConfiguration) {
+            return back()->withErrors(['calculator' => InvalidCalculatorConfiguration::PUBLIC_MESSAGE], $this->errorBag($instanceToken))
+                ->withInput()->with('_form_feedback_instance', $instanceToken);
+        }
         $request->merge($schema->normalizeSubmissionInput($form, $request->all()));
         $validator = Validator::make($request->all(), [
             ...$schema->validationRules($form),
@@ -138,7 +180,15 @@ class FormController extends Controller
             ]
             : null;
 
-        $submission = $submissions->submit($form, $validated, $context, $files, $confirmationAudit);
+        try {
+            $submission = $submissions->submit($form, $validated, $context, $files, $confirmationAudit);
+        } catch (InvalidCalculatorConfiguration) {
+            return back()->withErrors(['calculator' => InvalidCalculatorConfiguration::PUBLIC_MESSAGE], $this->errorBag($instanceToken))
+                ->withInput()->with('_form_feedback_instance', $instanceToken);
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors(), $this->errorBag($instanceToken))
+                ->withInput()->with('_form_feedback_instance', $instanceToken);
+        }
         $attribution->forget($request, $form, $instanceToken);
 
         $redirect = $request->input('_display_mode') === 'modal'
@@ -146,8 +196,17 @@ class FormController extends Controller
             : back();
 
         if ($form->isCalculator()) {
+            $redirect->withInput($request->except(['_token', 'website']))
+                ->with('_form_feedback_instance', $instanceToken)
+                ->with('calculator_result_redirect', [
+                    'form_id' => $form->getKey(),
+                    'instance_token' => $instanceToken,
+                ]);
+
             $state = [
                 'form_id' => $form->getKey(),
+                'submission_id' => $submission->getKey(),
+                'display_mode' => $request->input('_display_mode', 'page'),
                 'calculation_result' => $submission->calculation_result,
                 'report_url' => URL::temporarySignedRoute(
                     'forms.submissions.calculator-report',

@@ -20,8 +20,9 @@
             font-weight: 700;
             src: url("data:font/truetype;charset=utf-8;base64,{{ $vazirmatnBold }}") format("truetype");
         }
-        @page { margin: 28px 32px 38px; }
-        * { box-sizing: border-box; }
+        /* Keep margins in sync with CalculatorSubmissionReport::download(). */
+        @page { size: A4; margin: 10mm 10mm 12mm; }
+        * { box-sizing: border-box; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         html, body { direction: rtl; }
         body { color: #172033; font-family: Vazirmatn, DejaVu Sans, sans-serif; font-size: 11px; line-height: 1.8; margin: 0; text-align: right; }
         h1, h2, p { margin-top: 0; }
@@ -34,14 +35,23 @@
         .hero { background: #eef8f3; border: 1px solid #b9dfcb; border-radius: 10px; margin-top: 18px; padding: 18px 22px; text-align: center; }
         .hero span { color: #4c6658; display: block; font-size: 10px; }
         .hero strong { color: #12623e; display: block; font-size: 24px; margin-top: 4px; }
-        .section { border: 1px solid #e2e7ee; border-radius: 9px; margin-top: 14px; padding: 15px 18px; page-break-inside: avoid; }
+        .avoid-break, .header, .hero, .section, .footer, tr { break-inside: avoid; page-break-inside: avoid; }
+        h1, h2 { break-after: avoid; }
+        p, li { orphans: 3; widows: 3; }
+        .result-content { white-space: pre-line; overflow-wrap: anywhere; }
+        .section { border: 1px solid #e2e7ee; border-radius: 9px; margin-top: 14px; padding: 15px 18px; }
         .section h2 { color: #173f5f; font-size: 14px; margin-bottom: 9px; }
+        .decision-report { break-inside: auto; page-break-inside: auto; }
+        .decision-report__factor { border-top: 1px solid #e2e7ee; margin-top: 10px; padding-top: 10px; break-inside: avoid; page-break-inside: avoid; }
+        .decision-report__factor h3 { color: #173f5f; font-size: 12px; margin: 0 0 5px; break-after: avoid; }
+        .decision-report__factor p { white-space: pre-line; overflow-wrap: anywhere; margin-bottom: 0; }
+        .decision-report__summary { border-top: 1px solid #e2e7ee; margin: 12px 0 0; padding-top: 10px; }
         .customer-table,
         .inputs-table,
         .summary-table,
         .scores-table {
             border-collapse: collapse;
-            direction: ltr;
+            direction: rtl;
             table-layout: fixed;
             width: 100%;
         }
@@ -74,7 +84,6 @@
         }
         .scores-table .report-table__label { width: 76%; }
         .scores-table .report-table__value {
-            direction: ltr;
             text-align: left;
             width: 24%;
         }
@@ -95,21 +104,48 @@
         <p>خلاصه اطلاعات ثبت‌شده و نتیجه نهایی ارزیابی</p>
     </header>
 
-    <div class="meta">شماره گزارش: {{ $submission->getKey() }} | تاریخ ثبت: {{ \App\Support\PersianDate::dateTime($submission->submitted_at) }}</div>
+    <div class="meta">شماره گزارش: <bdi dir="ltr">{{ $submission->getKey() }}</bdi> | تاریخ ثبت: <bdi dir="auto">{{ \App\Support\PersianDate::dateTime($submission->submitted_at) }}</bdi></div>
 
     <section class="hero">
         @if ($noEligibleRecommendation)
             <span>نیازمند بررسی کارشناسی</span>
             <strong>هیچ گزینه واجد شرایطی یافت نشد</strong>
             <p>بر اساس پاسخ‌های ثبت‌شده، هیچ‌یک از گزینه‌ها شرایط لازم را ندارند.</p>
+        @elseif ($weighted && $weighted['no_score'])
+            <strong>امتیازی برای مقایسه محاسبه نشد</strong>
+            <p>وزن معیارهای تصمیم‌گیری صفر است؛ امکان تعیین میزان تطابق و پیشنهاد اصلی وجود ندارد.</p>
         @else
-            <span>پیشنهاد مناسب برای شما</span>
-            <strong>{{ $recommendation }}</strong>
+            <span>{{ $weighted ? 'پیشنهاد اصلی بر اساس پاسخ‌های شما' : 'پیشنهاد مناسب برای شما' }}</span>
+            <strong><bdi dir="auto">{{ $recommendation }}</bdi></strong>
+            @if (filled($resultSummary ?? null))<p class="result-content">{{ $resultSummary }}</p>@endif
+            @if ($weighted && $weighted['suitability_label'] !== null)<p>میزان تطابق: <bdi dir="auto">{{ $weighted['suitability_label'] }}</bdi></p>@endif
         @endif
         @if (! $noEligibleRecommendation && $explanation)
             <p>{{ $explanation }}</p>
         @endif
     </section>
+
+    @if ($weighted)
+        <p>این ارزیابی بر اساس پاسخ‌ها و معیارها، وزن‌ها و امتیازهای تعریف‌شده در فرم تهیه شده است.</p>
+        @if ($decisionReport = $weighted['decision_report'] ?? null)
+            <section class="section decision-report" dir="rtl">
+                <h2>چرا این پیشنهاد برای شما مناسب‌تر است؟</h2>
+                <p>{{ $decisionReport['intro'] }}</p>
+                @foreach ($decisionReport['factors'] as $factor)
+                    <div class="decision-report__factor">
+                        <h3>{{ $factor['label'] }}</h3>
+                        <p>{{ $factor['explanation'] }}</p>
+                    </div>
+                @endforeach
+                <p class="decision-report__summary">{{ $decisionReport['summary'] }}</p>
+            </section>
+        @elseif ($weighted['factors'] !== [])
+            <section class="section">
+                <h2>مهم‌ترین عوامل مؤثر در این نتیجه</h2>
+                <ul>@foreach ($weighted['factors'] as $factor)<li>{{ $factor['label'] }}</li>@endforeach</ul>
+            </section>
+        @endif
+    @endif
 
     @if ($customer !== [])
         <section class="section">
@@ -117,8 +153,8 @@
             <table class="customer-table">
                 @foreach ($customer as $label => $value)
                     <tr>
-                        <td class="report-table__value">{{ $value }}</td>
                         <td class="report-table__label">{{ $label }}</td>
+                        <td class="report-table__value"><bdi dir="auto">{{ $value }}</bdi></td>
                     </tr>
                 @endforeach
             </table>
@@ -131,8 +167,8 @@
             <table class="inputs-table">
                 @foreach ($inputs as $input)
                     <tr>
-                        <td class="report-table__value">{{ $input['value'] }}</td>
                         <td class="report-table__label">{{ $input['label'] }}</td>
+                        <td class="report-table__value"><bdi dir="auto">{{ $input['value'] }}</bdi></td>
                     </tr>
                 @endforeach
             </table>
@@ -147,8 +183,8 @@
                 <table class="summary-table">
                     @foreach ($outputs as $output)
                         <tr>
-                            <td class="report-table__value">{{ $output['value'] }}</td>
                             <td class="report-table__label">{{ $output['label'] }}</td>
+                            <td class="report-table__value"><bdi dir="auto">{{ $output['value'] }}</bdi></td>
                         </tr>
                     @endforeach
                 </table>
@@ -162,10 +198,10 @@
             <table class="scores-table">
                 @foreach ($eligibleScores as $score)
                     <tr @class(['recommended' => $score['recommended']])>
-                        <td class="report-table__value">{{ $score['value'] }}</td>
                         <td class="report-table__label">
-                            @if ($score['rank'] !== null)رتبه {{ $score['rank'] }} — @endif{{ $score['label'] }}
+                            @if ($score['rank'] !== null)رتبه {{ $weighted ? \App\Support\PersianDate::digits($score['rank']) : $score['rank'] }} — @endif<bdi dir="auto">{{ $score['label'] }}</bdi>
                         </td>
+                        <td class="report-table__value"><bdi dir="auto">{{ $score['value'] }}</bdi></td>
                     </tr>
                 @endforeach
             </table>
@@ -178,12 +214,12 @@
             <table class="scores-table">
                 @foreach ($excludedScores as $score)
                     <tr>
-                        <td class="report-table__value">{{ $score['value'] }}</td>
-                        <td class="report-table__label">{{ $score['label'] }} — خارج از شرایط</td>
+                        <td class="report-table__label"><bdi dir="auto">{{ $score['label'] }}</bdi> — خارج از شرایط</td>
+                        <td class="report-table__value"><bdi dir="auto">{{ $score['value'] }}</bdi></td>
                     </tr>
                     @foreach ($score['reasons'] as $reason)
                         <tr>
-                            <td class="report-table__value" colspan="2">علت: {{ $reason }}</td>
+                            <td colspan="2">علت: {{ $reason }}</td>
                         </tr>
                     @endforeach
                 @endforeach
@@ -191,12 +227,20 @@
         </section>
     @endif
 
-    @if ($benefits !== [])
+    @if (filled($resultDescription ?? null) || $benefits !== [])
         <section class="section">
             <h2>مزایا و توضیحات نتیجه</h2>
+            @if (filled($resultDescription ?? null))<p class="result-content">{{ $resultDescription }}</p>@endif
             <ul>
                 @foreach ($benefits as $benefit)<li>{{ $benefit }}</li>@endforeach
             </ul>
+        </section>
+    @endif
+
+    @if (filled($resultNote ?? null))
+        <section class="section">
+            <h2>نکته پایانی</h2>
+            <p class="result-content">{{ $resultNote }}</p>
         </section>
     @endif
 
@@ -204,8 +248,8 @@
         <div>تاریخ تولید گزارش: {{ \App\Support\PersianDate::dateTime($generatedAt) }}</div>
         <div class="footer-contact">
             راه‌های ارتباطی:
-            {{ $brand['phone'] ?: 'شماره تماس مجموعه' }}
-            @if ($brand['email']) | {{ $brand['email'] }} @endif
+            <bdi dir="auto">{{ $brand['phone'] ?: 'شماره تماس مجموعه' }}</bdi>
+            @if ($brand['email']) | <bdi dir="ltr">{{ $brand['email'] }}</bdi> @endif
             @if ($brand['address']) | {{ $brand['address'] }} @endif
         </div>
     </footer>

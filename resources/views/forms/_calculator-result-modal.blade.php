@@ -2,10 +2,13 @@
     $scoreRows = app(\App\Services\Calculators\CalculationResultRows::class)->fromSnapshot(
         is_array($calculationResult) ? $calculationResult : [],
     );
+    $weighted = app(\App\Services\Calculators\CalculationResultRows::class)->weightedSummary(is_array($calculationResult) ? $calculationResult : []);
     $eligibleScoreRows = array_values(array_filter($scoreRows, fn (array $row): bool => $row['eligible'] !== false));
     $excludedScoreRows = array_values(array_filter($scoreRows, fn (array $row): bool => $row['eligible'] === false));
     $noEligibleRecommendation = data_get($calculationResult, 'no_eligible_recommendation') === true;
-    $resultLabel = data_get($calculationResult, 'result');
+    $resultLabel = data_get($calculationResult, 'result_title') ?? data_get($calculationResult, 'result');
+    $resultSummary = data_get($calculationResult, 'result_summary');
+    $resultNote = data_get($calculationResult, 'result_note');
     $answerLabels = data_get($calculationResult, 'answer_labels', []);
     $answerLabels = is_array($answerLabels) ? $answerLabels : [];
     $fieldLabels = collect(app(\App\Services\FormSchema::class)->fields($form))
@@ -30,15 +33,17 @@
 @endphp
 
 <div
+    id="{{ $modalId }}"
     class="calculator-result-modal"
     data-calculator-result-modal
     role="dialog"
     aria-modal="true"
+    hidden
     aria-labelledby="{{ $modalId }}-title"
     aria-describedby="{{ $modalId }}-intro"
-    hidden
+    @if ($weighted) dir="rtl" @endif
 >
-    <article class="calculator-result-modal__panel calculator-result-card">
+    <article class="calculator-result-card calculator-result-modal__panel">
         <button
             class="calculator-result-modal__close"
             type="button"
@@ -49,26 +54,60 @@
         <header class="calculator-result-card__header">
             <span class="calculator-result-card__eyebrow">گزارش ارزیابی</span>
             <h2 id="{{ $modalId }}-title">نتیجه ارزیابی شما</h2>
-            <p id="{{ $modalId }}-intro">این نتیجه بر اساس پاسخ‌هایی که ثبت کرده‌اید تهیه شده است.</p>
+            <p id="{{ $modalId }}-intro">{{ $weighted ? 'این ارزیابی بر اساس پاسخ‌های شما و معیارها، وزن‌ها و امتیازهای تعریف‌شده در این فرم تهیه شده است.' : 'این نتیجه بر اساس پاسخ‌هایی که ثبت کرده‌اید تهیه شده است.' }}</p>
         </header>
 
+        <div class="calculator-result-modal__body" role="region" aria-label="جزئیات نتیجه ارزیابی" tabindex="0">
         <section class="calculator-result-card__hero" aria-label="پیشنهاد اصلی">
             @if ($noEligibleRecommendation)
                 <span>نیازمند بررسی کارشناسی</span>
                 <strong>هیچ گزینه واجد شرایطی یافت نشد</strong>
                 <p>بر اساس پاسخ‌های واردشده، هیچ‌یک از گزینه‌های تعریف‌شده شرایط لازم را ندارند.</p>
+            @elseif ($weighted && $weighted['no_score'])
+                <span>امتیازی برای مقایسه محاسبه نشد</span>
+                <strong>وزن معیارهای تصمیم‌گیری صفر است</strong>
+                <p>با پاسخ‌های فعلی، امکان تعیین میزان تطابق و پیشنهاد اصلی وجود ندارد.</p>
             @else
-                <span>پیشنهاد مناسب برای شما</span>
+                <span>{{ $weighted ? 'پیشنهاد اصلی بر اساس پاسخ‌های شما' : 'پیشنهاد مناسب برای شما' }}</span>
                 <strong>{{ $resultLabel }}</strong>
+                @if (filled($resultSummary))
+                    <p class="whitespace-pre-line">{{ $resultSummary }}</p>
+                @endif
+                @if ($weighted && $weighted['suitability_label'] !== null)
+                    <p>میزان تطابق: {{ $weighted['suitability_label'] }}</p>
+                @endif
             @endif
             @if (! $noEligibleRecommendation && filled($resultReason))
                 <p>{{ $resultReason }}</p>
             @endif
         </section>
 
+        @if ($decisionReport = $weighted['decision_report'] ?? null)
+            <section class="calculator-result-card__section calculator-decision-report" dir="rtl">
+                <h3>چرا این پیشنهاد برای شما مناسب‌تر است؟</h3>
+                <p>{{ $decisionReport['intro'] }}</p>
+                @foreach ($decisionReport['factors'] as $factor)
+                    <div class="calculator-decision-report__factor">
+                        <h4>{{ $factor['label'] }}</h4>
+                        <p>{{ $factor['explanation'] }}</p>
+                    </div>
+                @endforeach
+                <p class="calculator-decision-report__summary">{{ $decisionReport['summary'] }}</p>
+            </section>
+        @elseif ($weighted && $weighted['factors'] !== [])
+            <section class="calculator-result-card__section">
+                <h3>مهم‌ترین عوامل مؤثر در این نتیجه</h3>
+                <ul class="calculator-result-card__benefits">
+                    @foreach ($weighted['factors'] as $factor)
+                        <li>{{ $factor['label'] }}</li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
         @if ($answerLabels !== [])
             <section class="calculator-result-card__section">
-                <h3>اطلاعات وارد شده توسط کاربر</h3>
+                <h3>اطلاعات وارد شده توسط شما</h3>
                 <dl class="calculator-result-card__details">
                     @foreach ($answerLabels as $key => $answerLabel)
                         <div>
@@ -111,15 +150,20 @@
                             <div class="calculator-result-card__score-heading">
                                 <span>
                                     @if ($scoreRow['rank'] !== null)
-                                        رتبه {{ $scoreRow['rank'] }} —
+                                        رتبه {{ $weighted ? \App\Support\PersianDate::digits($scoreRow['rank']) : $scoreRow['rank'] }} —
                                     @endif
                                     {{ $scoreRow['label'] }}
                                     @if ($scoreRow['recommended'])
                                         — پیشنهاد نهایی
                                     @endif
                                 </span>
-                                <strong>امتیاز {{ $scoreRow['score'] }}</strong>
+                                @if ($weighted)
+                                    <strong>میزان تطابق: {{ $scoreRow['suitability_label'] }}</strong>
+                                @else
+                                    <strong>امتیاز {{ $scoreRow['score'] }}</strong>
+                                @endif
                             </div>
+                            @if ($weighted)<p>امتیاز خام: {{ $scoreRow['raw_score_label'] }}</p>@endif
                         </div>
                     @endforeach
                 </div>
@@ -134,7 +178,11 @@
                         <div>
                             <div class="calculator-result-card__score-heading">
                                 <span>{{ $scoreRow['label'] }} — خارج از شرایط</span>
-                                <strong>امتیاز {{ $scoreRow['score'] }}</strong>
+                                @if ($weighted)
+                                    <strong>میزان تطابق: {{ $scoreRow['suitability_label'] }}</strong>
+                                @else
+                                    <strong>امتیاز {{ $scoreRow['score'] }}</strong>
+                                @endif
                             </div>
                             @if ($scoreRow['reasons'] !== [])
                                 <ul class="calculator-result-card__benefits">
@@ -153,7 +201,7 @@
             <section class="calculator-result-card__section">
                 <h3>مزایا یا توضیحات نتیجه</h3>
                 @if (filled($resultDescription))
-                    <p>{{ $resultDescription }}</p>
+                    <p class="whitespace-pre-line">{{ $resultDescription }}</p>
                 @endif
                 @if ($benefits !== [])
                     <ul class="calculator-result-card__benefits">
@@ -164,6 +212,14 @@
                 @endif
             </section>
         @endif
+
+        @if (filled($resultNote))
+            <section class="calculator-result-card__section">
+                <h3>نکته پایانی</h3>
+                <p class="whitespace-pre-line">{{ $resultNote }}</p>
+            </section>
+        @endif
+        </div>
 
         <footer class="calculator-result-card__cta">
             <div>

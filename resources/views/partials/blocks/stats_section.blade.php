@@ -12,7 +12,7 @@
         "content-block--{$background}" => $background !== 'default',
         "content-block--align-{$alignment}",
     ]) style="--stats-inner-width: {{ $innerWidth }}%;">
-        <div class="stats-section__inner">
+        <div class="container stats-section__inner">
             <div class="block-heading">
                 @if (! empty($data['eyebrow']))
                     <p class="block-eyebrow">{{ $data['eyebrow'] }}</p>

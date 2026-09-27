@@ -6,11 +6,13 @@ use App\CMS\Collections\Project\ProjectCollectionAdapter;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Services\ModuleService;
+use App\Services\ProjectGalleryFilterService;
 use App\Services\ProjectTemplateContextBuilder;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use App\Services\TemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -27,16 +29,24 @@ class ProjectController extends Controller
         return redirect()->to($target, 301);
     }
 
-    public function archive(SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates, ProjectCollectionAdapter $collections): View
+    public function archive(Request $request, SeoService $seoService, SettingsService $settings, ModuleService $modules, TemplateService $templates, ProjectCollectionAdapter $collections, ProjectGalleryFilterService $filters): View|JsonResponse
     {
         $this->abortIfProjectsDisabled($modules);
 
-        $projects = Project::query()
-            ->with(['category', 'media'])
-            ->published()
+        $activeFilters = $filters->normalize($request->query());
+        $query = $filters->query($activeFilters);
+
+        if ($request->header('X-Project-Gallery') === 'count') {
+            return response()->json(['count' => $query->count()]);
+        }
+
+        $projects = $query
+            ->with(['category', 'media', 'mediaUsages.media'])
             ->orderBy('sort_order')
             ->latest('published_at')
-            ->paginate((int) $settings->get('projects_per_page', 12));
+            ->orderByDesc('id')
+            ->paginate(max(1, min(60, (int) $settings->get('projects_per_page', 12))))
+            ->appends(array_filter($activeFilters));
 
         $categories = ProjectCategory::query()
             ->active()
@@ -49,13 +59,21 @@ class ProjectController extends Controller
 
         $heading = $settings->get('projects_index_title', 'Projects');
         $description = $settings->get('projects_index_description', 'Selected work and case studies.');
+        $collection = $collections->adapt($projects, $heading, $description, 'پروژه‌ای با این فیلترها پیدا نشد.');
+        $projectGalleryFilters = [
+            'groups' => $filters->groups(),
+            'active' => $activeFilters,
+            'count' => $projects->total(),
+            'url' => route('galleries.index'),
+        ];
 
         return $templates->viewOrFallback($template, 'projects.index', [
             'projects' => $projects,
             'categories' => $categories,
             'heading' => $heading,
             'description' => $description,
-            'collection' => $collections->adapt($projects, $heading, $description),
+            'collection' => $collection,
+            'projectGalleryFilters' => $projectGalleryFilters,
             'seo' => $seoService->forProjectIndex(),
             'templateContext' => [
                 'kind' => 'archive',
@@ -65,7 +83,7 @@ class ProjectController extends Controller
                 'heading' => $settings->get('projects_index_title', 'Projects'),
                 'description' => $settings->get('projects_index_description', 'Selected work and case studies.'),
                 'emptyMessage' => 'No projects have been published yet.',
-                'collection' => $collections->adapt($projects, $heading, $description),
+                'collection' => $collection,
             ],
         ]);
     }

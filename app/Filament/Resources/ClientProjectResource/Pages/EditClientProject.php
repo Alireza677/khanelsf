@@ -24,12 +24,7 @@ class EditClientProject extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if ($this->record->cycle_anchor_day === null
-            && ($data['schedule_mode'] ?? null) === ClientProject::SCHEDULE_RECURRING
-            && (int) ($data['cycle_anchor_day'] ?? 0) === ClientProjectResource::scheduleFormState($this->record->attributesToArray())['cycle_anchor_day']) {
-            unset($data['cycle_anchor_day']);
-        }
-
+        // Saving the recurring form adopts its displayed anchor, including a legacy default.
         return ClientProjectResource::applyAllocationFormState($data);
     }
 

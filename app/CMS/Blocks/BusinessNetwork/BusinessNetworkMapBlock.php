@@ -10,6 +10,11 @@ use Filament\Forms;
 final class BusinessNetworkMapBlock extends AbstractBlock implements BlockNormalizer
 {
     public function __construct(private readonly BusinessNetworkDataNormalizer $normalizer) {}
+    public function templateTargets(): ?array
+    {
+        return app(\App\Services\ModuleService::class)->businessNetworkEnabled() ? null : [];
+    }
+
     public function key(): string{return 'business_network_map';}
     public function label(): string{return 'نقشه شبکه کسب‌وکار';}
     public function icon(): ?string{return 'heroicon-o-map';}

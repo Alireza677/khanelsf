@@ -59,6 +59,8 @@
                         <ul data-desktop-navigation>
                             @include('partials.navigation.items', [
                                 'items' => $header['navigation'],
+                                'mobileSubmenus' => true,
+                                'submenuIdPrefix' => $header['navigation_id'].'-submenu',
                             ])
                             <li class="industrial-header__more" data-navigation-more hidden>
                                 <button

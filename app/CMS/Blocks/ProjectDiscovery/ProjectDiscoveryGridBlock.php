@@ -13,6 +13,11 @@ final class ProjectDiscoveryGridBlock extends AbstractBlock implements BlockNorm
 {
     public const SCHEMA_VERSION = 1;
 
+    public function templateTargets(): ?array
+    {
+        return ['project_discovery_index'];
+    }
+
     public function key(): string { return 'project_discovery_grid'; }
 
     public function label(): string { return 'گالری پروژه‌ها'; }

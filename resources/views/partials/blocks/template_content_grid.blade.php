@@ -53,7 +53,7 @@
             'shared-collection--tablet-'.$columnsTablet,
             'shared-collection--ratio-'.str_replace(':', '-', $imageRatio),
             'shared-collection--density-'.$cardDensity,
-        ]) dir="{{ $collection->direction === 'ltr' ? 'ltr' : 'rtl' }}">
+        ]) dir="{{ $collection->direction === 'ltr' ? 'ltr' : 'rtl' }}" @isset($projectGalleryFilters) data-project-gallery-results tabindex="-1" @endisset>
             @if ($collection->items !== [])
                 @include('partials.presentations.collection.grid', [
                     'collection' => $collection,

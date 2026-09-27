@@ -50,10 +50,10 @@ class FormStructuralFieldsTest extends TestCase
 
         $this->assertSame(2, substr_count($html, 'data-form-step='));
         $this->assertSame(2, substr_count($html, 'class="form-section-divider"'));
-        $this->assertStringContainsString('data-multi-step-form', $html);
-        $this->assertStringContainsString('<span>از 2</span>', $html);
-        $this->assertStringContainsString('data-step-next', $html);
-        $this->assertStringContainsString('data-step-back', $html);
+        $this->assertStringContainsString('data-form-page', $html);
+        $this->assertStringContainsString('مرحله ۱ از ۲', $html);
+        $this->assertStringContainsString('data-page-next', $html);
+        $this->assertStringContainsString('data-page-back', $html);
     }
 
     public function test_section_dividers_never_enter_submission_payload(): void

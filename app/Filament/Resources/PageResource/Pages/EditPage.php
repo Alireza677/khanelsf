@@ -54,6 +54,13 @@ class EditPage extends EditRecord
 
     public int $revisionListLimit = 30;
 
+    public function getSubheading(): string
+    {
+        $title = trim((string) $this->getRecord()->title);
+
+        return $title !== '' ? $title : 'برگه بدون عنوان';
+    }
+
     public function boot(): void
     {
         $this->pageEditPerfStartedAt = hrtime(true);

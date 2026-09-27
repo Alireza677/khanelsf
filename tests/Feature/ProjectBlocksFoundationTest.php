@@ -97,7 +97,7 @@ class ProjectBlocksFoundationTest extends TestCase
     public function test_template_editor_exposes_all_project_blocks_through_registry_schemas(): void
     {
         $method = new ReflectionMethod(TemplateResource::class, 'blockDefinitions');
-        $names = collect($method->invoke(null))
+        $names = collect($method->invoke(null, 'project_single'))
             ->filter(fn ($block): bool => $block instanceof Builder\Block)
             ->map(fn (Builder\Block $block): string => $block->getName());
 

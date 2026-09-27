@@ -25,6 +25,7 @@ final class FormSubmissionService
 
     public function submit(Form $form, array $payload, array $attribution = [], array $files = [], ?array $confirmationAudit = null): FormSubmission
     {
+        $this->calculators->assertConfiguration($form);
         $storedPaths = [];
 
         try {

@@ -60,8 +60,11 @@ class SiteFooterTemplateTest extends TestCase
             ->first(fn ($field): bool => $field instanceof ViewField && $field->getName() === 'media_id');
 
         $this->assertInstanceOf(SiteFooterBlock::class, $block);
-        $this->assertCount(1, $definitions);
-        $this->assertSame('site_footer', $definitions[0]->getName());
+        $keys = array_map(fn ($definition): string => $definition->getName(), $definitions);
+        $this->assertContains('site_footer', $keys);
+        $this->assertContains('cta', $keys);
+        $this->assertNotContains('site_header', $keys);
+        $this->assertNotContains('product_header', $keys);
         $this->assertSame('filament.forms.components.media-library-picker', $badgePicker->getView());
         $this->assertSame($asset->getKey(), SiteFooterBlock::mediaLibraryImageItems()[0]['id']);
         $this->assertCount(2, $schema->filter(fn ($field): bool => $field instanceof ActionPicker));

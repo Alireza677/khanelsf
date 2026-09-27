@@ -6,6 +6,7 @@ use App\Filament\Resources\FormResource;
 use App\Filament\Resources\FormResource\Pages\EditForm;
 use App\Models\Form;
 use App\Models\User;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -13,6 +14,79 @@ use Tests\TestCase;
 class CalculatorEligibilityFormBuilderTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_unsaved_clones_are_distinct_base_fields_and_comparison_changes_are_row_scoped(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $form = $this->form();
+        $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()]);
+        $originalKey = array_key_first($component->get('data.schema.fields'));
+        $component->callFormComponentAction('schema.fields', 'clone', arguments: ['item' => $originalKey]);
+        $fields = $component->get('data.schema.fields');
+        $cloneKey = array_key_last($fields);
+        $original = $fields[$originalKey];
+        $clone = $fields[$cloneKey];
+        $cloneOptionKey = array_key_first($clone['options']);
+        $component->set("data.schema.fields.{$cloneKey}.label", 'Transport question')
+            ->set("data.schema.fields.{$cloneKey}.options.{$cloneOptionKey}.label", 'Transport option');
+        $rule = [
+            'field_id' => $original['field_id'], 'operator' => 'equals',
+            'option_id' => array_values($original['options'])[0]['option_id'],
+            'profiles' => ['masonry'], 'reason' => 'Existing rule',
+        ];
+        $component->set('data.schema.calculator.eligibility_rules', ['first' => $rule, 'second' => $rule]);
+        $basePath = 'data.schema.calculator.eligibility_rules.first';
+        $select = fn (string $path): Select => collect($component->instance()->form->getFlatComponents(withHidden: true))
+            ->first(fn ($field): bool => $field instanceof Select && $field->getStatePath() === $path);
+
+        $this->assertCount(2, $select($basePath.'.field_id')->getOptions());
+        $this->assertNotSame($original['field_id'], $clone['field_id']);
+        $this->assertNotSame($rule['option_id'], $clone['options'][$cloneOptionKey]['option_id']);
+        $this->assertSame('villa', $clone['options'][$cloneOptionKey]['value']);
+        $component->set($basePath.'.field_id', $clone['field_id'])
+            ->assertSet($basePath.'.option_id', null)
+            ->assertSet('data.schema.calculator.eligibility_rules.second.option_id', $rule['option_id'])
+            ->assertDispatched('filament-forms::select.refreshSelectedOptionLabel', statePath: $basePath.'.option_id');
+        $this->assertSame([
+            $clone['options'][$cloneOptionKey]['option_id'] => 'Transport option',
+        ], $select($basePath.'.option_id')->getOptions());
+        $this->assertCount(2, $form->fresh()->schema['fields']); // No implicit save while editing.
+        $component->set($basePath.'.option_id', $clone['options'][$cloneOptionKey]['option_id'])
+            ->call('save')->assertHasNoFormErrors();
+        $stored = $form->fresh()->schema['calculator']['eligibility_rules'];
+        $this->assertSame($clone['field_id'], $stored[0]['field_id']);
+        $this->assertSame($clone['options'][$cloneOptionKey]['option_id'], $stored[0]['option_id']);
+        $this->assertSame($rule['option_id'], $stored[1]['option_id']);
+    }
+
+    public function test_base_fields_include_current_comparable_types_and_skip_structural_or_empty_choices(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $form = $this->form();
+        $schema = $form->schema;
+        foreach (['select', 'image_choice', 'radio_card', 'checkbox', 'number', 'page', 'step', 'radio'] as $index => $type) {
+            $schema['fields'][] = [
+                'key' => 'question_'.$index, 'type' => $type, 'label' => 'Question '.$index,
+                'options' => $index < 4 ? [['value' => 'internal_'.$index, 'label' => 'Friendly '.$index]] : [],
+            ];
+        }
+        $form->update(['schema' => $schema]);
+        $component = Livewire::test(EditForm::class, ['record' => $form->getRouteKey()])
+            ->set('data.schema.calculator.eligibility_rules', ['new' => ['field_id' => self::id('AV')]]);
+        $fields = $component->get('data.schema.fields');
+        $select = collect($component->instance()->form->getFlatComponents(withHidden: true))
+            ->first(fn ($field): bool => $field instanceof Select && $field->getStatePath() === 'data.schema.calculator.eligibility_rules.new.field_id');
+        $this->assertCount(6, $select->getOptions()); // Original radio, four choice types, and numeric comparisons.
+        $this->assertNotContains('Question 5', $select->getOptions());
+        $this->assertNotContains('Question 6', $select->getOptions());
+        $this->assertNotContains('Question 7', $select->getOptions());
+        $questionKey = array_keys($fields)[2];
+        $component->set("data.schema.fields.{$questionKey}.label", 'Updated unsaved question');
+        $select = collect($component->instance()->form->getFlatComponents(withHidden: true))
+            ->first(fn ($field): bool => $field instanceof Select && $field->getStatePath() === 'data.schema.calculator.eligibility_rules.new.field_id');
+        $this->assertContains('Updated unsaved question', $select->getOptions());
+        $this->assertSame('Question 0', $form->fresh()->schema['fields'][2]['label']);
+    }
 
     public function test_admin_can_create_reorder_and_edit_rules_with_stable_references(): void
     {

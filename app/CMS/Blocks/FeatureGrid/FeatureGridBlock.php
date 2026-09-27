@@ -78,48 +78,44 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
             Forms\Components\Hidden::make('schema_version')->default($this->version()),
             Forms\Components\Hidden::make('template')->default($this->defaultTemplate()),
             Forms\Components\Select::make('settings.variant')
-                ->label($page ? 'قالب' : 'Variant')
+                ->label($page ? 'قالب' : __('Variant'))
                 ->options($page
                     ? ['default' => 'پیش‌فرض', 'icon_list' => 'لیست آیکن']
-                    : ['default' => 'Default', 'icon_list' => 'Icon list'])
+                    : ['default' => __('Default'), 'icon_list' => __('Icon list')])
                 ->default('default')
                 ->required(),
             Forms\Components\Select::make('settings.section_background')
-                ->label($page ? 'پس‌زمینه بخش' : 'Section background')
+                ->label($page ? 'پس‌زمینه بخش' : __('Section background'))
                 ->options($page
                     ? ['default' => 'پیش‌فرض', 'muted' => 'ملایم', 'dark' => 'تیره']
-                    : ['default' => 'Default', 'muted' => 'Muted', 'dark' => 'Dark'])
+                    : ['default' => __('Default'), 'muted' => __('Muted'), 'dark' => __('Dark')])
                 ->default('default'),
-            Forms\Components\Select::make('settings.alignment')
-                ->label($page ? 'چیدمان' : 'Alignment')
-                ->options($page
-                    ? ['left' => 'چپ', 'center' => 'وسط']
-                    : ['left' => 'Left', 'center' => 'Center'])
-                ->default('center'),
+            // Retain legacy state on save; alignment is no longer an editable presentation setting.
+            Forms\Components\Hidden::make('settings.alignment')->default('center'),
             Forms\Components\TextInput::make('settings.eyebrow')
-                ->label($page ? 'برچسب بالای عنوان' : 'Eyebrow')
+                ->label($page ? 'برچسب بالای عنوان' : __('Eyebrow'))
                 ->maxLength(255),
             Forms\Components\TextInput::make('content.section_title')
-                ->label($page ? 'عنوان بخش' : 'Section title')
+                ->label($page ? 'عنوان بخش' : __('Section title'))
                 ->required()
                 ->maxLength(255),
-            HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
+            HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : __('Heading tag')),
             Forms\Components\RichEditor::make('content.section_description')
-                ->label($page ? 'توضیحات بخش' : 'Section description')
+                ->label($page ? 'توضیحات بخش' : __('Section description'))
                 ->columnSpanFull(),
             Forms\Components\Select::make('content.items_mode')
-                ->label($page ? 'نوع آیتم‌ها' : 'Items mode')
+                ->label($page ? 'نوع آیتم‌ها' : __('Items mode'))
                 ->options($page
                     ? ['static' => 'ثابت', 'dynamic' => 'داینامیک']
-                    : ['static' => 'Static', 'dynamic' => 'Dynamic'])
+                    : ['static' => __('Static'), 'dynamic' => __('Dynamic')])
                 ->default('static')
                 ->live()
                 ->required(),
             ...$this->dynamicFields($page),
             Forms\Components\Repeater::make('content.items')
-                ->label($page ? 'آیتم‌ها' : 'Items')
+                ->label($page ? 'آیتم‌ها' : __('Items'))
                 ->cloneable()
-                ->itemLabel(fn (array $state): ?string => $state['title'] ?? ($page ? 'آیتم' : 'Item'))
+                ->itemLabel(fn (array $state): ?string => $state['title'] ?? ($page ? 'آیتم' : __('Item')))
                 ->schema($this->itemFields($page))
                 ->columns(3)
                 ->columnSpanFull()
@@ -142,10 +138,10 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
 
         return [
             Forms\Components\Select::make('content.dynamic_source')
-                ->label($page ? 'منبع داینامیک' : 'Dynamic source')
+                ->label($page ? 'منبع داینامیک' : __('Dynamic source'))
                 ->options($page
                     ? ['posts' => 'آخرین نوشته‌ها', 'projects' => 'آخرین پروژه‌ها']
-                    : ['posts' => 'Latest posts', 'projects' => 'Latest projects'])
+                    : ['posts' => __('Latest posts'), 'projects' => __('Latest projects')])
                 ->default('posts')
                 ->live()
                 ->afterStateUpdated(
@@ -154,39 +150,39 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
                 ->required()
                 ->visible($visible),
             Forms\Components\TextInput::make('settings.dynamic_rows')
-                ->label($page ? 'تعداد ردیف' : 'Rows')
+                ->label($page ? 'تعداد ردیف' : __('Rows'))
                 ->numeric()->minValue(1)->maxValue(6)->default(1)
                 ->required()->visible($visible),
             Forms\Components\TextInput::make('settings.dynamic_columns')
-                ->label($page ? 'تعداد ستون درخواستی' : 'Requested columns')
+                ->label($page ? 'تعداد ستون درخواستی' : __('Requested columns'))
                 ->numeric()->minValue(1)->maxValue(12)->default(3)
                 ->required()->visible($visible),
             Forms\Components\TextInput::make('settings.dynamic_grid_width')
-                ->label($page ? 'عرض شبکه' : 'Grid width')
+                ->label($page ? 'عرض شبکه' : __('Grid width'))
                 ->numeric()->minValue(240)->maxValue(2400)->default(1180)
                 ->suffix('px')->required()->visible($visible),
             Forms\Components\TextInput::make('settings.dynamic_item_width')
-                ->label($page ? 'حداقل عرض هر آیتم' : 'Minimum item width')
+                ->label($page ? 'حداقل عرض هر آیتم' : __('Minimum item width'))
                 ->numeric()->minValue(120)->maxValue(800)->default(280)
                 ->suffix('px')->required()->visible($visible),
             Forms\Components\TextInput::make('content.dynamic_button_label')
-                ->label($page ? 'متن پیش‌فرض دکمه' : 'Default button label')
+                ->label($page ? 'متن پیش‌فرض دکمه' : __('Default button label'))
                 ->default('مشاهده بیشتر')
                 ->maxLength(255)
                 ->visible($visible),
             Forms\Components\Repeater::make('content.dynamic_button_overrides')
-                ->label($page ? 'متن دکمه اختصاصی' : 'Button label overrides')
+                ->label($page ? 'متن دکمه اختصاصی' : __('Button label overrides'))
                 ->cloneable()
                 ->schema([
                     Forms\Components\Select::make('record_id')
-                        ->label($page ? 'نوشته / پروژه' : 'Post / Project')
+                        ->label($page ? 'نوشته / پروژه' : __('Post / Project'))
                         ->options(fn (Get $get): array => $get('../../dynamic_source') === 'projects'
                             ? Project::query()->published()->latest('published_at')->pluck('title', 'id')->all()
                             : Post::query()->published()->latest('published_at')->pluck('title', 'id')->all())
                         ->searchable()
                         ->required(),
                     Forms\Components\TextInput::make('button_label')
-                        ->label($page ? 'متن دکمه' : 'Button label')
+                        ->label($page ? 'متن دکمه' : __('Button label'))
                         ->required()
                         ->maxLength(255),
                 ])
@@ -203,32 +199,32 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
     {
         return [
             Forms\Components\TextInput::make('title')
-                ->label($page ? 'عنوان' : 'Title')
+                ->label($page ? 'عنوان' : __('Title'))
                 ->required()
                 ->maxLength(255),
-            self::iconsaxIconPicker('icon', $page ? 'آیکن' : 'Icon'),
-            self::iconsaxIconSizeInput(label: $page ? 'اندازه آیکن' : 'Icon size'),
+            self::iconsaxIconPicker('icon', $page ? 'آیکن' : __('Icon')),
+            self::iconsaxIconSizeInput(label: $page ? 'اندازه آیکن' : __('Icon size')),
             Forms\Components\ViewField::make('image')
-                ->label($page ? 'تصویر' : 'Image')
+                ->label($page ? 'تصویر' : __('Image'))
                 ->view('filament.forms.components.media-library-url-picker')
                 ->viewData(fn (): array => ['images' => self::mediaLibraryImageItems()])
                 ->helperText($page
                     ? 'تصویر اختیاری برای این ویژگی.'
-                    : 'Optional image for this feature.')
+                    : __('Optional image for this feature.'))
                 ->columnSpanFull(),
             ...$this->imageSettingsFields($page),
             Forms\Components\RichEditor::make('description')
-                ->label($page ? 'توضیحات' : 'Description')
+                ->label($page ? 'توضیحات' : __('Description'))
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('button_label')
-                ->label($page ? 'متن دکمه' : 'Button label')
+                ->label($page ? 'متن دکمه' : __('Button label'))
                 ->maxLength(255)
                 ->required(fn (Get $get): bool => filled($get('action.type')))
                 ->validationMessages([
                     'required' => 'برای مقصد دکمه، متن دکمه را وارد کنید.',
                 ]),
             ActionPicker::make('action')
-                ->label($page ? 'مقصد دکمه' : 'Button destination')
+                ->label($page ? 'مقصد دکمه' : __('Button destination'))
                 ->allowedTypes([
                     'custom_url',
                     'page',
@@ -248,14 +244,14 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
     private function imageSettingsFields(bool $page): array
     {
         return [
-            Forms\Components\Section::make($page ? 'تنظیمات تصویر' : 'Image settings')
+            Forms\Components\Section::make($page ? 'تنظیمات تصویر' : __('Image settings'))
                 ->schema([
                     Forms\Components\Grid::make(['default' => 1, 'xl' => 2])
                         ->schema([
-                            Forms\Components\Section::make($page ? 'دسکتاپ' : 'Desktop')
+                            Forms\Components\Section::make($page ? 'دسکتاپ' : __('Desktop'))
                                 ->schema($this->imageDeviceFields('image', $page))
                                 ->columns(6),
-                            Forms\Components\Section::make($page ? 'موبایل' : 'Mobile')
+                            Forms\Components\Section::make($page ? 'موبایل' : __('Mobile'))
                                 ->schema($this->imageDeviceFields('image_mobile', $page))
                                 ->columns(6),
                         ]),
@@ -271,20 +267,20 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
     {
         return [
             Forms\Components\TextInput::make("{$prefix}_width_value")
-                ->label($page ? 'عرض' : 'Width')->numeric()->minValue(0)->columnSpan(2),
+                ->label($page ? 'عرض' : __('Width'))->numeric()->minValue(0)->columnSpan(2),
             Forms\Components\Select::make("{$prefix}_width_unit")
-                ->label($page ? 'واحد عرض' : 'Width unit')
+                ->label($page ? 'واحد عرض' : __('Width unit'))
                 ->options(['%' => '%', 'px' => 'px'])->default('%'),
             Forms\Components\TextInput::make("{$prefix}_height_value")
-                ->label($page ? 'ارتفاع' : 'Height')->numeric()->minValue(0)->columnSpan(2),
+                ->label($page ? 'ارتفاع' : __('Height'))->numeric()->minValue(0)->columnSpan(2),
             Forms\Components\Select::make("{$prefix}_height_unit")
-                ->label($page ? 'واحد ارتفاع' : 'Height unit')
+                ->label($page ? 'واحد ارتفاع' : __('Height unit'))
                 ->options(['%' => '%', 'px' => 'px'])->default('px'),
             Forms\Components\Select::make("{$prefix}_fit")
-                ->label($page ? 'واکنش تصویر' : 'Image fit')
+                ->label($page ? 'واکنش تصویر' : __('Image fit'))
                 ->options($page
                     ? ['normal' => 'عادی', 'cover' => 'پوشش', 'contain' => 'کامل دیده شود']
-                    : ['normal' => 'Normal', 'cover' => 'Cover', 'contain' => 'Contain'])
+                    : ['normal' => __('Normal'), 'cover' => __('Cover'), 'contain' => __('Contain')])
                 ->default('normal')
                 ->columnSpanFull(),
         ];

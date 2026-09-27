@@ -1,11 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
+    @isset($projectGalleryFilters)
+        @include('projects.partials.filters')
+    @endisset
     @if (! empty($template?->blocks))
         @include('partials.page-blocks', ['blocks' => $template->blocks])
     @endif
 
-    <section class="projects-index project-gallery-archive">
+    <section @class(['projects-index', 'project-gallery-archive', 'project-gallery-archive--filterable' => isset($projectGalleryFilters)])>
         @if (($categories ?? collect())->isNotEmpty())
             <nav class="archive-nav" aria-label="دسته‌بندی پروژه‌ها">
                 <a href="{{ route('galleries.index') }}" @class(['is-active' => empty($activeCategory)])>همه</a>

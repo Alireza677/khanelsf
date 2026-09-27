@@ -3,6 +3,8 @@ import { initIndustrialStickyHeader } from './components/industrial-sticky-heade
 import { initHeaderOverlays } from './components/header-overlays';
 import { initFormDatePickers } from './components/form-date-pickers';
 import { initFormNumberInputs } from './components/form-number-inputs';
+import { initFormPages } from './components/form-page';
+import { initProjectGalleryFilters } from './components/project-gallery-filters';
 
 const initJalaliMonthFilters = () => {
     document.querySelectorAll('[data-jalali-month-filter]').forEach((form) => {
@@ -49,6 +51,11 @@ const initMobileHeader = () => {
             toggle.setAttribute('aria-expanded', 'false');
             toggle.setAttribute('aria-label', 'باز کردن منوی اصلی');
 
+            nav.querySelectorAll('[data-industrial-submenu-toggle]').forEach((button) => {
+                button.setAttribute('aria-expanded', 'false');
+                button.parentElement.classList.remove('is-mobile-submenu-open');
+            });
+
             if (wasOpen && header.classList.contains('industrial-header')) {
                 document.body.classList.remove('industrial-mobile-menu-open');
             }
@@ -77,6 +84,15 @@ const initMobileHeader = () => {
         });
 
         nav.addEventListener('click', (event) => {
+            const submenuToggle = event.target.closest('[data-industrial-submenu-toggle]');
+
+            if (submenuToggle && header.classList.contains('industrial-header') && window.innerWidth <= 900) {
+                const expanded = submenuToggle.getAttribute('aria-expanded') !== 'true';
+                submenuToggle.setAttribute('aria-expanded', String(expanded));
+                submenuToggle.parentElement.classList.toggle('is-mobile-submenu-open', expanded);
+                return;
+            }
+
             if (event.target.closest('a')) {
                 close();
             }
@@ -962,21 +978,36 @@ const initCalculatorResultModals = () => {
 
         modal.dataset.resultModalReady = 'true';
         const closeButton = modal.querySelector('[data-calculator-result-close]');
-        const returnFocus = modal.previousElementSibling?.querySelector('[data-step-submit], button[type="submit"]');
+        let returnFocus = modal.previousElementSibling?.querySelector('[data-step-submit], button[type="submit"]');
 
         if (! closeButton) {
             return;
         }
 
-        const close = () => {
+        const close = (restoreFocus = true) => {
             modal.hidden = true;
 
             if (! document.querySelector('[data-calculator-result-modal]:not([hidden])')) {
                 document.body.classList.remove('calculator-result-modal-open');
             }
 
-            returnFocus?.focus();
+            if (restoreFocus) returnFocus?.focus({ preventScroll: true });
         };
+
+        const open = (opener) => {
+            if (modal.dataset.resultStale === 'true') return;
+            if (opener instanceof HTMLElement) returnFocus = opener;
+            modal.hidden = false;
+            document.body.classList.add('calculator-result-modal-open');
+            closeButton.focus({ preventScroll: true });
+        };
+        modal.addEventListener('calculator-result:open', (event) => open(event.detail?.opener));
+        window.addEventListener('pageshow', (event) => {
+            if (! event.persisted) return;
+            close(false);
+            modal.dataset.resultStale = 'true';
+            modal.dispatchEvent(new CustomEvent('calculator-result:expired'));
+        });
 
         closeButton.addEventListener('click', close);
         modal.addEventListener('click', (event) => {
@@ -990,13 +1021,12 @@ const initCalculatorResultModals = () => {
             }
         });
 
-        modal.hidden = false;
-        document.body.classList.add('calculator-result-modal-open');
-        closeButton.focus();
+        open();
     });
 };
 
 const initPublicInteractions = () => {
+    initProjectGalleryFilters();
     initJalaliMonthFilters();
     initMobileHeader();
     initIndustrialStickyHeader();
@@ -1010,6 +1040,7 @@ const initPublicInteractions = () => {
     initShopCategorySliders();
     initShopFilterDrawers();
     initMultiStepForms();
+    initFormPages();
     initFormSubmitConfirmations();
     initFormFileInputs();
     initFormSelects();
@@ -1020,6 +1051,7 @@ const initPublicInteractions = () => {
 
 document.addEventListener('forms:rendered', () => {
     initMultiStepForms();
+    initFormPages();
     initFormSubmitConfirmations();
     initFormFileInputs();
     initFormSelects();

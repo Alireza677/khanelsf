@@ -59,7 +59,7 @@ final class CTABlock extends AbstractBlock
     {
         $block = parent::filamentBlock($context)->columns(2);
 
-        return $context === HeroBlock::CONTEXT_TEMPLATE ? $block->label('Static: CTA') : $block;
+        return $context === HeroBlock::CONTEXT_TEMPLATE ? $block->label(__('Static: CTA')) : $block;
     }
 
     public function filamentSchema(string $context): array
@@ -71,33 +71,33 @@ final class CTABlock extends AbstractBlock
             Forms\Components\Hidden::make('block_id'),
             Forms\Components\Hidden::make('schema_version')->default(CTADataNormalizer::SCHEMA_VERSION),
             Forms\Components\Select::make('template')
-                ->label($page ? 'قالب دعوت به اقدام' : 'CTA template')
+                ->label($page ? 'قالب دعوت به اقدام' : __('CTA template'))
                 ->options($page ? ['classic' => 'قالب ساده', 'image' => 'قالب تصویری'] : ['classic' => 'قالب فعلی', 'image' => 'قالب تصویری'])
                 ->default('classic')->required()->live(),
             Forms\Components\TextInput::make('settings.content_width')
-                ->label($page ? 'عرض بخش متن' : 'Content width')->numeric()->minValue(240)->maxValue(1400)->default(580)->suffix('px')
+                ->label($page ? 'عرض بخش متن' : __('Content width'))->numeric()->minValue(240)->maxValue(1400)->default(580)->suffix('px')
                 ->visible(fn (Get $get): bool => $get('template') === 'image'),
             Forms\Components\Select::make('settings.background')
-                ->label($page ? 'پس‌زمینه بخش' : 'Section background')
-                ->options($page ? ['default' => 'پیش‌فرض', 'muted' => 'ملایم', 'dark' => 'تیره'] : ['default' => 'Default', 'muted' => 'Muted', 'dark' => 'Dark'])
+                ->label($page ? 'پس‌زمینه بخش' : __('Section background'))
+                ->options($page ? ['default' => 'پیش‌فرض', 'muted' => 'ملایم', 'dark' => 'تیره'] : ['default' => __('Default'), 'muted' => __('Muted'), 'dark' => __('Dark')])
                 ->default('default')->visible(fn (Get $get): bool => $get('template') === 'classic'),
             Forms\Components\Select::make('settings.alignment')
-                ->label($page ? 'چیدمان' : 'Alignment')->options($page ? ['left' => 'چپ', 'center' => 'وسط'] : ['left' => 'Left', 'center' => 'Center'])
+                ->label($page ? 'چیدمان' : __('Alignment'))->options($page ? ['left' => 'چپ', 'center' => 'وسط'] : ['left' => __('Left'), 'center' => __('Center')])
                 ->default('center')->visible(fn (Get $get): bool => $get('template') === 'classic'),
-            Forms\Components\TextInput::make('content.eyebrow')->label($page ? 'برچسب بالای عنوان' : 'Eyebrow')->maxLength(255)
+            Forms\Components\TextInput::make('content.eyebrow')->label($page ? 'برچسب بالای عنوان' : __('Eyebrow'))->maxLength(255)
                 ->visible(fn (Get $get): bool => $get('template') === 'classic'),
-            Forms\Components\ViewField::make('content.media.url')->label($page ? 'تصویر پس‌زمینه' : 'Background image')
+            Forms\Components\ViewField::make('content.media.url')->label($page ? 'تصویر پس‌زمینه' : __('Background image'))
                 ->view('filament.forms.components.media-library-url-picker')
                 ->viewData(fn (): array => ['images' => self::mediaLibraryImageItems()])
                 ->visible(fn (Get $get): bool => $get('template') === 'image')->columnSpanFull(),
             $this->mediaSettings($page),
             Forms\Components\TextInput::make('content.title')
-                ->label($page ? 'عنوان' : 'Title')
+                ->label($page ? 'عنوان' : __('Title'))
                 ->required($page)
-                ->helperText($page ? null : 'Optional in templates; an empty CTA block does not render.')
+                ->helperText($page ? null : __('Optional in templates; an empty CTA block does not render.'))
                 ->maxLength(255),
-            HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : 'Heading tag'),
-            Forms\Components\RichEditor::make('content.description')->label($page ? 'توضیحات' : 'Description')->columnSpanFull(),
+            HeadingLevel::field('settings.heading_tag', $page ? 'تگ عنوان' : __('Heading tag')),
+            Forms\Components\RichEditor::make('content.description')->label($page ? 'توضیحات' : __('Description'))->columnSpanFull(),
             ...$this->actionFields('primary_cta', $page, false),
             ...$this->actionFields('secondary_cta', $page, true),
         ];
@@ -106,16 +106,15 @@ final class CTABlock extends AbstractBlock
     private function actionFields(string $name, bool $page, bool $secondary): array
     {
         $prefix = "content.{$name}";
-        $button = $secondary ? ($page ? 'دکمه دوم' : 'Secondary button') : ($page ? 'دکمه اصلی' : 'Primary button');
         $visible = fn (Get $get): bool => ! $secondary || $get('template') === 'image';
 
         return [
             Forms\Components\TextInput::make("{$prefix}.label")
-                ->label($page ? "متن {$button}" : "{$button} label")
+                ->label($secondary ? __('Secondary button label') : __('Primary button label'))
                 ->maxLength(255)
                 ->visible($visible),
             ActionPicker::make("{$prefix}.action")
-                ->label($page ? "مقصد {$button}" : "{$button} destination")
+                ->label($secondary ? __('Secondary button destination') : __('Primary button destination'))
                 ->allowedTypes([
                     'custom_url',
                     'page',
@@ -141,11 +140,11 @@ final class CTABlock extends AbstractBlock
 
     private function mediaSettings(bool $page): Component
     {
-        return Forms\Components\Section::make($page ? 'تنظیمات تصویر پس‌زمینه' : 'Background image settings')
+        return Forms\Components\Section::make($page ? 'تنظیمات تصویر پس‌زمینه' : __('Background image settings'))
             ->schema([
                 Forms\Components\Grid::make(['default' => 1, 'xl' => 2])->schema([
-                    $this->deviceSettings('settings.media.desktop', $page ? 'دسکتاپ' : 'Desktop', $page),
-                    $this->deviceSettings('settings.media.mobile', $page ? 'موبایل' : 'Mobile', $page),
+                    $this->deviceSettings('settings.media.desktop', $page ? 'دسکتاپ' : __('Desktop'), $page),
+                    $this->deviceSettings('settings.media.mobile', $page ? 'موبایل' : __('Mobile'), $page),
                 ]),
             ])->collapsible()->collapsed()->columnSpanFull()
             ->visible(fn (Get $get): bool => $get('template') === 'image');
@@ -154,12 +153,12 @@ final class CTABlock extends AbstractBlock
     private function deviceSettings(string $path, string $label, bool $page): Component
     {
         return Forms\Components\Section::make($label)->schema([
-            Forms\Components\TextInput::make("{$path}.width.value")->label($page ? 'عرض' : 'Width')->numeric()->minValue(0)->columnSpan(2),
-            Forms\Components\Select::make("{$path}.width.unit")->label($page ? 'واحد عرض' : 'Width unit')->options(['%' => '%', 'px' => 'px'])->default('%'),
-            Forms\Components\TextInput::make("{$path}.height.value")->label($page ? 'ارتفاع' : 'Height')->numeric()->minValue(0)->columnSpan(2),
-            Forms\Components\Select::make("{$path}.height.unit")->label($page ? 'واحد ارتفاع' : 'Height unit')->options(['%' => '%', 'px' => 'px'])->default('px'),
-            Forms\Components\Select::make("{$path}.fit")->label($page ? 'واکنش تصویر' : 'Image fit')
-                ->options($page ? ['normal' => 'عادی', 'cover' => 'پوشش', 'contain' => 'کامل دیده شود'] : ['normal' => 'Normal', 'cover' => 'Cover', 'contain' => 'Contain'])
+            Forms\Components\TextInput::make("{$path}.width.value")->label($page ? 'عرض' : __('Width'))->numeric()->minValue(0)->columnSpan(2),
+            Forms\Components\Select::make("{$path}.width.unit")->label($page ? 'واحد عرض' : __('Width unit'))->options(['%' => '%', 'px' => 'px'])->default('%'),
+            Forms\Components\TextInput::make("{$path}.height.value")->label($page ? 'ارتفاع' : __('Height'))->numeric()->minValue(0)->columnSpan(2),
+            Forms\Components\Select::make("{$path}.height.unit")->label($page ? 'واحد ارتفاع' : __('Height unit'))->options(['%' => '%', 'px' => 'px'])->default('px'),
+            Forms\Components\Select::make("{$path}.fit")->label($page ? 'واکنش تصویر' : __('Image fit'))
+                ->options($page ? ['normal' => 'عادی', 'cover' => 'پوشش', 'contain' => 'کامل دیده شود'] : ['normal' => __('Normal'), 'cover' => __('Cover'), 'contain' => __('Contain')])
                 ->default('normal')->columnSpanFull(),
         ])->columns(6);
     }

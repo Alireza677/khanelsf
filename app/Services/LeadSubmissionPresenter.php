@@ -30,7 +30,8 @@ final class LeadSubmissionPresenter
     {
         return array_map(fn (array $row): array => [
             'label' => $row['label'],
-            'value' => $this->displayValue($row['score']),
+            'value' => $row['display_value'] ?? $this->displayValue($row['score']),
+            ...(array_key_exists('suitability_percentage', $row) ? ['raw_score' => $row['raw_score'], 'suitability_percentage' => $row['suitability_percentage']] : []),
             'rank' => $row['rank'],
             'eligible' => $row['eligible'],
             'eligibility_label' => match ($row['eligible']) {

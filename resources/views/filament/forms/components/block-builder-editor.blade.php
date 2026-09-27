@@ -38,7 +38,7 @@
         data-form-builder-select-overlays
         {{ $attributes->merge($getExtraAttributes(), escape: false)->class(['block-builder-editor']) }}
     >
-        <aside class="block-builder-inspector" aria-label="Selected Block Inspector">
+        <aside class="block-builder-inspector" aria-label="{{ __('Selected Block Inspector') }}">
             @if (count($containers))
                 @foreach ($containers as $uuid => $item)
                     @php
@@ -58,16 +58,18 @@
                         wire:key="{{ $this->getId() }}.{{ $item->getStatePath() }}.inspector"
                     >
                         <header class="block-builder-inspector__header">
-                            <span>Selected Block</span>
+                            <span>{{ __('Selected Block') }}</span>
                             <strong>{{ $label }}</strong>
-                            <small>{{ $type }}</small>
+                            @if (app()->environment('local'))
+                                <small>{{ $type }}</small>
+                            @endif
                         </header>
 
-                        <nav class="block-builder-inspector__tabs" role="tablist" aria-label="بخش‌های تنظیمات بلوک">
+                        <nav class="block-builder-inspector__tabs" role="tablist" aria-label="{{ __('Block settings tabs') }}">
                             @foreach ([
-                                BlockInspectorTabs::CONTENT => 'محتوا',
-                                BlockInspectorTabs::DESIGN => 'طراحی',
-                                BlockInspectorTabs::ADVANCED => 'تنظیمات پیشرفته',
+                                BlockInspectorTabs::CONTENT => __('Content tab'),
+                                BlockInspectorTabs::DESIGN => __('Design tab'),
+                                BlockInspectorTabs::ADVANCED => __('Advanced tab'),
                             ] as $tab => $tabLabel)
                                 <button
                                     type="button"
@@ -105,7 +107,7 @@
                                         </div>
                                     @empty
                                         <p class="block-builder-inspector__empty-tab">
-                                            تنظیماتی در این بخش وجود ندارد.
+                                            {{ __('No settings in this tab.') }}
                                         </p>
                                     @endforelse
                                 </div>
@@ -117,18 +119,18 @@
 
             <div x-show="activeItem === null" x-cloak class="block-builder-inspector__empty">
                 <x-filament::icon icon="heroicon-o-cursor-arrow-rays" />
-                <strong>Selected Block</strong>
-                <p>برای نمایش تنظیمات، یک بلوک را از Canvas انتخاب کنید.</p>
+                <strong>{{ __('Selected Block') }}</strong>
+                <p>{{ __('Select a block from the canvas to show its settings.') }}</p>
             </div>
         </aside>
 
-        <section class="block-builder-canvas" aria-label="Block Canvas" x-on:click.self="clearSelection()">
+        <section class="block-builder-canvas" aria-label="{{ __('Block Canvas') }}" x-on:click.self="clearSelection()">
             <header class="block-builder-canvas__header" x-on:click.self="clearSelection()">
                 <div>
-                    <h3>Block Canvas</h3>
-                    <p>ساختار و ترتیب بلوک‌ها</p>
+                    <h3>{{ __('Block Canvas') }}</h3>
+                    <p>{{ __('Block structure and order') }}</p>
                 </div>
-                <span>{{ count($containers) }} بلوک</span>
+                <span>{{ __(':count blocks', ['count' => count($containers)]) }}</span>
             </header>
 
             @if (count($containers))
@@ -172,7 +174,9 @@
 
                             <span class="block-builder-card__identity">
                                 <strong>{{ $label }}</strong>
-                                <small>{{ $type }}</small>
+                                @if (app()->environment('local'))
+                                    <small>{{ $type }}</small>
+                                @endif
                             </span>
 
                             <span class="block-builder-card__actions">
@@ -192,7 +196,7 @@
             @else
                 <div class="block-builder-canvas__empty">
                     <x-filament::icon icon="heroicon-o-squares-plus" />
-                    <strong>هنوز بلوکی اضافه نشده است.</strong>
+                    <strong>{{ __('No blocks added yet.') }}</strong>
                 </div>
             @endif
 

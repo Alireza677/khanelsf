@@ -10,6 +10,7 @@ use App\Services\ClientProjectCycleUsage;
 use App\Services\ClientProjectSchedulePresenter;
 use App\Services\DurationFormatter;
 use App\Support\PersianDate;
+use Carbon\CarbonImmutable;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -274,7 +275,9 @@ class ClientProjectResource extends Resource
         $anchorDay = $data['cycle_anchor_day'] ?? null;
 
         if ($mode === ClientProject::SCHEDULE_RECURRING && ! $anchorDay && ! empty($data['start_date'])) {
-            $anchorDay = Jalalian::fromDateTime($data['start_date'])->getDay();
+            // Eloquent serializes dates in UTC; recover the local date before deriving the Jalali day.
+            $start = CarbonImmutable::parse($data['start_date'])->setTimezone(config('app.timezone'));
+            $anchorDay = Jalalian::fromDateTime($start)->getDay();
         }
 
         return [

@@ -1,6 +1,8 @@
 @php
     $fields ??= app(\App\Services\FormSchema::class)->fields($form);
     $displayMode ??= 'page';
+    // Only the standalone route opts in; embedded forms and modal retain their layout.
+    $isPagePresentation = $displayMode === 'page' && is_array($pagePresentation ?? null);
     $attributionContext = is_array($attributionContext ?? null) ? $attributionContext : [];
     $instanceToken = is_string($instanceToken ?? null) && preg_match('/^[a-z0-9][a-z0-9_-]{0,99}$/', $instanceToken) === 1
         ? $instanceToken
@@ -15,19 +17,23 @@
     $successMessage = $instanceToken === null
         ? session('form_success')
         : data_get(session('form_success_instances', []), $instanceToken);
-    $calculatorResultState = $instanceToken === null
-        ? session('calculator_result_state')
-        : data_get(session('calculator_result_instances', []), $instanceToken);
+    $calculatorResultKey = $instanceToken === null ? 'calculator_result_state' : "calculator_result_instances.{$instanceToken}";
+    $calculatorResultState = session($calculatorResultKey);
     $calculatorResult = $form->isCalculator()
+        && ! $formErrors->any()
         && (int) data_get($calculatorResultState, 'form_id') === (int) $form->getKey()
             ? data_get($calculatorResultState, 'calculation_result')
             : null;
+    if ($calculatorResult) {
+        // Consume the flash once; a later refresh/re-entry cannot auto-open this result again.
+        session()->forget($calculatorResultKey);
+    }
     $calculatorReportUrl = $calculatorResult
         ? data_get($calculatorResultState, 'report_url')
         : null;
     $hasStepMarkers = collect($fields)->contains(fn (array $field): bool => $field['type'] === 'page');
     $steps = [];
-    $currentStep = ['field_id' => null, 'label' => $form->name, 'description' => null, 'fields' => []];
+    $currentStep = ['field_id' => null, 'label' => $isPagePresentation ? $pagePresentation['title'] : $form->name, 'description' => null, 'fields' => []];
 
     foreach ($fields as $field) {
         if ($field['type'] === 'page') {
@@ -47,6 +53,7 @@
     }
 
     $isMultiStep = $hasStepMarkers && count($steps) > 1;
+    $pageSubmitLabel = $form->isCalculator() ? 'مشاهده نتیجه' : (trim((string) data_get($form->settings, 'submit_label')) ?: 'ارسال فرم');
     $submitConfirmationEnabled = \App\Support\FormSubmitConfirmation::enabled($form);
     $submitConfirmationText = \App\Support\FormSubmitConfirmation::text($form);
     $submitConfirmationKey = \App\Support\FormSubmitConfirmation::INPUT_KEY;
@@ -68,6 +75,9 @@
 @if ($formErrors->any())
     <div class="form-error" role="alert">
         <p>لطفا فرم را بررسی کنید و دوباره تلاش کنید.</p>
+        @if ($formErrors->has('calculator'))
+            <p dir="rtl">{{ $formErrors->first('calculator') }}</p>
+        @endif
     </div>
 @endif
 
@@ -77,8 +87,8 @@
     method="post"
     enctype="multipart/form-data"
     action="{{ route('forms.submit', $form->slug) }}"
-    @if($isMultiStep) data-multi-step-form @endif
-    @if($isMultiStep && $submitConfirmationHasError) data-submit-confirmation-error="true" @endif
+    @if($isPagePresentation) data-form-page @elseif($isMultiStep) data-multi-step-form @endif
+    @if(($isMultiStep || $isPagePresentation) && $submitConfirmationHasError) data-submit-confirmation-error="true" @endif
     @if($isMultiStep && $calculatorResult) data-initial-step="last" @endif
 >
     @csrf
@@ -103,7 +113,7 @@
         <input id="{{ $formDomId }}-website" name="website" type="text" tabindex="-1" autocomplete="off">
     </div>
 
-    @if ($isMultiStep)
+    @if ($isMultiStep && ! $isPagePresentation)
         <div class="form-step-indicator" aria-live="polite">
             <span data-step-current>۱</span>
             <span>از {{ count($steps) }}</span>
@@ -113,16 +123,20 @@
     @foreach ($steps as $stepIndex => $step)
         @php($stepDomId = $formDomId.'-step-'.strtolower($step['field_id'] ?? (string) $stepIndex))
         <section
+            @if($isPagePresentation) id="{{ $formDomId.'-step-panel-'.$stepIndex }}" @endif
             class="form-step form-fields"
             data-form-step="{{ $stepIndex }}"
             aria-labelledby="{{ $stepDomId }}"
-            aria-hidden="{{ $isMultiStep && $stepIndex > 0 ? 'true' : 'false' }}"
-            @if($isMultiStep && $stepIndex > 0) hidden @endif
+            aria-hidden="{{ ! $isPagePresentation && $isMultiStep && $stepIndex > 0 ? 'true' : 'false' }}"
+            @if(! $isPagePresentation && $isMultiStep && $stepIndex > 0) hidden @endif
         >
-            @if ($isMultiStep)
+            @if ($isMultiStep || $isPagePresentation)
                 <header class="form-step__header">
-                    <h2 id="{{ $stepDomId }}">{{ $step['label'] }}</h2>
-                    @if ($step['description'])
+                    @if ($isPagePresentation && $pagePresentation['show_step_counter'])
+                        <p class="form-page__counter">مرحله {{ \App\Support\PersianDate::digits($stepIndex + 1) }} از {{ \App\Support\PersianDate::digits(count($steps)) }}</p>
+                    @endif
+                    <h2 id="{{ $stepDomId }}" tabindex="-1">{{ $isPagePresentation && $step['field_id'] === null ? $pagePresentation['title'] : $step['label'] }}</h2>
+                    @if ($step['description'] && (! $isPagePresentation || $pagePresentation['show_step_description']))
                         <p>{{ $step['description'] }}</p>
                     @endif
                 </header>
@@ -133,12 +147,12 @@
                 @php($fieldHasError = $formErrors->has($field['name']) || $formErrors->has($field['name'].'.*'))
                 @php($errorId = $inputId.'-error')
                 @php($columnSpan = \App\Services\FormSchema::normalizeColumnSpan(data_get($field, 'layout.span')))
-                <div class="form-field form-field--span-{{ $columnSpan }}">
+                <div class="form-field form-field--span-{{ $columnSpan }}" @if($isPagePresentation && $field['type'] !== 'step') data-page-field data-field-required="{{ $field['required'] ? 'true' : 'false' }}" @endif>
                     @if ($field['type'] === 'step')
                         <div class="form-section-divider">
                             <div class="form-section-divider__title">{{ $field['label'] }}</div>
                             <div class="form-section-divider__line" aria-hidden="true"></div>
-                            @if ($field['description'])
+                            @if ($field['description'] && (! $isPagePresentation || $pagePresentation['show_step_description']))
                                 <p>{{ $field['description'] }}</p>
                             @endif
                         </div>
@@ -273,6 +287,8 @@
                                 @endforeach
                             </div>
                         </div>
+                    @elseif ($isPagePresentation && in_array($field['type'], ['radio', 'image_choice', 'radio_card'], true))
+                        @include('forms._page-choice-cards')
                     @elseif ($field['type'] === 'radio')
                         <fieldset class="form-adaptive-choice-group form-radio-group" @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>
                             <legend>{{ $field['label'] }}</legend>
@@ -334,6 +350,9 @@
                         <input id="{{ $inputId }}" name="{{ $field['name'] }}" type="{{ $field['type'] }}" value="{{ $oldValue($field['name']) }}" placeholder="{{ $field['placeholder'] }}" @required($field['required']) @if($fieldHasError) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif>
                     @endif
 
+                    @if ($isPagePresentation && $pagePresentation['show_step_description'] && $field['type'] !== 'step' && filled($field['description'] ?? null))
+                        <p class="field-help">{{ $field['description'] }}</p>
+                    @endif
                     @if ($fieldHasError)
                         <p id="{{ $errorId }}" class="form-error">{{ $formErrors->first($field['name']) ?: $formErrors->first($field['name'].'.*') }}</p>
                     @endif
@@ -362,7 +381,34 @@
         </div>
     @endif
 
-    @if ($isMultiStep)
+    @if ($isPagePresentation)
+        @if ($pagePresentation['show_stepper'])
+            <nav class="form-page__stepper" aria-label="مراحل فرم">
+                <ol>
+                    @foreach ($steps as $stepIndex => $step)
+                        <li>
+                            <button type="button" data-page-step-link="{{ $stepIndex }}" data-step-title="{{ $step['label'] }}" aria-label="مرحله {{ $stepIndex + 1 }}: {{ $step['label'] }}" aria-controls="{{ $formDomId.'-step-panel-'.$stepIndex }}">
+                                <span class="form-page__step-number">{{ \App\Support\PersianDate::digits($stepIndex + 1) }}</span>
+                                <span class="form-page__step-state" data-page-step-state>بدون پاسخ</span>
+                            </button>
+                        </li>
+                    @endforeach
+                    @if ($form->isCalculator())
+                        <li><button type="button" data-page-result-link @disabled(! $calculatorResult) aria-haspopup="dialog" aria-controls="{{ $formDomId }}-calculation-result">نتیجه</button></li>
+                    @endif
+                </ol>
+            </nav>
+        @endif
+        <div class="form-page__navigation">
+            @if ($isMultiStep)
+                <button class="button" type="button" data-page-next hidden>{{ $pagePresentation['next_button_label'] }}</button>
+            @endif
+            <button class="button" type="submit" data-page-submit data-form-submit @disabled($submitConfirmationEnabled && ! $submitConfirmationChecked)>{{ $pageSubmitLabel }}</button>
+            @if ($isMultiStep || $calculatorResult)
+                <button class="button form-page__previous" type="button" data-page-back hidden>{{ $pagePresentation['previous_button_label'] }}</button>
+            @endif
+        </div>
+    @elseif ($isMultiStep)
         <div class="form-step-navigation">
             <button class="button" type="button" data-step-back hidden>قبلی</button>
             <button class="button" type="button" data-step-next>بعدی</button>

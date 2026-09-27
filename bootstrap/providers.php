@@ -4,6 +4,7 @@ use App\Providers\ActionServiceProvider;
 use App\Providers\AdminLoginServiceProvider;
 use App\Providers\BlockServiceProvider;
 use App\Providers\BackupServiceProvider;
+use App\Providers\ChromePdfDiagnosticsServiceProvider;
 use App\Providers\EditorHistoryServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
 use App\Providers\FormServiceProvider;
@@ -31,6 +32,7 @@ return [
     ShopServiceProvider::class,
     ServiceServiceProvider::class,
     FormServiceProvider::class,
+    ChromePdfDiagnosticsServiceProvider::class,
     TemplateRecipeServiceProvider::class,
     TestingDatabaseSafetyServiceProvider::class,
     AdminPanelProvider::class,

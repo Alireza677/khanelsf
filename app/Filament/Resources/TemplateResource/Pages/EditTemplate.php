@@ -34,11 +34,11 @@ class EditTemplate extends EditRecord
     {
         return [
             Actions\Action::make('preview')
-                ->label('Preview')
+                ->label(__('Preview'))
                 ->icon('heroicon-o-eye')
                 ->visible(fn (): bool => ! in_array($this->record->type, Template::LEGACY_GALLERY_TYPES, true))
                 ->form(fn (): array => $this->previewForm())
-                ->modalSubmitActionLabel('Open preview')
+                ->modalSubmitActionLabel(__('Open preview'))
                 ->action(function (array $data) {
                     return redirect()->away(route('admin.preview.templates.show', [
                         'template' => $this->record,
@@ -56,8 +56,8 @@ class EditTemplate extends EditRecord
         if ($options === []) {
             return [
                 Forms\Components\Placeholder::make('preview_note')
-                    ->label('Preview context')
-                    ->content('This template type does not need a selected item.'),
+                    ->label(__('Preview context'))
+                    ->content(__('This template type does not need a selected item.')),
             ];
         }
 
@@ -68,7 +68,7 @@ class EditTemplate extends EditRecord
                 ->searchable()
                 ->preload()
                 ->required()
-                ->helperText('Select a real record to provide context for dynamic template blocks.'),
+                ->helperText(__('Select a real record to provide context for dynamic template blocks.')),
         ];
     }
 }

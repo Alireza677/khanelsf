@@ -116,6 +116,11 @@
                         toggle.setAttribute('aria-expanded', 'false')
                         toggle.setAttribute('aria-label', 'باز کردن منوی اصلی')
 
+                        nav.querySelectorAll('[data-industrial-submenu-toggle]').forEach(function (button) {
+                            button.setAttribute('aria-expanded', 'false')
+                            button.parentElement.classList.remove('is-mobile-submenu-open')
+                        })
+
                         if (wasOpen && header.classList.contains('industrial-header')) {
                             document.body.classList.remove('industrial-mobile-menu-open')
                         }
@@ -144,6 +149,15 @@
                     })
 
                     nav.addEventListener('click', function (event) {
+                        const submenuToggle = event.target.closest('[data-industrial-submenu-toggle]')
+
+                        if (submenuToggle && header.classList.contains('industrial-header') && window.innerWidth <= 900) {
+                            const expanded = submenuToggle.getAttribute('aria-expanded') !== 'true'
+                            submenuToggle.setAttribute('aria-expanded', String(expanded))
+                            submenuToggle.parentElement.classList.toggle('is-mobile-submenu-open', expanded)
+                            return
+                        }
+
                         if (event.target.closest('a')) {
                             close()
                         }
@@ -747,9 +761,13 @@
     @endif
 
     <main>
+        @hasSection('full_width_content')
+            @yield('content')
+        @else
         <div class="container">
             @yield('content')
         </div>
+        @endif
     </main>
 
     @if ($siteFooterTemplate?->hasBlocks())

@@ -15,6 +15,11 @@ abstract class AbstractProjectBlock extends AbstractBlock implements BlockNormal
 {
     public const SCHEMA_VERSION = 1;
 
+    public function templateTargets(): ?array
+    {
+        return ['project_single'];
+    }
+
     public function version(): int
     {
         return self::SCHEMA_VERSION;

@@ -1,9 +1,16 @@
 @extends('layouts.app')
 
-@section('content')
-    <section class="contact-page">
-        <h1>{{ $form->name }}</h1>
+@section('full_width_content', '1')
 
-        @include('forms._form', ['form' => $form, 'fields' => $fields, 'instanceToken' => $instanceToken ?? null])
+@section('content')
+    <section class="form-page" dir="rtl">
+        @if ($presentation['show_hero'])
+            @include('partials.presentations.hero', ['hero' => $hero])
+        @else
+            <h1 class="form-page__title">{{ $presentation['title'] }}</h1>
+        @endif
+        <div class="form-page__body">
+            @include('forms._form', ['form' => $form, 'fields' => $fields, 'instanceToken' => $instanceToken ?? null, 'pagePresentation' => $presentation])
+        </div>
     </section>
 @endsection

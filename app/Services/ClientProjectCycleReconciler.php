@@ -30,10 +30,13 @@ final class ClientProjectCycleReconciler
             $modeChanged = $project->schedule_mode !== $proposed->schedule_mode;
             $anchorChanged = $project->cycle_anchor_day !== $proposed->cycle_anchor_day;
             $scheduleChanged = $startChanged || $endChanged || $modeChanged || $anchorChanged;
+            // A recurring anchor change applies to mutable cycles; billed history keeps its original periods.
+            $preserveProtectedHistory = $anchorChanged && $proposed->isRecurring()
+                && ! $startChanged && ! $endChanged && ! $modeChanged;
             $allocationChanged = $project->monthly_hour_limit_minutes !== $proposed->monthly_hour_limit_minutes;
             $becameActive = ! $project->isActive() && $proposed->isActive();
 
-            if ($scheduleChanged) {
+            if ($scheduleChanged && ! $preserveProtectedHistory) {
                 $this->assertProtectedHistoryCompatible($project, $proposed);
             }
 
@@ -41,7 +44,7 @@ final class ClientProjectCycleReconciler
             $project = $project->fresh();
 
             if ($scheduleChanged) {
-                $this->reconcileLocked($project, true);
+                $this->reconcileLocked($project, ! $preserveProtectedHistory);
             }
 
             if ($allocationChanged) {

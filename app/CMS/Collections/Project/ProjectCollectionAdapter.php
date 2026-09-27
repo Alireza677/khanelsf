@@ -13,6 +13,7 @@ use App\CMS\Collections\Data\CollectionPresentation;
 use App\Models\Project;
 use App\Support\PersianDate;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 final class ProjectCollectionAdapter
 {
@@ -35,18 +36,32 @@ final class ProjectCollectionAdapter
 
     public function item(Project $project): CollectionItem
     {
-        $imageUrl = $this->text($project->coverImageUrl());
+        $imageUrl = $this->text($project->coverImageUrl(null));
         $url = $this->text($project->resolveNavigationUrl());
         $category = $this->text($project->category?->name);
 
         return new CollectionItem(
             title: $project->title,
             image: $imageUrl ? new CollectionImage($imageUrl, $project->title) : null,
-            excerpt: $this->text($project->excerpt),
+            excerpt: $this->excerpt($project),
             action: $url ? new CollectionAction('مشاهده پروژه', $url) : null,
             metaItems: $this->metaItems($project),
             badges: $category ? [$category] : [],
         );
+    }
+
+    private function excerpt(Project $project): ?string
+    {
+        foreach ([$project->excerpt, $project->content] as $source) {
+            $plainText = preg_replace('/<\s*(?:br\b[^>]*|\/(?:p|div|li|h[1-6]|section|article|blockquote))\s*>/i', ' ', (string) $source);
+            $plainText = Str::squish(html_entity_decode(strip_tags($plainText), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+            if ($plainText !== '') {
+                return Str::words($plainText, 35, '…');
+            }
+        }
+
+        return null;
     }
 
     /** @return array<CollectionMetaItem> */

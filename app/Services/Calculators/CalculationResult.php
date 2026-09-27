@@ -14,6 +14,8 @@ final readonly class CalculationResult
         public array $ranking = [],
         public array $eligibility = [],
         public bool $noEligibleRecommendation = false,
+        public ?array $weightedDetails = null,
+        public array $resultContent = [],
     ) {}
 
     public function toArray(): array
@@ -28,6 +30,8 @@ final readonly class CalculationResult
             'ranking' => $this->ranking,
             'eligibility' => $this->eligibility,
             'no_eligible_recommendation' => $this->noEligibleRecommendation,
+            ...($this->weightedDetails ?? []),
+            ...$this->resultContent,
         ];
     }
 }

@@ -30,6 +30,11 @@ final class SiteHeaderBlock extends AbstractBlock implements BlockNormalizer
         private readonly SiteHeaderDataNormalizer $normalizer,
     ) {}
 
+    public function templateTargets(): ?array
+    {
+        return ['site_header'];
+    }
+
     public function key(): string
     {
         return 'site_header';

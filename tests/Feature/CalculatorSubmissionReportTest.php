@@ -9,6 +9,9 @@ use App\Services\CalculatorSubmissionReport;
 use App\Services\SubmissionAnswerSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\URL;
+use Mockery;
+use Spatie\LaravelPdf\Drivers\ChromeDriver;
+use Spatie\LaravelPdf\PdfOptions;
 use Tests\TestCase;
 
 class CalculatorSubmissionReportTest extends TestCase
@@ -17,6 +20,25 @@ class CalculatorSubmissionReportTest extends TestCase
 
     public function test_signed_report_download_uses_the_stored_snapshot_without_recalculating(): void
     {
+        // Verify configured driver selection without launching a browser in CI.
+        config(['laravel-pdf.driver' => 'chrome']);
+        $driver = Mockery::mock(ChromeDriver::class);
+        $driver->shouldReceive('generatePdf')->once()
+            ->withArgs(function (string $html, ?string $header, ?string $footer, PdfOptions $options): bool {
+                $this->assertStringContainsString('<html lang="fa" dir="rtl">', $html);
+                $this->assertStringContainsString('پیش ساخته', $html);
+                $this->assertStringContainsString('تک واحد', $html);
+                $this->assertStringContainsString(base64_encode(file_get_contents(resource_path('fonts/vazirmatn/Vazirmatn-Regular.ttf'))), $html);
+                $this->assertStringContainsString(base64_encode(file_get_contents(resource_path('fonts/vazirmatn/Vazirmatn-Bold.ttf'))), $html);
+                $this->assertSame('a4', $options->format);
+                $this->assertSame(['top' => 10.0, 'right' => 10.0, 'bottom' => 12.0, 'left' => 10.0, 'unit' => 'mm'], $options->margins);
+                $this->assertSame("document.fonts.status === 'loaded'", $options->waitForReady);
+                $this->assertDoesNotMatchRegularExpression('/(?:src|href)=["\']https?:|url\(["\']?https?:/i', $html);
+
+                return true;
+            })
+            ->andReturn('%PDF-fake-chrome-response');
+        $this->app->instance('laravel-pdf.driver.chrome', $driver);
         $submission = $this->submission();
 
         $url = URL::temporarySignedRoute(
@@ -30,14 +52,7 @@ class CalculatorSubmissionReportTest extends TestCase
             ->assertHeader('content-type', 'application/pdf')
             ->assertDownload("calculator-report-{$submission->getKey()}.pdf");
 
-        $content = $response->getContent();
-
-        $this->assertStringStartsWith('%PDF-', $content);
-        $this->assertStringContainsString('Vazirmatn', $content);
-        $this->assertGreaterThanOrEqual(2, substr_count($content, 'Vazirmatn'));
-        $this->assertMatchesRegularExpression('/\/MediaBox\s*\[0(?:\.0+)? 0(?:\.0+)? 595\.28\d* 841\.89\d*\]/', $content);
-        $this->assertNotEmpty(glob(storage_path('fonts/vazirmatn_normal_*.ufm')));
-        $this->assertNotEmpty(glob(storage_path('fonts/vazirmatn_bold_*.ufm')));
+        $this->assertSame('%PDF-fake-chrome-response', $response->getContent());
     }
 
     public function test_report_download_rejects_unsigned_requests_and_normal_submissions(): void

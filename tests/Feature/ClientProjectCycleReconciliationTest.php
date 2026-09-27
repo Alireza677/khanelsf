@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\ClientProjectActivityResource;
+use App\Filament\Resources\ClientProjectResource\Pages\CreateClientProject;
 use App\Filament\Resources\ClientProjectResource\Pages\EditClientProject;
 use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
@@ -69,18 +70,106 @@ class ClientProjectCycleReconciliationTest extends TestCase
 
     public function test_filament_project_edit_runs_schedule_reconciliation_service(): void
     {
+        $this->travelTo(CarbonImmutable::parse('2026-09-01 12:00:00'));
         $this->actingAs(User::factory()->admin()->create());
         $project = $this->project(Customer::factory()->create(), 900, '2026-08-23');
         $oldCycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, CarbonImmutable::parse('2026-08-30'));
         $activity = $this->activity($project, '2026-08-30', 60, $oldCycle->id);
 
         Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
-            ->fillForm(['start_date' => '2026-08-28'])
+            ->fillForm(['schedule_mode' => ClientProject::SCHEDULE_RECURRING, 'cycle_anchor_day' => 6])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertSame('2026-08-28', $project->fresh()->start_date->toDateString());
+        $this->assertSame(6, $project->fresh()->cycle_anchor_day);
         $this->assertSame('2026-08-28', $activity->fresh()->cycle->starts_at->toDateString());
+        $this->assertSame($activity->fresh()->client_project_cycle_id, $project->fresh()->currentCycle->id);
+        $this->assertDatabaseMissing('client_project_cycles', ['id' => $oldCycle->id]);
+    }
+
+    public function test_recurring_form_save_persists_the_displayed_legacy_anchor(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-01 12:00:00'));
+        $this->actingAs(User::factory()->admin()->create());
+
+        foreach ([[null, 1], ['2026-08-28', 6]] as [$start, $anchor]) {
+            $project = ClientProject::factory()->create([
+                'status' => ClientProject::STATUS_ACTIVE,
+                'monthly_hour_limit_minutes' => 900,
+                'start_date' => $start,
+                'cycle_anchor_day' => null,
+            ]);
+            $form = Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
+                ->assertFormSet(['schedule_mode' => ClientProject::SCHEDULE_RECURRING, 'cycle_anchor_day' => $anchor]);
+            $this->assertNull($project->fresh()->cycle_anchor_day);
+
+            $form->fillForm(['cycle_anchor_day' => $anchor])->call('save')->assertHasNoFormErrors();
+
+            $this->assertSame($anchor, $project->fresh()->cycle_anchor_day);
+            $this->assertSame($anchor === 1 ? '2026-08-23' : '2026-08-28', $project->fresh()->currentCycle->starts_at->toDateString());
+            Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
+                ->assertFormSet(['cycle_anchor_day' => $anchor]);
+        }
+    }
+
+    public function test_recurring_create_persists_anchor_and_builds_current_cycle(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-01 12:00:00'));
+        $this->actingAs(User::factory()->admin()->create());
+        $customer = Customer::factory()->create();
+
+        Livewire::test(CreateClientProject::class)
+            ->fillForm([
+                'customer_id' => $customer->id,
+                'title' => 'Recurring schedule',
+                'status' => ClientProject::STATUS_ACTIVE,
+                'schedule_mode' => ClientProject::SCHEDULE_RECURRING,
+                'cycle_anchor_day' => 6,
+                'has_unlimited_monthly_hours' => false,
+                'monthly_limit_hours' => 15,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $project = ClientProject::query()->where('title', 'Recurring schedule')->firstOrFail();
+        $this->assertSame(6, $project->cycle_anchor_day);
+        $this->assertSame('2026-08-28', $project->currentCycle->starts_at->toDateString());
+        $this->assertSame('2026-09-28', $project->currentCycle->ends_at->toDateString());
+    }
+
+    public function test_recurring_anchor_edit_preserves_protected_cycles_and_activities(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-10-10 12:00:00'));
+        $this->actingAs(User::factory()->admin()->create());
+        $project = $this->project(Customer::factory()->create(), 900, '2026-07-28');
+        $resolver = app(ClientProjectCycleResolver::class);
+        $protected = [];
+        foreach (['2026-07-30', '2026-08-30'] as $index => $date) {
+            $cycle = $resolver->resolveForDate($project, CarbonImmutable::parse($date));
+            $activity = $this->billableActivity($project, $date, 60, $cycle->id);
+            $invoice = app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh());
+            if ($index === 1) {
+                app(InvoiceLifecycle::class)->issue($invoice);
+            }
+            foreach ([$cycle, $activity, $invoice] as $record) {
+                $protected[] = [$record, $record->fresh()->getAttributes()];
+            }
+        }
+        $oldCurrentCycle = $resolver->resolveForDate($project, CarbonImmutable::today());
+        $currentActivity = $this->activity($project, '2026-10-10', 60, $oldCurrentCycle->id);
+
+        Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
+            ->fillForm(['cycle_anchor_day' => 10])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(10, $project->fresh()->cycle_anchor_day);
+        $this->assertSame('2026-10-02', $project->fresh()->currentCycle->starts_at->toDateString());
+        $this->assertSame($project->fresh()->currentCycle->id, $currentActivity->fresh()->client_project_cycle_id);
+        $this->assertDatabaseMissing('client_project_cycles', ['id' => $oldCurrentCycle->id]);
+        foreach ($protected as [$record, $attributes]) {
+            $this->assertSame($attributes, $record->fresh()->getAttributes());
+        }
     }
 
     public function test_activity_date_edit_reassigns_unclaimed_activity_and_refreshes_both_cycles(): void

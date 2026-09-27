@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Form;
+use App\Services\Calculators\CalculatorScoringSchema;
 use App\Support\FormNumber;
 use App\Support\FormUpload;
 use App\Rules\FormUploadRule;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class FormSchema
 {
@@ -28,7 +30,7 @@ final class FormSchema
         private readonly SettingsService $settings,
     ) {}
 
-    public function fields(Form $form): array
+    public function fields(Form $form, bool $preserveChoiceOptions = false): array
     {
         $fields = is_array($form->schema) ? ($form->schema['fields'] ?? []) : [];
 
@@ -83,6 +85,10 @@ final class FormSchema
                 'layout' => ['span' => self::normalizeColumnSpan(data_get($field, 'layout.span'))],
             ];
 
+            if (is_string($field['description'] ?? null)) {
+                $normalizedField['description'] = $field['description'];
+            }
+
             if ($type === 'number') {
                 $normalizedField['settings'] = [
                     'thousands_separator' => filter_var(data_get($field, 'settings.thousands_separator', false), FILTER_VALIDATE_BOOLEAN),
@@ -110,13 +116,13 @@ final class FormSchema
             }
 
             if (in_array($type, ['select', 'radio', 'checkbox', 'image_choice', 'radio_card'], true)) {
-                $options = $this->options($field['options'] ?? []);
+                $options = $this->options($field['options'] ?? [], data_get($form->schema, 'calculator.criteria', []));
 
                 if ($options === []) {
                     continue;
                 }
 
-                $normalizedField['options'] = $type === 'select'
+                $normalizedField['options'] = $type === 'select' && ! $preserveChoiceOptions
                     ? collect($options)->pluck('label', 'value')->all()
                     : $options;
             }
@@ -280,10 +286,17 @@ final class FormSchema
             : null;
     }
 
-    private function options(mixed $options): array
+    private function options(mixed $options, mixed $criteria = []): array
     {
         if (! is_array($options)) {
             return [];
+        }
+
+        $criteriaById = [];
+        foreach (is_array($criteria) ? $criteria : [] as $criterion) {
+            if (is_array($criterion) && is_string($criterion['id'] ?? null)) {
+                $criteriaById[strtoupper($criterion['id'])] = $criterion;
+            }
         }
 
         $normalized = [];
@@ -318,6 +331,23 @@ final class FormSchema
                 'image' => is_string($option['image'] ?? null) && trim($option['image']) !== '' ? trim($option['image']) : null,
                 'scores' => $scores,
             ];
+
+            foreach (['description', 'icon'] as $presentationKey) {
+                if (is_string($option[$presentationKey] ?? null)) {
+                    $normalized[$value][$presentationKey] = trim($option[$presentationKey]);
+                }
+            }
+
+            if (array_key_exists('criterion_weights', $option)) {
+                try {
+                    $normalized[$value]['criterion_weights'] = app(CalculatorScoringSchema::class)->normalizeMap(
+                        $option['criterion_weights'], $criteriaById, 10, 'schema.fields.options.criterion_weights',
+                    );
+                } catch (ValidationException) {
+                    // Rendering must remain safe; the manager rejects/logs invalid config before scoring.
+                    $normalized[$value]['criterion_weights'] = [];
+                }
+            }
         }
 
         return array_values($normalized);

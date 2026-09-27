@@ -16,6 +16,11 @@ abstract class AbstractServiceBlock extends AbstractBlock implements BlockNormal
 {
     public const SCHEMA_VERSION = 1;
 
+    public function templateTargets(): ?array
+    {
+        return ['service_single'];
+    }
+
     public function version(): int
     {
         return self::SCHEMA_VERSION;

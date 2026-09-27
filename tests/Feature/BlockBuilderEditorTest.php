@@ -46,8 +46,8 @@ class BlockBuilderEditorTest extends TestCase
         foreach ($this->editors() as [$componentClass, $record]) {
             $component = Livewire::test($componentClass, ['record' => $record->getRouteKey()])
                 ->assertOk()
-                ->assertSee('Block Canvas')
-                ->assertSee('Selected Block')
+                ->assertSee('چیدمان بلوک‌ها')
+                ->assertSee('بلوک انتخاب‌شده')
                 ->assertSee('محتوا')
                 ->assertSee('طراحی')
                 ->assertSee('تنظیمات پیشرفته')

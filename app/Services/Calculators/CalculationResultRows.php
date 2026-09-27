@@ -2,6 +2,8 @@
 
 namespace App\Services\Calculators;
 
+use App\Support\PersianDate;
+
 final class CalculationResultRows
 {
     /**
@@ -12,7 +14,7 @@ final class CalculationResultRows
         $ranking = $this->storedRanking($result);
 
         if ($ranking !== []) {
-            return $ranking;
+            return $this->weightedRows($ranking, $result);
         }
 
         $scores = is_array($result['scores'] ?? null) ? $result['scores'] : [];
@@ -48,7 +50,7 @@ final class CalculationResultRows
             ];
         }
 
-        return $rows;
+        return $this->weightedRows($rows, $result);
     }
 
     /**
@@ -85,7 +87,7 @@ final class CalculationResultRows
                 || ! is_numeric($score)
                 || ($rank !== null && (! is_numeric($rank) || (int) $rank < 1))
                 || ($rank !== null && $eligible === false)
-                || ($rank === null && $eligible !== false)) {
+                || ($rank === null && $eligible !== false && ! (($result['scoring_mode'] ?? null) === 'weighted' && ($result['no_score'] ?? false)))) {
                 return [];
             }
 
@@ -93,7 +95,7 @@ final class CalculationResultRows
             $rows[] = [
                 'key' => $key,
                 'label' => $label,
-                'score' => $score + 0,
+                'score' => ($result['scoring_mode'] ?? null) === 'weighted' ? (string) $score : $score + 0,
                 'rank' => $rank === null ? null : (int) $rank,
                 'recommended' => $key === $recommendedKey,
                 'eligible' => $eligible,
@@ -106,6 +108,48 @@ final class CalculationResultRows
         }
 
         return $rows;
+    }
+
+    /** Add weighted presentation metadata without changing legacy/simple rows. */
+    private function weightedRows(array $rows, array $result): array
+    {
+        if (($result['scoring_mode'] ?? null) !== 'weighted') {
+            return $rows;
+        }
+        foreach ($rows as &$row) {
+            $percentage = $result['suitability_percentages'][$row['key']] ?? null;
+            $row['raw_score'] = (string) $row['score'];
+            $row['suitability_percentage'] = $percentage;
+            $row['raw_score_label'] = $this->decimalLabel($row['raw_score']);
+            $row['suitability_label'] = $percentage === null ? 'بدون امتیاز' : $this->decimalLabel((string) $percentage).'٪';
+            $row['display_value'] = $row['suitability_label'].' — امتیاز خام: '.$row['raw_score_label'];
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /** Presentation uses only stored calculation snapshots, never the current form configuration. */
+    public function weightedSummary(array $result): ?array
+    {
+        if (($result['scoring_mode'] ?? null) !== 'weighted') {
+            return null;
+        }
+        $percentage = $result['suitability_percentages'][$result['recommended_method'] ?? ''] ?? null;
+
+        return [
+            'no_score' => ($result['no_score'] ?? false) === true,
+            'suitability_label' => $percentage === null ? null : $this->decimalLabel((string) $percentage).'٪',
+            'factors' => array_values(array_filter($result['top_factors'] ?? [], fn ($factor): bool => is_array($factor) && is_string($factor['label'] ?? null))),
+            'decision_report' => is_array($result['decision_report'] ?? null) ? $result['decision_report'] : null,
+        ];
+    }
+
+    private function decimalLabel(string $value): string
+    {
+        $rounded = CalculatorDecimal::rounded(CalculatorDecimal::value($value));
+
+        return PersianDate::digits(str_replace('.', '٫', rtrim(rtrim($rounded, '0'), '.')));
     }
 
     /** @return list<array{rule_id: string, message: string}> */

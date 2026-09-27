@@ -30,6 +30,7 @@
                 wire:key="form-builder-choice-metadata-{{ $statePath }}"
                 x-bind:open="metadataOpen[@js($fieldKey)] === true"
                 x-on:toggle="metadataOpen[@js($fieldKey)] = $el.open"
+                x-on:expand="metadataOpen[@js($fieldKey)] = true"
             >
                 <summary>تنظیمات تکمیلی موجود</summary>
                 <p>تصویر و امتیازهای فعلی بدون تغییر در این بخش باقی مانده‌اند.</p>
@@ -41,7 +42,7 @@
                                 ->filter(fn ($component): bool => method_exists($component, 'getName'))
                                 ->keyBy(fn ($component): string => $component->getName());
                             $metadataComponents = $components
-                                ->only(['image', 'scores'])
+                                ->only(['image', 'scores', 'criterion_weights'])
                                 ->reject(fn ($component): bool => $component->isHidden());
                         @endphp
 
@@ -52,7 +53,20 @@
                             >
                                 <strong>{{ data_get($optionItem->getRawState(), 'label', 'گزینه') }}</strong>
                                 @foreach ($metadataComponents as $metadataComponent)
-                                    {{ $metadataComponent }}
+                                    @if ($metadataComponent->getName() === 'criterion_weights')
+                                        <details
+                                            wire:key="{{ $optionItem->getStatePath() }}.criterion-effects"
+                                            x-bind:open="metadataOpen[@js('criteria-'.$optionItem->getStatePath())] === true"
+                                            x-on:toggle="metadataOpen[@js('criteria-'.$optionItem->getStatePath())] = $el.open"
+                                            x-on:expand="metadataOpen[@js('criteria-'.$optionItem->getStatePath())] = true"
+                                            dir="rtl"
+                                        >
+                                            <summary style="cursor: pointer; padding-block: 0.5rem;">تأثیر این پاسخ بر معیارها</summary>
+                                            {{ $metadataComponent }}
+                                        </details>
+                                    @else
+                                        {{ $metadataComponent }}
+                                    @endif
                                 @endforeach
                             </div>
                         @endif

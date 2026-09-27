@@ -1,4 +1,9 @@
-<article @class(['shared-collection-card', 'shared-collection-card--masonry' => ($collectionVariant ?? null) === 'masonry_gallery'])>
+<article @class([
+    'shared-collection-card',
+    'shared-collection-card--masonry' => ($collectionVariant ?? null) === 'masonry_gallery',
+    'shared-collection-card--desktop-column-start' => ($collectionVariant ?? null) === 'masonry_gallery' && ($collectionDesktopColumnStart ?? false),
+    'shared-collection-card--tablet-column-start' => ($collectionVariant ?? null) === 'masonry_gallery' && ($collectionTabletColumnStart ?? false),
+])>
     @if (($collectionVariant ?? null) === 'masonry_gallery')
         @if ($item->action)
             <a class="shared-collection-card__tile-link" href="{{ $item->action->href }}" @if($item->action->target) target="{{ $item->action->target }}" @endif @if($item->action->rel) rel="{{ $item->action->rel }}" @endif aria-label="{{ $item->title }} — {{ $collectionActionLabel ?? $item->action->label }}">

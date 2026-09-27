@@ -58,7 +58,7 @@ class SiteHeaderTemplateTest extends TestCase
         ]);
     }
 
-    public function test_registered_header_block_is_the_only_site_header_editor_definition(): void
+    public function test_registered_header_block_is_available_alongside_general_blocks(): void
     {
         $block = app(BlockRegistry::class)->find('site_header');
         $definitions = $this->invokeBlockDefinitions('site_header');
@@ -66,8 +66,11 @@ class SiteHeaderTemplateTest extends TestCase
             ->filter(fn ($component): bool => $component instanceof ActionPicker);
 
         $this->assertInstanceOf(SiteHeaderBlock::class, $block);
-        $this->assertCount(1, $definitions);
-        $this->assertSame('site_header', $definitions[0]->getName());
+        $keys = array_map(fn ($definition): string => $definition->getName(), $definitions);
+        $this->assertContains('site_header', $keys);
+        $this->assertContains('cta', $keys);
+        $this->assertNotContains('site_footer', $keys);
+        $this->assertNotContains('product_header', $keys);
         $this->assertCount(3, $pickers);
 
         foreach ($pickers as $picker) {

@@ -3,11 +3,17 @@
 namespace App\CMS\Blocks\Support;
 
 use App\CMS\Blocks\Contracts\BlockDefinition;
+use App\CMS\Blocks\Contracts\HasTemplateTargets;
 use Filament\Forms\Components\Builder\Block;
 use LogicException;
 
-abstract class AbstractBlock implements BlockDefinition
+abstract class AbstractBlock implements BlockDefinition, HasTemplateTargets
 {
+    public function templateTargets(): ?array
+    {
+        return null;
+    }
+
     public function icon(): ?string
     {
         return null;

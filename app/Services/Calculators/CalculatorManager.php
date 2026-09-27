@@ -4,6 +4,7 @@ namespace App\Services\Calculators;
 
 use App\Models\Form;
 use App\Services\FormSchema;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 final class CalculatorManager
@@ -19,6 +20,10 @@ final class CalculatorManager
     {
         if (! $form->isCalculator()) {
             throw new InvalidArgumentException('Only calculator forms can be scored.');
+        }
+
+        if ($this->scoringMode($form) === CalculatorScoringSchema::WEIGHTED) {
+            return app(WeightedCalculator::class)->calculate($form, $payload);
         }
 
         $recommendations = $this->recommendations($form);
@@ -59,7 +64,27 @@ final class CalculatorManager
             ranking: $ranking,
             eligibility: $eligibility,
             noEligibleRecommendation: $recommendedMethod === null,
+            resultContent: app(CalculatorResultContent::class)->resolve($form->schema, $recommendedMethod),
         );
+    }
+
+    public function assertConfiguration(Form $form): void
+    {
+        if ($form->isCalculator() && $this->scoringMode($form) === CalculatorScoringSchema::WEIGHTED) {
+            app(WeightedCalculator::class)->configuration($form);
+        }
+    }
+
+    private function scoringMode(Form $form): string
+    {
+        if ($form->schema !== null && ! is_array($form->schema)) {
+            throw InvalidCalculatorConfiguration::forForm($form, 'ساختار تنظیمات فرم معتبر نیست.');
+        }
+        try {
+            return app(CalculatorScoringSchema::class)->scoringMode($form->schema ?? []);
+        } catch (ValidationException $exception) {
+            throw InvalidCalculatorConfiguration::forForm($form, $exception->validator->errors()->first());
+        }
     }
 
     private function scoreSingleChoice(

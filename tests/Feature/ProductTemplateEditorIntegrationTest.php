@@ -31,7 +31,7 @@ class ProductTemplateEditorIntegrationTest extends TestCase
     public function test_template_editor_exposes_product_blocks_and_their_setting_schemas(): void
     {
         $method = new ReflectionMethod(TemplateResource::class, 'blockDefinitions');
-        $definitions = collect($method->invoke(null))
+        $definitions = collect($method->invoke(null, 'product_single'))
             ->filter(fn ($block): bool => $block instanceof Builder\Block)
             ->keyBy(fn (Builder\Block $block): string => $block->getName());
 

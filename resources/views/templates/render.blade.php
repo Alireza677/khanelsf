@@ -8,11 +8,14 @@
             </p>
         </section>
     @else
+        @isset($projectGalleryFilters)
+            @include('projects.partials.filters')
+        @endisset
         @if ($template->type === 'blog_index')
             <div class="blog-archive archive-collection-page">
         @endif
         @if ($template->type === 'projects_index')
-            <div class="project-gallery-archive">
+            <div @class(['project-gallery-archive', 'project-gallery-archive--filterable' => isset($projectGalleryFilters)])>
         @endif
         <div @class([
             'service-detail' => $template->type === 'service_single',
