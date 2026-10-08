@@ -10,6 +10,10 @@ Artisan::command('about:cms', function () {
 });
 
 Artisan::command('client-project-cycles:refresh-overdue', function () {
+    return $this->call('client-project-cycles:maintain');
+});
+
+Artisan::command('client-project-cycles:maintain', function () {
     $count = app(RecalculateClientProjectCycle::class)->refreshOverdue();
     $ensured = app(ClientProjectCycleReconciler::class)->ensureActiveRecurringCycles();
     $this->info("{$count} project cycle(s) marked overdue.");
@@ -17,4 +21,4 @@ Artisan::command('client-project-cycles:refresh-overdue', function () {
 });
 
 Schedule::command('backup:cleanup-orphans')->dailyAt('04:00')->withoutOverlapping();
-Schedule::command('client-project-cycles:refresh-overdue')->dailyAt('00:10')->withoutOverlapping();
+Schedule::command('client-project-cycles:maintain')->dailyAt('00:10')->withoutOverlapping();

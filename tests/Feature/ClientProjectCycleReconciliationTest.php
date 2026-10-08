@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ClientProjectCycleStatus;
 use App\Filament\Resources\ClientProjectActivityResource;
 use App\Filament\Resources\ClientProjectResource\Pages\CreateClientProject;
 use App\Filament\Resources\ClientProjectResource\Pages\EditClientProject;
 use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
+use App\Models\ClientProjectCycle;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\ClientProjectCycleReconciler;
@@ -18,6 +20,7 @@ use App\Services\ProjectCycleInvoiceGenerator;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use LogicException;
@@ -87,7 +90,7 @@ class ClientProjectCycleReconciliationTest extends TestCase
         $this->assertDatabaseMissing('client_project_cycles', ['id' => $oldCycle->id]);
     }
 
-    public function test_recurring_form_save_persists_the_displayed_legacy_anchor(): void
+    public function test_legacy_edit_preserves_null_until_a_day_is_explicitly_selected(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-09-01 12:00:00'));
         $this->actingAs(User::factory()->admin()->create());
@@ -100,8 +103,12 @@ class ClientProjectCycleReconciliationTest extends TestCase
                 'cycle_anchor_day' => null,
             ]);
             $form = Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
-                ->assertFormSet(['schedule_mode' => ClientProject::SCHEDULE_RECURRING, 'cycle_anchor_day' => $anchor]);
+                ->assertFormSet(['schedule_mode' => ClientProject::SCHEDULE_RECURRING, 'cycle_anchor_day' => null]);
             $this->assertNull($project->fresh()->cycle_anchor_day);
+
+            $form->fillForm(['title' => 'Legacy title edit'])->call('save')->assertHasNoFormErrors();
+            $this->assertNull($project->fresh()->cycle_anchor_day);
+            $this->assertSame(0, $project->cycles()->count());
 
             $form->fillForm(['cycle_anchor_day' => $anchor])->call('save')->assertHasNoFormErrors();
 
@@ -110,6 +117,80 @@ class ClientProjectCycleReconciliationTest extends TestCase
             Livewire::test(EditClientProject::class, ['record' => $project->getRouteKey()])
                 ->assertFormSet(['cycle_anchor_day' => $anchor]);
         }
+    }
+
+    public function test_scheduled_maintenance_rolls_over_at_the_boundary_and_is_idempotent(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-27 12:00:00'));
+        $project = $this->project(Customer::factory()->create(), 900, '2026-08-28');
+        $project->update(['cycle_anchor_day' => 6]);
+        $oldCycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, CarbonImmutable::today());
+        $activity = $this->activity($project, '2026-09-01', 60, $oldCycle->id);
+        $activityBefore = $activity->fresh()->getAttributes();
+        $legacy = $this->project(Customer::factory()->create(), 900, '2026-08-28');
+        $legacyOld = app(ClientProjectCycleResolver::class)->resolveForDate($legacy, CarbonImmutable::today());
+        $inactive = $this->project(Customer::factory()->create(), 900, '2026-08-28');
+        $inactive->update(['status' => ClientProject::STATUS_PAUSED]);
+
+        $this->travelTo(CarbonImmutable::parse('2026-09-28 00:00:00'));
+        $this->artisan('client-project-cycles:maintain')->assertSuccessful();
+        $current = $project->fresh()->currentCycle;
+        $this->assertSame('2026-09-28', $current->starts_at->toDateString());
+        $this->assertSame('2026-10-28', $current->ends_at->toDateString());
+        $this->assertSame(ClientProjectCycleStatus::Active, $current->status);
+        $this->assertSame(ClientProjectCycleStatus::Overdue, $oldCycle->fresh()->status);
+        $this->assertSame($activityBefore, $activity->fresh()->getAttributes());
+        $this->assertNull($legacy->fresh()->cycle_anchor_day);
+        $this->assertSame('2026-09-28', $legacy->fresh()->currentCycle->starts_at->toDateString());
+        $this->assertSame(ClientProjectCycleStatus::Overdue, $legacyOld->fresh()->status);
+        $this->assertSame(0, $inactive->cycles()->count());
+
+        $this->artisan('client-project-cycles:maintain')->assertSuccessful();
+        $this->artisan('client-project-cycles:refresh-overdue')->assertSuccessful();
+        $this->assertSame($current->id, $project->fresh()->currentCycle->id);
+        $this->assertSame(2, $project->cycles()->count());
+        $this->assertSame(2, $legacy->cycles()->count());
+        $event = collect(Schedule::events())->first(fn ($event): bool => str_contains($event->command ?? '', 'client-project-cycles:maintain'));
+        $this->assertNotNull($event);
+        $this->assertSame('10 0 * * *', $event->expression);
+        $this->assertTrue($event->withoutOverlapping);
+    }
+
+    public function test_maintenance_respects_completed_and_protected_cycle_history(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-27 12:00:00'));
+        $project = $this->project(Customer::factory()->create(), 60, '2026-08-28');
+        $fullCycle = app(ClientProjectCycleResolver::class)->resolveForDate($project, CarbonImmutable::today());
+        $this->activity($project, '2026-09-01', 60, $fullCycle->id);
+        // Simulate a stale active status despite an exhausted allocation.
+        $fullCycle->refresh()->update(['status' => ClientProjectCycleStatus::Active, 'completed_at' => null]);
+        $protected = [];
+        foreach ([false, true] as $issue) {
+            $billedProject = $this->project(Customer::factory()->create(), 900, '2026-08-28');
+            $cycle = app(ClientProjectCycleResolver::class)->resolveForDate($billedProject, CarbonImmutable::today());
+            $activity = $this->billableActivity($billedProject, '2026-09-01', 60, $cycle->id);
+            $invoice = app(ProjectCycleInvoiceGenerator::class)->generate($cycle->fresh());
+            if ($issue) {
+                app(InvoiceLifecycle::class)->issue($invoice);
+            } else {
+                // Even a stale active draft-claimed cycle must remain untouched.
+                $cycle->refresh()->update(['status' => ClientProjectCycleStatus::Active]);
+            }
+            foreach ([$cycle, $activity, $invoice] as $record) {
+                $protected[] = [$record, $record->fresh()->getAttributes()];
+            }
+        }
+        $claims = [DB::table('invoice_cycle_claims')->get()->toArray(), DB::table('invoice_activity_claims')->get()->toArray()];
+
+        $this->travelTo(CarbonImmutable::parse('2026-09-28 00:00:00'));
+        $this->artisan('client-project-cycles:maintain')->assertSuccessful();
+        $this->assertSame(ClientProjectCycleStatus::Completed, $fullCycle->fresh()->status);
+        $this->assertNotNull($fullCycle->fresh()->completed_at);
+        foreach ($protected as [$record, $attributes]) {
+            $this->assertSame($attributes, $record->fresh()->getAttributes());
+        }
+        $this->assertEquals($claims, [DB::table('invoice_cycle_claims')->get()->toArray(), DB::table('invoice_activity_claims')->get()->toArray()]);
+        $this->assertSame(6, ClientProjectCycle::query()->count());
     }
 
     public function test_recurring_create_persists_anchor_and_builds_current_cycle(): void

@@ -24,7 +24,7 @@ class EditClientProject extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Saving the recurring form adopts its displayed anchor, including a legacy default.
+        // Preserve a legacy null; never discard a day explicitly selected in the form.
         return ClientProjectResource::applyAllocationFormState($data);
     }
 

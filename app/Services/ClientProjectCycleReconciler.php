@@ -172,8 +172,14 @@ final class ClientProjectCycleReconciler
             ->orderBy('id')
             ->chunkById(100, function (Collection $projects) use (&$ensured): void {
                 foreach ($projects as $project) {
-                    $this->ensureScheduledCycle($project);
-                    $ensured++;
+                    $ensured += DB::transaction(function () use ($project): int {
+                        $project = ClientProject::query()->whereKey($project)->lockForUpdate()->first();
+                        if (! $project || ! $project->isRecurring()) {
+                            return 0;
+                        }
+
+                        return $this->ensureScheduledCycle($project) ? 1 : 0;
+                    }, 3);
                 }
             });
 
@@ -304,10 +310,10 @@ final class ClientProjectCycleReconciler
         $this->ensureScheduledCycle($project);
     }
 
-    private function ensureScheduledCycle(ClientProject $project, bool $strictProtected = false): void
+    private function ensureScheduledCycle(ClientProject $project, bool $strictProtected = false): bool
     {
         if (! $project->monthly_hour_limit_minutes || ($project->isRecurring() && ! $project->isActive())) {
-            return;
+            return false;
         }
 
         $reference = $project->isFixedPeriod()
@@ -315,16 +321,18 @@ final class ClientProjectCycleReconciler
             : CarbonImmutable::today();
 
         if (! $reference || $this->resolver->periodForDate($project, $reference) === null) {
-            return;
+            return false;
         }
 
         try {
-            $this->resolver->resolveForDate($project, CarbonImmutable::parse($reference));
+            return $this->resolver->resolveForDate($project, CarbonImmutable::parse($reference)) !== null;
         } catch (\DomainException $exception) {
             if ($strictProtected || $exception->getMessage() !== 'activity_date_in_protected_cycle') {
                 throw $exception;
             }
         }
+
+        return false;
     }
 
     private function cycleMatchesSchedule(ClientProject $project, ClientProjectCycle $cycle): bool

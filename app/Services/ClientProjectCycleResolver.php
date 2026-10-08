@@ -133,16 +133,16 @@ final class ClientProjectCycleResolver
     {
         $start = $period['starts_at'];
         $end = $period['ends_at'];
-        $cycle = $project->cycles()->whereDate('starts_at', $start->toDateString())->first();
-        if ($cycle && $cycle->ends_at->toDateString() !== $end->toDateString()) {
-            throw new DomainException('cycle_schedule_conflict');
-        }
-        $cycle ??= $project->cycles()->create([
-            'starts_at' => $start->toDateString(),
+        // The existing unique (project, starts_at) key also guards concurrent creators.
+        $cycle = $project->cycles()->firstOrCreate(['starts_at' => $start->toDateString()], [
             'ends_at' => $end->toDateString(),
             'allocated_minutes' => $project->monthly_hour_limit_minutes,
-            'status' => $end->isPast() ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active,
+            'status' => $end->lte(CarbonImmutable::today()) ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active,
         ]);
+
+        if ($cycle->ends_at->toDateString() !== $end->toDateString()) {
+            throw new DomainException('cycle_schedule_conflict');
+        }
 
         if ($cycle->status === ClientProjectCycleStatus::Invoiced
             || $this->isClaimed($cycle)) {

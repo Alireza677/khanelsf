@@ -10,7 +10,6 @@ use App\Services\ClientProjectCycleUsage;
 use App\Services\ClientProjectSchedulePresenter;
 use App\Services\DurationFormatter;
 use App\Support\PersianDate;
-use Carbon\CarbonImmutable;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -19,7 +18,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Morilog\Jalali\Jalalian;
 
 class ClientProjectResource extends Resource
 {
@@ -75,12 +73,7 @@ class ClientProjectResource extends Resource
                         ->options(self::scheduleModeOptions())
                         ->default(ClientProject::SCHEDULE_RECURRING)
                         ->live()
-                        ->required()
-                        ->afterStateUpdated(function (Forms\Set $set, mixed $state, Forms\Get $get): void {
-                            if ($state === ClientProject::SCHEDULE_RECURRING && ! $get('cycle_anchor_day')) {
-                                $set('cycle_anchor_day', 1);
-                            }
-                        }),
+                        ->required(),
                     Forms\Components\TextInput::make('progress')
                         ->label('پیشرفت')
                         ->numeric()
@@ -92,9 +85,13 @@ class ClientProjectResource extends Resource
                         ->label('موعد تحویل ماهیانه')
                         ->options(array_combine(range(1, 31), range(1, 31)))
                         ->default(1)
+                        ->helperText(fn (?ClientProject $record): ?string => $record && $record->cycle_anchor_day === null
+                            ? 'روز ماهانه قبلاً ثبت نشده است؛ برای تعیین آن، روز صحیح قرارداد را انتخاب کنید. خالی ماندن این فیلد زمان‌بندی قبلی را حفظ می‌کند.'
+                            : null)
                         ->visible(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING)
                         ->dehydrated(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING)
-                        ->required(fn (Forms\Get $get): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING),
+                        ->required(fn (Forms\Get $get, ?ClientProject $record): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING
+                            && (! $record || $record->cycle_anchor_day !== null)),
                     Forms\Components\TextInput::make('monthly_limit_hours')
                         ->label(fn (Forms\Get $get): string => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD
                             ? 'سهم کل پروژه — ساعت'
@@ -271,18 +268,9 @@ class ClientProjectResource extends Resource
 
     public static function scheduleFormState(array $data): array
     {
-        $mode = $data['schedule_mode'] ?? ClientProject::SCHEDULE_RECURRING;
-        $anchorDay = $data['cycle_anchor_day'] ?? null;
-
-        if ($mode === ClientProject::SCHEDULE_RECURRING && ! $anchorDay && ! empty($data['start_date'])) {
-            // Eloquent serializes dates in UTC; recover the local date before deriving the Jalali day.
-            $start = CarbonImmutable::parse($data['start_date'])->setTimezone(config('app.timezone'));
-            $anchorDay = Jalalian::fromDateTime($start)->getDay();
-        }
-
         return [
-            'schedule_mode' => $mode,
-            'cycle_anchor_day' => $anchorDay ?: 1,
+            'schedule_mode' => $data['schedule_mode'] ?? ClientProject::SCHEDULE_RECURRING,
+            'cycle_anchor_day' => $data['cycle_anchor_day'] ?? null,
         ];
     }
 
@@ -297,6 +285,10 @@ class ClientProjectResource extends Resource
 
     public static function applyAllocationFormState(array $data): array
     {
+        if (array_key_exists('cycle_anchor_day', $data)) {
+            $data['cycle_anchor_day'] = filled($data['cycle_anchor_day']) ? (int) $data['cycle_anchor_day'] : null;
+        }
+
         if (array_key_exists('progress', $data)) {
             $data['progress'] = (int) ($data['progress'] ?? 0);
         }

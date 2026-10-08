@@ -25,12 +25,12 @@ class EditPost extends EditRecord
     {
         return [
             Actions\Action::make('preview')
-                ->label('Preview')
+                ->label(__('Preview'))
                 ->icon('heroicon-o-eye')
                 ->url(fn (): string => route('admin.preview.posts.show', $this->record))
                 ->openUrlInNewTab(),
             Actions\Action::make('viewPublic')
-                ->label('View public post')
+                ->label(__('View public post'))
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->url(fn (): string => PostResource::publicUrl($this->record))
                 ->openUrlInNewTab()

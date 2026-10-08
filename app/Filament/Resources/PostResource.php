@@ -32,8 +32,10 @@ class PostResource extends Resource
     {
         return $form->schema([
             Forms\Components\Tabs::make('Post editor')
+                ->label(__('Post editor'))
                 ->tabs([
                     Forms\Components\Tabs\Tab::make('Content')
+                        ->label(__('Content'))
                         ->schema([
                             Forms\Components\TextInput::make('title')
                                 ->required()
@@ -47,13 +49,13 @@ class PostResource extends Resource
                                 ->maxLength(255)
                                 ->unique(ignoreRecord: true),
                             Forms\Components\Select::make('category_id')
-                                ->label('Category')
+                                ->label(__('Category'))
                                 ->relationship('category', 'title')
                                 ->searchable()
                                 ->preload(),
                             Forms\Components\Textarea::make('excerpt')
                                 ->rows(3)
-                                ->helperText('Short summary used on blog cards and as an SEO fallback.')
+                                ->helperText(__('Short summary used on blog cards and as an SEO fallback.'))
                                 ->columnSpanFull(),
                             Forms\Components\View::make('filament.forms.components.media-library-content-inserter')
                                 ->viewData(fn (): array => [
@@ -82,9 +84,10 @@ class PostResource extends Resource
                         ])
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('Featured Image')
+                        ->label(__('Featured Image'))
                         ->schema([
                             Forms\Components\ViewField::make('featured_media_id')
-                                ->label('Featured image')
+                                ->label(__('Featured Image'))
                                 ->view('filament.forms.components.media-library-picker')
                                 ->viewData(fn (): array => [
                                     'images' => static::mediaLibraryImageItems(),
@@ -96,53 +99,55 @@ class PostResource extends Resource
                                         static::mediaLibraryFeaturedState($record),
                                     );
                                 })
-                                ->helperText('Choose an existing image from Media Library. Upload new images from Media > Upload Media first.')
+                                ->helperText(__('Choose an existing image from Media Library. Upload new images from Media > Upload Media first.'))
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('SEO')
+                        ->label(__('SEO'))
                         ->schema([
                             Forms\Components\TextInput::make('seo_title')
-                                ->label('SEO title')
+                                ->label(__('SEO title'))
                                 ->maxLength(70)
-                                ->helperText('Recommended: up to 70 characters. Falls back to the post title when empty.'),
+                                ->helperText(__('Recommended: up to 70 characters. Falls back to the post title when empty.')),
                             Forms\Components\Textarea::make('seo_description')
                                 ->maxLength(160)
-                                ->helperText('Recommended: up to 160 characters. Falls back to excerpt, content, or site defaults.')
+                                ->helperText(__('Recommended: up to 160 characters. Falls back to excerpt, content, or site defaults.'))
                                 ->rows(3)
                                 ->columnSpanFull(),
                             Forms\Components\ViewField::make('seo_image')
-                                ->label('Social image URL')
+                                ->label(__('Social image URL'))
                                 ->view('filament.forms.components.media-library-url-picker')
                                 ->viewData(fn (): array => [
                                     'images' => static::mediaLibraryImageItems(),
                                 ])
-                                ->helperText('Falls back to the featured image when empty.')
+                                ->helperText(__('Falls back to the featured image when empty.'))
                                 ->columnSpanFull(),
                             Forms\Components\Toggle::make('robots_index')
-                                ->label('Allow search engines to index this post')
+                                ->label(__('Allow search engines to index this post'))
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
-                                ->label('Allow search engines to follow links')
+                                ->label(__('Allow search engines to follow links'))
                                 ->default(true),
                             Forms\Components\TextInput::make('seo_keywords')
-                                ->label('SEO keywords')
+                                ->label(__('SEO keywords'))
                                 ->maxLength(255)
-                                ->helperText('Optional legacy meta keywords field.'),
+                                ->helperText(__('Optional legacy meta keywords field.')),
                         ])
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('Publishing')
+                        ->label(__('Publishing'))
                         ->schema([
                             Forms\Components\Select::make('status')
                                 ->required()
                                 ->options([
-                                    'draft' => 'Draft',
-                                    'published' => 'Published',
-                                    'archived' => 'Archived',
+                                    'draft' => __('Draft'),
+                                    'published' => __('Published'),
+                                    'archived' => __('Archived'),
                                 ])
                                 ->default('draft'),
                             Forms\Components\DateTimePicker::make('published_at')->jalali()
                                 ->seconds(false)
-                                ->helperText('Leave empty to publish immediately when status is Published. Public view actions are shown only for published records.'),
+                                ->helperText(__('Leave empty to publish immediately when status is Published. Public view actions are shown only for published records.')),
                         ])
                         ->columns(2),
                 ])
@@ -157,12 +162,12 @@ class PostResource extends Resource
                 Tables\Columns\SpatieMediaLibraryImageColumn::make('featured_image')
                     ->collection('featured_image')
                     ->conversion('thumb')
-                    ->label('Image'),
+                    ->label(__('Image')),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('category.title')
-                    ->label('Category')
+                    ->label(__('Category'))
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('status')
@@ -179,21 +184,21 @@ class PostResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'draft' => 'Draft',
-                        'published' => 'Published',
-                        'archived' => 'Archived',
+                        'draft' => __('Draft'),
+                        'published' => __('Published'),
+                        'archived' => __('Archived'),
                     ]),
                 Tables\Filters\SelectFilter::make('category')
                     ->relationship('category', 'title'),
             ])
             ->actions([
                 Tables\Actions\Action::make('preview')
-                    ->label('Preview')
+                    ->label(__('Preview'))
                     ->icon('heroicon-o-eye')
                     ->url(fn (Post $record): string => route('admin.preview.posts.show', $record))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('viewPublic')
-                    ->label('View')
+                    ->label(__('View'))
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->url(fn (Post $record): string => static::publicUrl($record))
                     ->openUrlInNewTab()
