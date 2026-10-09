@@ -24,14 +24,20 @@ use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Service;
 use App\Models\Template;
+use App\Models\User;
+use App\Services\TemplateDuplicator;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class TemplateResource extends Resource
 {
@@ -197,6 +203,41 @@ class TemplateResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('duplicate')
+                    ->label('تکثیر')
+                    ->icon('heroicon-o-square-2-stack')
+                    ->visible(fn (Template $record): bool => static::canDuplicate($record))
+                    ->requiresConfirmation()
+                    ->modalHeading('تکثیر قالب')
+                    ->modalDescription('یک نسخه مستقل به‌صورت پیش‌نویس، بدون حالت پیش‌فرض و شرایط اختصاصی نمایش ساخته می‌شود.')
+                    ->modalSubmitActionLabel('تکثیر')
+                    ->modalCancelActionLabel('انصراف')
+                    ->successNotificationTitle('قالب با موفقیت تکثیر شد.')
+                    ->failureNotificationTitle('تکثیر قالب انجام نشد؛ لطفاً دوباره تلاش کنید.')
+                    ->action(function (Template $record, Tables\Actions\Action $action) {
+                        abort_unless(static::canDuplicate($record), 403);
+
+                        try {
+                            $copy = app(TemplateDuplicator::class)->duplicate($record);
+                        } catch (ValidationException $exception) {
+                            Notification::make()
+                                ->danger()
+                                ->title('تکثیر قالب انجام نشد.')
+                                ->body(implode(' ', $exception->validator->errors()->all()))
+                                ->send();
+
+                            return null;
+                        } catch (Throwable $exception) {
+                            report($exception);
+                            $action->sendFailureNotification();
+
+                            return null;
+                        }
+
+                        $action->sendSuccessNotification();
+
+                        return redirect(static::getUrl('edit', ['record' => $copy]));
+                    }),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -204,6 +245,18 @@ class TemplateResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function canDuplicate(Template $record): bool
+    {
+        $user = Filament::auth()->user();
+
+        return $user instanceof User
+            && $user->isAdmin()
+            && $user->isActive()
+            && static::canCreate()
+            && static::canEdit($record)
+            && static::canReplicate($record);
     }
 
     public static function getPages(): array
