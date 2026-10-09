@@ -12,6 +12,8 @@ use App\CMS\Blocks\Form\FormBlock;
 use App\CMS\Blocks\Form\FormBlockRuntime;
 use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\Hero\HeroMediaResolver;
+use App\CMS\Blocks\Pricing\PricingCardsBlock;
+use App\CMS\Blocks\Pricing\PricingCardsRuntime;
 use App\CMS\Blocks\Product\ProductDocumentsBlock;
 use App\CMS\Blocks\Product\ProductGalleryBlock;
 use App\CMS\Blocks\Product\ProductHeaderBlock;
@@ -60,6 +62,7 @@ class BlockServiceProvider extends ServiceProvider
                 'cta' => CTABlock::class,
                 'form' => FormBlock::class,
                 'feature_grid' => FeatureGridBlock::class,
+                'pricing_cards' => PricingCardsBlock::class,
                 'business_network_map' => BusinessNetworkMapBlock::class,
                 'site_header' => SiteHeaderBlock::class,
                 'site_footer' => SiteFooterBlock::class,
@@ -91,6 +94,7 @@ class BlockServiceProvider extends ServiceProvider
 
     public function boot(
         FeatureGridRuntime $featureGrids,
+        PricingCardsRuntime $pricingCards,
         FormBlockRuntime $forms,
         SiteHeaderRuntime $siteHeaders,
         SiteFooterRuntime $siteFooters,
@@ -99,6 +103,17 @@ class BlockServiceProvider extends ServiceProvider
         PublicAccountNavigation $accounts,
         BusinessNetworkRuntime $businessNetwork,
     ): void {
+        View::composer('partials.blocks.pricing_cards', function (IlluminateView $view) use ($pricingCards): void {
+            $viewData = $view->getData();
+            $context = is_array($viewData['context'] ?? null) ? $viewData['context'] : [];
+
+            $view->with('pricing', $pricingCards->prepare(
+                is_array($viewData['data'] ?? null) ? $viewData['data'] : [],
+                $context,
+                ! empty($viewData['isPreview']) || ! empty($context['preview']) || ! empty($context['isPreview']),
+            ));
+        });
+
         View::composer('partials.blocks.business_network_map', function (IlluminateView $view) use ($businessNetwork): void {
             $viewData = $view->getData();
             $view->with('network', $businessNetwork->prepare(

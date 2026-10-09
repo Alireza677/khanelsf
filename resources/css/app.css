@@ -2846,6 +2846,158 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     color: #fff;
 }
 
+.block-pricing-cards {
+    --pricing-accent: var(--theme-primary, #2563eb);
+    --pricing-surface: var(--theme-background, #fff);
+    --pricing-gap: 1.25rem;
+    --pricing-columns: 3;
+    color: var(--theme-text, #1f2937);
+    margin-block: clamp(3rem, 6vw, 6rem);
+    min-width: 0;
+}
+
+.block-pricing-cards .block-pricing-cards__heading {
+    margin: 0 auto 2rem;
+    max-width: 760px;
+    text-align: center;
+}
+
+.block-pricing-cards .block-pricing-cards__heading > .block-title {
+    color: var(--theme-heading, #111827);
+    margin: 0 0 1rem;
+}
+
+.block-pricing-cards .block-pricing-cards__grid {
+    align-items: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pricing-gap);
+    justify-content: center;
+}
+
+.block-pricing-cards .block-pricing-cards__card {
+    background: var(--pricing-surface);
+    border: 1px solid color-mix(in srgb, var(--theme-text, #1f2937) 15%, var(--pricing-surface));
+    border-radius: calc(var(--theme-button-radius, 10px) + 8px);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, .05);
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 calc((100% - (var(--pricing-columns) - 1) * var(--pricing-gap)) / var(--pricing-columns));
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.block-pricing-cards .block-pricing-cards__card--featured {
+    background: color-mix(in srgb, var(--pricing-accent) 5%, var(--pricing-surface));
+    border-color: var(--pricing-accent);
+    box-shadow: 0 0 0 1px var(--pricing-accent), 0 16px 36px color-mix(in srgb, var(--pricing-accent) 14%, transparent);
+}
+
+.block-pricing-cards .block-pricing-cards__badge {
+    align-self: flex-start;
+    background: color-mix(in srgb, var(--pricing-accent) 10%, var(--pricing-surface));
+    border-radius: 999px;
+    color: var(--pricing-accent);
+    font-size: .8rem;
+    font-weight: 700;
+    padding: .35rem .8rem;
+}
+
+.block-pricing-cards .block-pricing-cards__title {
+    color: var(--theme-heading, #111827);
+    font-size: 1.35rem;
+    margin: 0;
+}
+
+.block-pricing-cards .block-pricing-cards__description {
+    color: color-mix(in srgb, var(--theme-text, #1f2937) 75%, var(--pricing-surface));
+    line-height: 1.9;
+    margin: 0;
+    white-space: pre-line;
+}
+
+.block-pricing-cards .block-pricing-cards__price {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .55rem;
+    padding-block: .5rem;
+}
+
+.block-pricing-cards .block-pricing-cards__amount,
+.block-pricing-cards .block-pricing-cards__enquiry {
+    color: var(--theme-heading, #111827);
+    font-size: clamp(1.65rem, 2.5vw, 2.15rem);
+    font-weight: 800;
+    line-height: 1.4;
+}
+
+.block-pricing-cards .block-pricing-cards__period {
+    color: color-mix(in srgb, var(--theme-text, #1f2937) 70%, var(--pricing-surface));
+    flex-basis: 100%;
+    font-size: .9rem;
+}
+
+.block-pricing-cards .block-pricing-cards__outputs {
+    border-block-start: 1px solid color-mix(in srgb, var(--theme-text, #1f2937) 12%, var(--pricing-surface));
+    font-weight: 700;
+    line-height: 1.9;
+    margin: 0;
+    padding-block-start: 1rem;
+}
+
+.block-pricing-cards .block-pricing-cards__features {
+    display: grid;
+    gap: .75rem;
+    line-height: 1.9;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.block-pricing-cards .block-pricing-cards__features > li {
+    padding-inline-start: 1.5rem;
+    position: relative;
+}
+
+.block-pricing-cards .block-pricing-cards__features > li::before {
+    color: var(--pricing-accent);
+    content: '\2713';
+    font-weight: 800;
+    inset-inline-start: 0;
+    position: absolute;
+}
+
+.block-pricing-cards .block-pricing-cards__action {
+    margin-block-start: auto;
+    padding-block-start: .75rem;
+}
+
+.block-pricing-cards .block-pricing-cards__action > form {
+    margin: 0;
+    width: 100%;
+}
+
+.block-pricing-cards .block-pricing-cards__button {
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    white-space: normal;
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .block-pricing-cards { --pricing-columns: 2; }
+}
+
+@media (max-width: 640px) {
+    .block-pricing-cards { --pricing-columns: 1; }
+}
+
 .block-grid {
     display: grid;
     gap: 1rem;
