@@ -2876,6 +2876,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 }
 
 .block-pricing-cards .block-pricing-cards__card {
+    --pricing-card-padding: clamp(1.125rem, 1.75vw, 1.5rem);
     background: var(--pricing-surface);
     border: 1px solid color-mix(in srgb, var(--theme-text, #1f2937) 15%, var(--pricing-surface));
     border-radius: calc(var(--theme-button-radius, 10px) + 8px);
@@ -2884,10 +2885,13 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     display: flex;
     flex: 0 0 calc((100% - (var(--pricing-columns) - 1) * var(--pricing-gap)) / var(--pricing-columns));
     flex-direction: column;
-    gap: 1rem;
+    gap: .625rem;
+    height: auto;
+    min-height: 0;
     min-width: 0;
     overflow-wrap: anywhere;
-    padding: clamp(1.25rem, 2.5vw, 2rem);
+    padding: var(--pricing-card-padding);
+    position: relative;
 }
 
 .block-pricing-cards .block-pricing-cards__card--featured {
@@ -2897,24 +2901,34 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 }
 
 .block-pricing-cards .block-pricing-cards__badge {
-    align-self: flex-start;
     background: color-mix(in srgb, var(--pricing-accent) 10%, var(--pricing-surface));
     border-radius: 999px;
+    /* Keep the lower edge above the title; long labels wrap upward.
+       Physical left intentionally stays on the left in RTL as well. */
+    bottom: calc(100% - .625rem);
+    box-sizing: border-box;
     color: var(--pricing-accent);
     font-size: .8rem;
     font-weight: 700;
-    padding: .35rem .8rem;
+    left: var(--pricing-card-padding);
+    line-height: 1.5;
+    margin: 0;
+    max-width: calc(100% - 2 * var(--pricing-card-padding));
+    padding: .25rem .7rem;
+    position: absolute;
+    z-index: 1;
 }
 
 .block-pricing-cards .block-pricing-cards__title {
     color: var(--theme-heading, #111827);
     font-size: 1.35rem;
+    line-height: 1.5;
     margin: 0;
 }
 
 .block-pricing-cards .block-pricing-cards__description {
     color: color-mix(in srgb, var(--theme-text, #1f2937) 75%, var(--pricing-surface));
-    line-height: 1.9;
+    line-height: 1.7;
     margin: 0;
     white-space: pre-line;
 }
@@ -2923,8 +2937,8 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     align-items: baseline;
     display: flex;
     flex-wrap: wrap;
-    gap: .4rem .55rem;
-    padding-block: .5rem;
+    gap: .2rem .55rem;
+    padding-block: .25rem;
 }
 
 .block-pricing-cards .block-pricing-cards__amount,
@@ -2939,26 +2953,28 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
     color: color-mix(in srgb, var(--theme-text, #1f2937) 70%, var(--pricing-surface));
     flex-basis: 100%;
     font-size: .9rem;
+    line-height: 1.5;
 }
 
 .block-pricing-cards .block-pricing-cards__outputs {
     border-block-start: 1px solid color-mix(in srgb, var(--theme-text, #1f2937) 12%, var(--pricing-surface));
     font-weight: 700;
-    line-height: 1.9;
+    line-height: 1.7;
     margin: 0;
-    padding-block-start: 1rem;
+    padding-block-start: .625rem;
 }
 
 .block-pricing-cards .block-pricing-cards__features {
     display: grid;
-    gap: .75rem;
-    line-height: 1.9;
+    gap: .375rem;
+    line-height: 1.7;
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
 .block-pricing-cards .block-pricing-cards__features > li {
+    margin: 0;
     padding-inline-start: 1.5rem;
     position: relative;
 }
@@ -2973,7 +2989,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 .block-pricing-cards .block-pricing-cards__action {
     margin-block-start: auto;
-    padding-block-start: .75rem;
+    padding-block-start: .375rem;
 }
 
 .block-pricing-cards .block-pricing-cards__action > form {
