@@ -8,6 +8,7 @@ use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ServiceResource\Pages;
+use App\Filament\Resources\ServiceResource\RelationManagers\OfferingsRelationManager;
 use App\Models\Service;
 use App\Services\ServiceSettings;
 use App\Services\SettingsService;
@@ -386,6 +387,11 @@ class ServiceResource extends Resource
             ->emptyStateHeading('هنوز خدمتی ثبت نشده است')
             ->emptyStateDescription('برای معرفی خدمات کسب‌وکار، نخستین خدمت را ایجاد کنید.')
             ->emptyStateIcon('heroicon-o-wrench-screwdriver');
+    }
+
+    public static function getRelations(): array
+    {
+        return [OfferingsRelationManager::class];
     }
 
     public static function getPages(): array

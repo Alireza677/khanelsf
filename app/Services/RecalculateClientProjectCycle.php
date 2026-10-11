@@ -14,6 +14,13 @@ final class RecalculateClientProjectCycle
     public function handle(ClientProjectCycle $cycle): ClientProjectCycle
     {
         $cycle->refresh();
+        app(ClientProjectDeliveryProgress::class)->refresh($cycle);
+        if ($cycle->delivery_mode === 'tasks' || ($cycle->delivery_mode === 'hybrid' && $cycle->allocated_minutes <= 0)) {
+            // No time quota to recalculate; delivery deadlines live in delivery_status.
+            // Any financial status explicitly recorded by the legacy billing path is retained.
+
+            return $cycle->refresh();
+        }
         $consumed = $this->usage->consumed($cycle);
         if ($consumed >= $cycle->allocated_minutes) {
             if (! in_array($cycle->status, [ClientProjectCycleStatus::Completed, ClientProjectCycleStatus::Invoiced], true)) {
@@ -31,6 +38,14 @@ final class RecalculateClientProjectCycle
 
     public function refreshOverdue(): int
     {
+        ClientProjectCycle::query()->whereIn('delivery_mode', ['tasks', 'hybrid'])->orderBy('id')->chunkById(100, function ($cycles): void {
+            foreach ($cycles as $cycle) {
+                DB::transaction(function () use ($cycle): void {
+                    $cycle = ClientProjectCycle::query()->whereKey($cycle)->lockForUpdate()->firstOrFail();
+                    app(ClientProjectDeliveryProgress::class)->refresh($cycle);
+                }, 3);
+            }
+        });
         $query = ClientProjectCycle::query()
             ->where('status', ClientProjectCycleStatus::Active)
             ->whereDate('ends_at', '<=', today())

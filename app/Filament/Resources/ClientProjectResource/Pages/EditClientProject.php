@@ -4,7 +4,7 @@ namespace App\Filament\Resources\ClientProjectResource\Pages;
 
 use App\Filament\Resources\ClientProjectResource;
 use App\Models\ClientProject;
-use App\Services\ClientProjectCycleReconciler;
+use App\Services\ClientProjectAgreementManager;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +31,10 @@ class EditClientProject extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         /** @var ClientProject $record */
-        return app(ClientProjectCycleReconciler::class)->updateProject($record, $data);
+        $reason = $data['contract_schedule_reason'] ?? null;
+        unset($data['contract_schedule_reason'], $data['offering_version_id'], $data['contract_override'], $data['contract_overrides'], $data['contract_override_reason']);
+
+        return app(ClientProjectAgreementManager::class)->updateProject($record, $data, $reason, auth()->user());
     }
 
     protected function getHeaderActions(): array

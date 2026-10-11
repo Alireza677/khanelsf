@@ -22,13 +22,17 @@ final class ClientProjectCycleResolver
 
     public function resolveForDate(ClientProject $project, CarbonInterface $activityDate, int $durationMinutes = 0, ?int $excludeActivityId = null): ?ClientProjectCycle
     {
-        if ($project->monthly_hour_limit_minutes === null || $project->monthly_hour_limit_minutes <= 0) {
+        if (! $project->supportsOperationalCycles() || ($project->delivery_mode === 'time' && ($project->monthly_hour_limit_minutes === null || $project->monthly_hour_limit_minutes <= 0))) {
             return null;
         }
 
         $activityDate = CarbonImmutable::instance($activityDate)->startOfDay();
         $period = $this->periodForDate($project, $activityDate);
         if ($period === null) {
+            return null;
+        }
+
+        if ($project->delivery_mode !== 'time' && ! $project->planVersions()->whereDate('effective_from', '<=', $activityDate)->exists()) {
             return null;
         }
 
@@ -46,6 +50,12 @@ final class ClientProjectCycleResolver
 
     public function createNext(ClientProject $project, CarbonImmutable $reference): ClientProjectCycle
     {
+        if (! $project->supportsOperationalCycles()) {
+            throw new DomainException('project_has_no_operational_cycle');
+        }
+        if ($project->delivery_mode !== 'time' && ! $project->planVersions()->whereDate('effective_from', '<=', $reference)->exists()) {
+            throw new DomainException('date_before_effective_agreement');
+        }
         $period = $this->periodForDate($project, $reference);
 
         if ($period === null) {
@@ -131,25 +141,39 @@ final class ClientProjectCycleResolver
     /** @param array{starts_at: CarbonImmutable, ends_at: CarbonImmutable} $period */
     private function createForPeriod(ClientProject $project, array $period): ClientProjectCycle
     {
-        $start = $period['starts_at'];
-        $end = $period['ends_at'];
-        // The existing unique (project, starts_at) key also guards concurrent creators.
-        $cycle = $project->cycles()->firstOrCreate(['starts_at' => $start->toDateString()], [
-            'ends_at' => $end->toDateString(),
-            'allocated_minutes' => $project->monthly_hour_limit_minutes,
-            'status' => $end->lte(CarbonImmutable::today()) ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active,
-        ]);
+        return DB::transaction(function () use ($project, $period): ClientProjectCycle {
+            $project = ClientProject::query()->whereKey($project)->lockForUpdate()->firstOrFail();
+            $start = $period['starts_at'];
+            $end = $period['ends_at'];
+            $existing = $project->cycles()->whereDate('starts_at', $start)->first();
+            if ($project->delivery_mode !== 'time' && ! $existing && $project->cycles()->whereDate('starts_at', '<', $end)->whereDate('ends_at', '>', $start)->exists()) {
+                throw new DomainException('cycle_schedule_conflict');
+            }
+            $delivery = $existing ? [] : app(ClientProjectCycleDelivery::class)->attributesForPeriod($project, $period);
+            // The existing unique (project, starts_at) key also guards concurrent creators.
+            $cycle = $project->cycles()->firstOrCreate(['starts_at' => $start->toDateString()], [
+                'ends_at' => $end->toDateString(),
+                'allocated_minutes' => $project->delivery_mode === 'tasks' ? 0 : ($project->delivery_mode === 'hybrid' ? ($project->monthly_hour_limit_minutes ?? 0) : $project->monthly_hour_limit_minutes),
+                'status' => ($project->delivery_mode === 'time' || ($project->delivery_mode === 'hybrid' && $project->monthly_hour_limit_minutes > 0)) && $end->lte(CarbonImmutable::today()) ? ClientProjectCycleStatus::Overdue : ClientProjectCycleStatus::Active,
+                ...$delivery,
+            ]);
 
-        if ($cycle->ends_at->toDateString() !== $end->toDateString()) {
-            throw new DomainException('cycle_schedule_conflict');
-        }
+            if ($cycle->ends_at->toDateString() !== $end->toDateString()) {
+                throw new DomainException('cycle_schedule_conflict');
+            }
 
-        if ($cycle->status === ClientProjectCycleStatus::Invoiced
-            || $this->isClaimed($cycle)) {
-            throw new DomainException('activity_date_in_protected_cycle');
-        }
+            if ($cycle->status === ClientProjectCycleStatus::Invoiced
+                || $this->isClaimed($cycle)) {
+                throw new DomainException('activity_date_in_protected_cycle');
+            }
 
-        return $cycle;
+            if ($cycle->wasRecentlyCreated) {
+                app(ClientProjectCycleDelivery::class)->snapshotCommitments($cycle);
+                app(ClientProjectDeliveryProgress::class)->refresh($cycle);
+            }
+
+            return $cycle;
+        }, 3);
     }
 
     private function jalaliMonthBoundary(Jalalian $month, int $anchorDay): CarbonImmutable

@@ -23,10 +23,14 @@
                         </div>
                         <span class="portal-badge">{{ $project['status_label'] }}</span>
                     </div>
+                    @if ($project['delivery_mode'] === 'time')
                     <div class="portal-progress">
                         <div><span>پیشرفت</span><strong>{{ $project['progress'] }}٪</strong></div>
                         <progress value="{{ $project['progress'] }}" max="100">{{ $project['progress'] }}٪</progress>
                     </div>
+                    @else
+                        <p>{{ $project['delivery_mode'] === 'hybrid' ? 'تحویل وظیفه‌ای و زمان‌محور' : 'تحویل وظیفه‌ای' }}؛ پیشرفت در جزئیات هر دوره</p>
+                    @endif
                     <dl class="portal-project-dates">
                         <div><dt>تاریخ شروع</dt><dd>{{ $project['start_date'] ?: '—' }}</dd></div>
                         <div><dt>تاریخ پایان</dt><dd>{{ $project['end_date'] ?: '—' }}</dd></div>

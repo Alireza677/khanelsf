@@ -216,6 +216,11 @@ class Service extends Model implements HasMedia, ResolvesNavigationUrl
         return $this->belongsToMany(Project::class)->withTimestamps();
     }
 
+    public function offerings(): HasMany
+    {
+        return $this->hasMany(ServiceOffering::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');

@@ -11,6 +11,7 @@ class ClientProjectPresenter
     {
         return [
             'id' => $project->getKey(),
+            'delivery_mode' => $project->delivery_mode,
             'title' => $project->title,
             'description' => $project->description,
             'type' => $project->type,

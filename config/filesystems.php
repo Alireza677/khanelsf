@@ -3,6 +3,14 @@
 return [
     'default' => env('FILESYSTEM_DISK', 'local'),
     'disks' => [
+        'service_deliveries' => [
+            'driver' => 'local',
+            'root' => storage_path('app/service-deliveries-private'),
+            'visibility' => 'private',
+            'directory_visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

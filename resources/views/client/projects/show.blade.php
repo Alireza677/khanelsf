@@ -6,6 +6,7 @@
     <div class="portal-page-heading">
         <div><p class="portal-eyebrow">جزئیات پروژه</p><h1>{{ $project['title'] }}</h1></div>
         <div class="portal-actions">
+            @if ($project['delivery_mode'] !== 'tasks')
             <form method="GET" action="{{ route($serviceRoutes['project'], ['project' => $project['id']]) }}" class="portal-field portal-month-filter" data-jalali-month-filter dir="rtl">
                 <input type="hidden" name="customer" value="{{ $portalCustomer->id }}">
                 <input type="hidden" name="month" value="{{ $summary['month'] }}" data-jalali-month-value>
@@ -25,6 +26,7 @@
                     </select>
                 </div>
             </form>
+            @endif
             <a class="portal-button portal-button--secondary" href="{{ route($serviceRoutes['projects'], ['customer' => $portalCustomer->id]) }}">بازگشت به پروژه‌ها</a>
         </div>
     </div>
@@ -38,27 +40,38 @@
                 <div class="portal-info-item"><small>تاریخ شروع</small><strong>{{ $project['start_date'] ?: '—' }}</strong></div>
                 <div class="portal-info-item"><small>تاریخ پایان</small><strong>{{ $project['end_date'] ?: '—' }}</strong></div>
             </div>
+            @if ($project['delivery_mode'] === 'time')
             <div class="portal-progress portal-progress--detail">
                 <div><span>پیشرفت پروژه</span><strong>{{ $project['progress'] }}٪</strong></div>
                 <progress value="{{ $project['progress'] }}" max="100">{{ $project['progress'] }}٪</progress>
             </div>
+            @endif
         </x-client.card>
 
+        @if ($delivery)
+            @include('client.projects.delivery-cycles')
+        @endif
+
+        @if ($project['delivery_mode'] !== 'tasks')
         @if ($currentCycleSummary)
             <x-client.card title="مصرف دوره جاری">
                 <div class="portal-time-summary">
-                    <div><small>سهم دوره</small><strong>{{ $currentCycleSummary['allocated'] }}</strong></div>
+                    <div><small>سهم دوره</small><strong>{{ $currentCycleSummary['has_allocation'] ? $currentCycleSummary['allocated'] : 'بدون سقف زمانی' }}</strong></div>
                     <div><small>زمان ثبت‌شده</small><strong>{{ $currentCycleSummary['used'] }}</strong></div>
+                    @if ($currentCycleSummary['has_allocation'])
                     <div><small>زمان باقی‌مانده</small><strong>{{ $currentCycleSummary['remaining'] }}</strong></div>
                     <div><small>مصرف</small><strong>{{ $currentCycleSummary['percentage'] }}٪</strong></div>
+                    @endif
                     @if ($currentCycleSummary['overage_minutes'] > 0)
                         <div><small>خدمات مازاد</small><strong class="portal-badge">{{ $currentCycleSummary['overage'] }}</strong></div>
                     @endif
                 </div>
+                @if ($currentCycleSummary['has_allocation'])
                 <div class="portal-progress portal-progress--detail">
                     <div><span>مصرف سهمیه</span><strong>{{ $currentCycleSummary['percentage'] }}٪</strong></div>
                     <progress value="{{ $currentCycleSummary['percentage'] }}" max="100">{{ $currentCycleSummary['percentage'] }}٪</progress>
                 </div>
+                @endif
                 <p class="portal-privacy-note">دوره جاری: {{ $currentCycleSummary['starts_at'] }} تا {{ $currentCycleSummary['ends_at'] }}</p>
                 <p class="portal-privacy-note">مجموع زمان شامل تمام کار ثبت‌شده غیرلغوشده است؛ جزئیات فعالیت‌های داخلی و پیش‌نویس خصوصی باقی می‌ماند.</p>
             </x-client.card>
@@ -84,6 +97,7 @@
                 <div class="portal-pagination">{{ $activities->links() }}</div>
             @endif
         </x-client.card>
+        @endif
 
     </div>
 @endsection

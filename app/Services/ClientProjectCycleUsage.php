@@ -40,7 +40,7 @@ final class ClientProjectCycleUsage
             // Kept for callers that still use the historical aggregate name.
             'consumed_minutes' => $used,
             'remaining_minutes' => max($allocated - $used, 0),
-            'overage_minutes' => max($used - $allocated, 0),
+            'overage_minutes' => $cycle->hasHourlyAllocation() ? max($used - $allocated, 0) : 0,
         ];
     }
 }

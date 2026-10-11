@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Services\ClientDeliveryPresenter;
 use App\Services\ClientProjectAccess;
 use App\Services\ClientProjectActivityPresenter;
 use App\Services\ClientProjectCycleUsage;
@@ -62,6 +63,7 @@ class ProjectController extends Controller
         if ($currentCycle) {
             $usage = $cycleUsage->summary($currentCycle);
             $currentCycleSummary = [
+                'has_allocation' => $currentCycle->hasHourlyAllocation(),
                 ...$usage,
                 'starts_at' => PersianDate::date($currentCycle->starts_at),
                 'ends_at' => PersianDate::date($currentCycle->ends_at),
@@ -80,6 +82,8 @@ class ProjectController extends Controller
             'activities' => $activities,
             'summary' => $summary,
             'currentCycleSummary' => $currentCycleSummary,
+            'delivery' => $project->delivery_mode !== 'time'
+                ? app(ClientDeliveryPresenter::class)->project($project, $request->integer('cycle') ?: null) : null,
             'serviceRoutes' => $this->serviceRoutes($request),
         ]);
     }

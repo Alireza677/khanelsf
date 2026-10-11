@@ -15,7 +15,7 @@ final class ClientProjectActivityOverage
         }
 
         $cycle = $activity->cycle;
-        if (! $cycle) {
+        if (! $cycle || ! $cycle->hasHourlyAllocation()) {
             return false;
         }
 

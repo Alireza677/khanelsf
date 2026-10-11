@@ -5,6 +5,9 @@ namespace App\Filament\Resources\Concerns;
 trait UsesPersianResourceLabels
 {
     protected static array $persianLabels = [
+        'ServiceOfferingResource' => ['بسته خدمت', 'بسته‌های خدمات', 'خدمات و فروش'],
+        'ServiceOfferingVersionResource' => ['نسخه بسته', 'نسخه‌های بسته', 'خدمات و فروش'],
+        'DeliverableTypeResource' => ['نوع تحویل', 'انواع تحویل', 'خدمات و فروش'],
         'CategoryResource' => ['دسته نوشته', 'دسته‌های نوشته', 'محتوای وب‌سایت'],
         'CustomerResource' => ['مشتری', 'مشتریان پرتال', 'پرتال مشتریان'],
         'ClientProjectResource' => ['پروژه مشتری', 'پروژه‌های مشتریان', 'پرتال مشتریان'],

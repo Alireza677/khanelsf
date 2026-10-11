@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ClientProjectResource\ContractFields;
 use App\Filament\Resources\ClientProjectResource\Pages;
+use App\Filament\Resources\ClientProjectResource\RelationManagers\DeliveryCyclesRelationManager;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Models\ClientProject;
 use App\Models\Customer;
+use App\Models\ServiceOfferingVersion;
 use App\Services\ClientProjectCycleUsage;
 use App\Services\ClientProjectSchedulePresenter;
 use App\Services\DurationFormatter;
@@ -34,6 +37,7 @@ class ClientProjectResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            ContractFields::creation(),
             Forms\Components\Section::make('اطلاعات پروژه')
                 ->schema([
                     Forms\Components\Select::make('customer_id')
@@ -76,6 +80,7 @@ class ClientProjectResource extends Resource
                         ->required(),
                     Forms\Components\TextInput::make('progress')
                         ->label('پیشرفت')
+                        ->visible(fn (Forms\Get $get, ?ClientProject $record) => self::formDeliveryMode($get, $record) === 'time')
                         ->numeric()
                         ->minValue(0)
                         ->maxValue(100)
@@ -93,6 +98,8 @@ class ClientProjectResource extends Resource
                         ->required(fn (Forms\Get $get, ?ClientProject $record): bool => $get('schedule_mode') === ClientProject::SCHEDULE_RECURRING
                             && (! $record || $record->cycle_anchor_day !== null)),
                     Forms\Components\TextInput::make('monthly_limit_hours')
+                        ->visible(fn (Forms\Get $get, ?ClientProject $record) => self::formDeliveryMode($get, $record) !== 'tasks')
+                        ->dehydratedWhenHidden()
                         ->label(fn (Forms\Get $get): string => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD
                             ? 'سهم کل پروژه — ساعت'
                             : 'سهم هر دوره — ساعت')
@@ -105,6 +112,8 @@ class ClientProjectResource extends Resource
                             }
                         }),
                     Forms\Components\TextInput::make('monthly_limit_remainder_minutes')
+                        ->visible(fn (Forms\Get $get, ?ClientProject $record) => self::formDeliveryMode($get, $record) !== 'tasks')
+                        ->dehydratedWhenHidden()
                         ->label(fn (Forms\Get $get): string => $get('schedule_mode') === ClientProject::SCHEDULE_FIXED_PERIOD
                             ? 'سهم کل پروژه — دقیقه'
                             : 'سهم هر دوره — دقیقه')
@@ -118,6 +127,8 @@ class ClientProjectResource extends Resource
                             }
                         }),
                     Forms\Components\Toggle::make('has_unlimited_monthly_hours')
+                        ->visible(fn (Forms\Get $get, ?ClientProject $record) => self::formDeliveryMode($get, $record) !== 'tasks')
+                        ->dehydratedWhenHidden()
                         ->label('بدون محدودیت زمانی ماهانه')
                         ->default(true)
                         ->live()
@@ -141,6 +152,11 @@ class ClientProjectResource extends Resource
                     Forms\Components\Textarea::make('description')
                         ->label('توضیحات')
                         ->rows(6)
+                        ->columnSpanFull(),
+                    Forms\Components\Textarea::make('contract_schedule_reason')
+                        ->label('دلیل اصلاح زمان‌بندی قرارداد')
+                        ->visible(fn (?ClientProject $record, string $operation): bool => $operation === 'edit' && $record !== null && $record->planVersions()->exists())
+                        ->helperText('اگر تاریخ، موعد ماهانه یا سهمیه تغییر می‌کند، دلیل را ثبت کنید.')
                         ->columnSpanFull(),
                 ])->columns(2),
         ]);
@@ -168,6 +184,9 @@ class ClientProjectResource extends Resource
                 Tables\Columns\TextColumn::make('current_cycle_usage')
                     ->label('مصرف دوره جاری')
                     ->getStateUsing(function (ClientProject $record): string {
+                        if ($record->delivery_mode === 'tasks') {
+                            return 'تحویل وظیفه‌ای؛ بدون سهم زمانی';
+                        }
                         if (! $record->currentCycle) {
                             return 'دوره جاری ندارد';
                         }
@@ -179,6 +198,9 @@ class ClientProjectResource extends Resource
                 Tables\Columns\TextColumn::make('current_cycle_overage')
                     ->label('خدمات مازاد')
                     ->getStateUsing(function (ClientProject $record): ?string {
+                        if ($record->delivery_mode === 'tasks') {
+                            return null;
+                        }
                         if (! $record->currentCycle) {
                             return null;
                         }
@@ -202,6 +224,7 @@ class ClientProjectResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
+            ContractFields::history(),
             Infolists\Components\Section::make('اطلاعات پروژه')->schema([
                 Infolists\Components\TextEntry::make('title')->label('عنوان پروژه'),
                 Infolists\Components\TextEntry::make('customer.display_name')->label('مشتری'),
@@ -214,8 +237,9 @@ class ClientProjectResource extends Resource
                     ->label('موعد تحویل ماهیانه')
                     ->visible(fn (ClientProject $record): bool => $record->isRecurring())
                     ->placeholder('بر اساس زمان‌بندی قبلی'),
-                Infolists\Components\TextEntry::make('progress')->label('پیشرفت')->suffix('٪'),
+                Infolists\Components\TextEntry::make('progress')->label('پیشرفت')->suffix('٪')->visible(fn (ClientProject $record) => $record->delivery_mode === 'time'),
                 Infolists\Components\TextEntry::make('monthly_hour_limit_minutes')
+                    ->visible(fn (ClientProject $record) => $record->delivery_mode !== 'tasks')
                     ->label(fn (ClientProject $record): string => $record->isFixedPeriod() ? 'سهم کل پروژه' : 'سهم هر دوره')
                     ->formatStateUsing(fn (?int $state): string => $state === null ? 'بدون محدودیت' : app(DurationFormatter::class)->format($state)),
                 Infolists\Components\TextEntry::make('start_date')->label('تاریخ شروع')->jalaliDate()->placeholder('—')
@@ -223,7 +247,7 @@ class ClientProjectResource extends Resource
                 Infolists\Components\TextEntry::make('end_date')->label('تاریخ پایان')->jalaliDate()->placeholder('—')
                     ->visible(fn (ClientProject $record): bool => $record->isFixedPeriod()),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات')->placeholder('—')->columnSpanFull(),
-                Infolists\Components\RepeatableEntry::make('cycles')->label('دوره‌های تعهد زمانی')->schema([
+                Infolists\Components\RepeatableEntry::make('cycles')->label('دوره‌های تعهد زمانی')->visible(fn (ClientProject $record) => $record->delivery_mode !== 'tasks')->schema([
                     Infolists\Components\TextEntry::make('starts_at')->label('شروع')->formatStateUsing(fn ($state) => PersianDate::date($state)),
                     Infolists\Components\TextEntry::make('ends_at')->label('Deadline')->formatStateUsing(fn ($state) => PersianDate::date($state)),
                     Infolists\Components\TextEntry::make('allocated_minutes')->label('تعهد')->formatStateUsing(fn ($state) => app(DurationFormatter::class)->format($state)),
@@ -245,6 +269,16 @@ class ClientProjectResource extends Resource
             'view' => Pages\ViewClientProject::route('/{record}'),
             'edit' => Pages\EditClientProject::route('/{record}/edit'),
         ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [DeliveryCyclesRelationManager::class];
+    }
+
+    public static function formDeliveryMode(Forms\Get $get, ?ClientProject $record): string
+    {
+        return $record?->delivery_mode ?? (ServiceOfferingVersion::find($get('offering_version_id'))?->delivery_mode ?? 'time');
     }
 
     public static function statusOptions(): array

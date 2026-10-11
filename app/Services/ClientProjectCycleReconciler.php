@@ -36,12 +36,20 @@ final class ClientProjectCycleReconciler
             $allocationChanged = $project->monthly_hour_limit_minutes !== $proposed->monthly_hour_limit_minutes;
             $becameActive = ! $project->isActive() && $proposed->isActive();
 
+            if (($scheduleChanged || $allocationChanged) && $project->delivery_mode !== 'time' && $project->cycles()->whereNotNull('agreement_snapshot')->exists()) {
+                throw ValidationException::withMessages(['start_date' => 'زمان‌بندی و سهم دوره دارای تعهد ثابت است؛ قرارداد دوره‌های ثبت‌شده را تغییر ندهید.']);
+            }
+
             if ($scheduleChanged && ! $preserveProtectedHistory) {
                 $this->assertProtectedHistoryCompatible($project, $proposed);
             }
 
             $project->fill($attributes)->save();
             $project = $project->fresh();
+
+            if (! $project->supportsOperationalCycles()) {
+                return $project;
+            }
 
             if ($scheduleChanged) {
                 $this->reconcileLocked($project, ! $preserveProtectedHistory);
@@ -62,6 +70,14 @@ final class ClientProjectCycleReconciler
     /** @return array<string, mixed> */
     public function plan(ClientProject $project): array
     {
+        if (! $project->supportsOperationalCycles()) {
+            return [
+                'project' => ['id' => $project->id, 'title' => $project->title, 'start_date' => $this->dateValue($project->start_date), 'end_date' => $this->dateValue($project->end_date)],
+                'activities' => [],
+                'current_cycle_before' => null,
+                'current_cycle_after' => null,
+            ];
+        }
         $project->loadMissing(['activities.cycle', 'cycles']);
         $protectedCycleIds = $this->protectedCycleIds($project);
         $claimedActivityIds = DB::table('invoice_activity_claims')
@@ -168,7 +184,8 @@ final class ClientProjectCycleReconciler
         ClientProject::query()
             ->where('status', ClientProject::STATUS_ACTIVE)
             ->where('schedule_mode', ClientProject::SCHEDULE_RECURRING)
-            ->where('monthly_hour_limit_minutes', '>', 0)
+            ->where(fn ($query) => $query->where(fn ($time) => $time->where('delivery_mode', 'time')->where('monthly_hour_limit_minutes', '>', 0))
+                ->orWhere(fn ($delivery) => $delivery->whereIn('delivery_mode', ['tasks', 'hybrid'])->whereHas('planVersions')))
             ->orderBy('id')
             ->chunkById(100, function (Collection $projects) use (&$ensured): void {
                 foreach ($projects as $project) {
@@ -188,6 +205,9 @@ final class ClientProjectCycleReconciler
 
     private function reconcileLocked(ClientProject $project, bool $strictProtected): void
     {
+        if (! $project->supportsOperationalCycles()) {
+            return;
+        }
         $project->load(['activities.cycle', 'cycles']);
         $protectedCycleIds = $this->protectedCycleIds($project);
         $claimedActivityIds = DB::table('invoice_activity_claims')
@@ -296,6 +316,11 @@ final class ClientProjectCycleReconciler
                 || $cycle->ends_at->isAfter(CarbonImmutable::today()))
             ->reject(fn (ClientProjectCycle $cycle): bool => $protectedCycleIds->has($cycle->id));
         $allocation = $project->monthly_hour_limit_minutes;
+        if ($project->delivery_mode !== 'time') {
+            $this->ensureScheduledCycle($project);
+
+            return;
+        }
         if ($allocation === null || $allocation <= 0) {
             $cycles->each->delete();
 
@@ -312,7 +337,7 @@ final class ClientProjectCycleReconciler
 
     private function ensureScheduledCycle(ClientProject $project, bool $strictProtected = false): bool
     {
-        if (! $project->monthly_hour_limit_minutes || ($project->isRecurring() && ! $project->isActive())) {
+        if (! $project->supportsOperationalCycles() || ($project->delivery_mode === 'time' && ! $project->monthly_hour_limit_minutes) || ($project->isRecurring() && ! $project->isActive())) {
             return false;
         }
 
@@ -355,7 +380,7 @@ final class ClientProjectCycleReconciler
     private function protectedCycleIds(ClientProject $project): Collection
     {
         $ids = $project->cycles
-            ->filter(fn (ClientProjectCycle $cycle): bool => $cycle->status === ClientProjectCycleStatus::Invoiced)
+            ->filter(fn (ClientProjectCycle $cycle): bool => $cycle->status === ClientProjectCycleStatus::Invoiced || $cycle->hasDeliveryHistory())
             ->pluck('id');
         $ids = $ids->merge(DB::table('invoice_cycle_claims')->whereIn('client_project_cycle_id', $project->cycles->pluck('id'))->pluck('client_project_cycle_id'));
         $ids = $ids->merge(DB::table('invoices')->whereIn('client_project_cycle_id', $project->cycles->pluck('id'))->where('status', '!=', 'cancelled')->pluck('client_project_cycle_id'));

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BackupDownloadController;
+use App\Http\Controllers\Admin\ClientDeliveryFileDownloadController;
 use App\Http\Controllers\Admin\FormSubmissionAttachmentDownloadController;
 use App\Http\Controllers\Admin\InternalLinkSearchController;
 use App\Http\Controllers\Admin\InvoicePdfController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Client\PlaceholderController as ClientPlaceholderContro
 use App\Http\Controllers\Client\ProfileController as ClientProfileController;
 use App\Http\Controllers\Client\ProjectController as ClientProjectController;
 use App\Http\Controllers\Client\RegisteredUserController;
+use App\Http\Controllers\Client\ServiceDeliveryController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\GalleryController;
@@ -91,6 +93,12 @@ Route::middleware(['auth:client', 'client'])->group(function (): void {
 });
 
 Route::middleware(['auth:client', 'client', 'client.context', 'client.service'])->group(function (): void {
+    Route::get('/account/projects/{project}/work-items/{workItem}', [ServiceDeliveryController::class, 'show'])
+        ->whereNumber(['project', 'workItem'])->name('account.delivery.show');
+    Route::post('/account/projects/{project}/work-items/{workItem}/deliveries/{delivery}/review', [ServiceDeliveryController::class, 'review'])
+        ->whereNumber(['project', 'workItem', 'delivery'])->name('account.delivery.review');
+    Route::get('/account/projects/{project}/work-items/{workItem}/deliveries/{delivery}/files/{file}', [ServiceDeliveryController::class, 'download'])
+        ->whereNumber(['project', 'workItem', 'delivery', 'file'])->name('account.delivery.download');
     Route::get('/account/services', ClientDashboardController::class)->name('account.services.index');
     Route::get('/account/projects', [ClientProjectController::class, 'index'])->name('account.projects.index');
     Route::get('/account/projects/{project}', [ClientProjectController::class, 'show'])
@@ -99,6 +107,9 @@ Route::middleware(['auth:client', 'client', 'client.context', 'client.service'])
 });
 
 Route::get('/blog', [PostController::class, 'index'])->name('blog.index');
+
+Route::get('/admin/service-delivery-files/{file}/download', ClientDeliveryFileDownloadController::class)
+    ->middleware('auth')->whereNumber('file')->name('admin.service-delivery-files.download');
 Route::get('/blog/search', [PostController::class, 'search'])->name('blog.search');
 Route::get('/blog/category/{slug}', [PostController::class, 'category'])->name('blog.category');
 Route::get('/blog/{slug}', [PostController::class, 'show'])->name('blog.show');
