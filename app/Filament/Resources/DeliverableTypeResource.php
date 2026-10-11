@@ -22,7 +22,6 @@ class DeliverableTypeResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('code')->label('کد')->required()->maxLength(255)->unique(ignoreRecord: true),
             Forms\Components\TextInput::make('name')->label('نام')->required()->maxLength(255),
             Forms\Components\TextInput::make('unit')->label('واحد')->default('count')->required()->maxLength(100)->helperText('مانند عدد، جلسه یا واحد سفارشی قرارداد.'),
             Forms\Components\Toggle::make('active')->label('فعال')->default(true),

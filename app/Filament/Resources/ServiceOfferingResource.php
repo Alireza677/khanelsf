@@ -27,7 +27,6 @@ class ServiceOfferingResource extends Resource
         return $form->schema([
             Forms\Components\Select::make('service_id')->label('خدمت')->relationship('service', 'name')->searchable()->preload()->required(),
             Forms\Components\TextInput::make('name')->label('نام بسته')->required()->maxLength(255),
-            Forms\Components\TextInput::make('code')->label('کد بسته')->required()->maxLength(255)->unique(ignoreRecord: true),
             Forms\Components\Select::make('status')->label('وضعیت')->options(self::statuses())->default('draft')->required(),
             Forms\Components\TextInput::make('sort_order')->label('ترتیب نمایش')->integer()->minValue(0)->default(0)->required(),
             Forms\Components\Textarea::make('description')->label('توضیحات')->columnSpanFull(),
