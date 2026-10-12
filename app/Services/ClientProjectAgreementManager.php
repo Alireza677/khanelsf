@@ -37,6 +37,10 @@ final class ClientProjectAgreementManager
                 throw ValidationException::withMessages(['contract' => 'فیلد اصلاحیه معتبر نیست.']);
             }
             $base = ServiceAgreementData::canonical($catalog);
+            // An unrelated amendment of the same package must retain customer feature overrides.
+            if ($latest?->service_offering_version_id === $version->id && ! array_key_exists('features', $overrides)) {
+                $overrides['features'] = $latest->agreement_snapshot['features'] ?? [];
+            }
             $agreed = ServiceAgreementData::canonical([...$base, ...$overrides]);
             $schedule = self::projectSchedule($project);
             $defaultsChanged = collect($base['scheduling_defaults'])->contains(fn ($value, $key) => ($schedule[$key] ?? null) != $value);
@@ -61,6 +65,7 @@ final class ClientProjectAgreementManager
                 'agreement_snapshot' => [
                     ...$catalog,
                     ...$agreed,
+                    'schema_version' => ServiceAgreementData::SCHEMA_VERSION,
                     'project_schedule' => $schedule,
                 ],
                 'override_reason' => filled($reason) ? trim($reason) : null,

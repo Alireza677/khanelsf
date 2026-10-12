@@ -31,7 +31,9 @@ class ClientProjectPlanVersion extends Model
                 'version' => ['required', 'integer', 'min:1'],
                 'effective_from' => ['required', 'date_format:Y-m-d'],
             ])->validate();
-            app(ClientProjectCycleDelivery::class)->assertAmendmentDate($plan->project, $plan->effective_from->toDateString());
+            $latest = $plan->project->planVersions()->orderByDesc('version')->first();
+            $featuresChanged = $latest && ServiceAgreementData::features($latest->agreement_snapshot['features'] ?? []) !== ServiceAgreementData::features($plan->agreement_snapshot['features'] ?? []);
+            app(ClientProjectCycleDelivery::class)->assertAmendmentDate($plan->project, $plan->effective_from->toDateString(), $featuresChanged);
         });
         static::updating(fn () => throw new LogicException('Customer agreements are immutable; create a new version.'));
         static::deleting(fn () => throw new LogicException('Customer agreements are retained for history.'));

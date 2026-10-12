@@ -12,18 +12,23 @@ use LogicException;
 
 class ServiceOfferingVersion extends Model
 {
-    protected $fillable = ['service_offering_id', 'version', 'delivery_mode', 'schedule_mode', 'billing_basis', 'billing_interval', 'amount', 'currency_code', 'contract_terms', 'scheduling_defaults'];
+    protected $fillable = ['service_offering_id', 'version', 'delivery_mode', 'schedule_mode', 'billing_basis', 'billing_interval', 'amount', 'currency_code', 'contract_terms', 'features', 'scheduling_defaults'];
 
     protected $attributes = ['status' => 'draft', 'delivery_mode' => 'time', 'schedule_mode' => 'recurring', 'billing_basis' => 'package', 'billing_interval' => 'monthly', 'currency_code' => 'IRT'];
 
     protected function casts(): array
     {
-        return ['version' => 'integer', 'amount' => 'decimal:4', 'scheduling_defaults' => 'array', 'catalog_snapshot' => 'array', 'published_at' => 'datetime'];
+        return ['version' => 'integer', 'amount' => 'decimal:4', 'features' => 'array', 'scheduling_defaults' => 'array', 'catalog_snapshot' => 'array', 'published_at' => 'datetime'];
     }
 
     public function setAmountAttribute(mixed $value): void
     {
         $this->attributes['amount'] = ServiceAgreementData::decimal($value, 'amount');
+    }
+
+    public function setFeaturesAttribute(mixed $value): void
+    {
+        $this->attributes['features'] = json_encode(ServiceAgreementData::features($value), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 
     public function save(array $options = []): bool
@@ -85,6 +90,7 @@ class ServiceOfferingVersion extends Model
             'amount' => $this->amount,
             'currency_code' => $this->currency_code,
             'contract_terms' => $this->contract_terms,
+            'features' => $this->features ?? [],
             'scheduling_defaults' => $this->scheduling_defaults,
             'deliverables' => $this->deliverables()->get()->map->attributesToArray()->all(),
         ]);

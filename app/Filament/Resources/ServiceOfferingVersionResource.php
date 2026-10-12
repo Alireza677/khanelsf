@@ -57,12 +57,45 @@ class ServiceOfferingVersionResource extends Resource
             Forms\Components\TextInput::make('amount')->label('مبلغ')->regex('/^\d{1,14}(?:\.\d{1,4})?$/')->inputMode('decimal')->helperText('خالی: نیازمند تعیین مبلغ؛ صفر: بدون هزینه.'),
             Forms\Components\TextInput::make('currency_code')->label('کد واحد پول')->required()->default('IRT')->regex('/^[A-Z]{3}$/')->maxLength(3),
             Forms\Components\Textarea::make('contract_terms')->label('شرایط قرارداد')->columnSpanFull(),
+            self::featuresField(),
             Forms\Components\TextInput::make('scheduling_defaults.cycle_anchor_day')->label('روز ماهانه پیش‌فرض')->integer()->minValue(1)->maxValue(31),
             Forms\Components\TextInput::make('scheduling_defaults.monthly_hour_limit_minutes')->label('سهمیه پیش‌فرض — دقیقه')->integer()->minValue(0)->maxValue(4294967295),
             Forms\Components\DatePicker::make('scheduling_defaults.start_date')->label('شروع پیش‌فرض')->jalali(),
             Forms\Components\DatePicker::make('scheduling_defaults.end_date')->label('پایان پیش‌فرض')->jalali()->after('scheduling_defaults.start_date'),
             $deliverables,
         ];
+    }
+
+    public static function featuresField(): Forms\Components\Repeater
+    {
+        return Forms\Components\Repeater::make('features')->label('ویژگی‌ها و شرایط پکیج')
+            ->helperText('اطلاعات توصیفی پکیج؛ مستقل از تعهدات مقداری و بدون ایجاد کار اجرایی.')
+            ->schema([
+                Forms\Components\TextInput::make('title')->label('عنوان ویژگی')->required()->maxLength(255),
+                Forms\Components\Select::make('type')->label('نوع مقدار')->options(ServiceAgreementData::FEATURE_TYPES)->default('text')->required()->live()
+                    ->afterStateUpdated(function (Forms\Set $set, ?string $state): void {
+                        $set('value', $state === 'boolean' ? false : null);
+                        $set('unit', null);
+                    }),
+                Forms\Components\Group::make()->schema(fn (Forms\Get $get) => [match ($get('type')) {
+                    'boolean' => Forms\Components\Toggle::make('value')->label('دارد')->onIcon('heroicon-o-check')->offIcon('heroicon-o-x-mark')->default(false)->helperText('خاموش: ندارد؛ روشن: دارد.'),
+                    'number' => Forms\Components\TextInput::make('value')->label('مقدار عددی')->required()->regex(ServiceAgreementData::FEATURE_NUMBER)->inputMode('decimal')->helperText('عدد با حداکثر ۴ رقم اعشار؛ مانند ۶۰.'),
+                    default => Forms\Components\Textarea::make('value')->label('مقدار متنی')->required()->maxLength(2000)->placeholder('مانند ۳ تا ۴ ساعت'),
+                }]),
+                Forms\Components\TextInput::make('unit')->label('واحد نمایشی — اختیاری')->maxLength(100)
+                    ->visible(fn (Forms\Get $get) => $get('type') === 'number'),
+            ])->defaultItems(0)->maxItems(100)->columns(2)->columnSpanFull()->extraAttributes(['dir' => 'rtl'])
+            ->addActionLabel('افزودن ویژگی')->itemLabel(fn (array $state) => $state['title'] ?? 'ویژگی جدید');
+    }
+
+    public static function featuresEntry(string $path = 'features'): Infolists\Components\RepeatableEntry
+    {
+        return Infolists\Components\RepeatableEntry::make($path)->label('ویژگی‌ها و شرایط پکیج')->schema([
+            Infolists\Components\TextEntry::make('title')->label('عنوان'),
+            Infolists\Components\TextEntry::make('type')->label('نوع')->formatStateUsing(fn ($state) => ServiceAgreementData::FEATURE_TYPES[$state] ?? $state),
+            Infolists\Components\TextEntry::make('value')->label('مقدار')->formatStateUsing(fn ($state, Infolists\Components\TextEntry $component) => data_get($component->getContainer()->getState(), 'type') === 'boolean' ? ($state ? 'دارد' : 'ندارد') : $state),
+            Infolists\Components\TextEntry::make('unit')->label('واحد نمایشی')->placeholder('—')->visible(fn (Infolists\Components\TextEntry $component) => data_get($component->getContainer()->getState(), 'type') === 'number'),
+        ])->columns(4)->columnSpanFull();
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -77,6 +110,7 @@ class ServiceOfferingVersionResource extends Resource
             Infolists\Components\TextEntry::make('billing_basis')->label('مبنای مبلغ')->formatStateUsing(fn ($state) => ServiceAgreementData::BILLING_BASES[$state]),
             Infolists\Components\TextEntry::make('billing_interval')->label('دوره صورتحساب')->formatStateUsing(fn ($state) => ServiceAgreementData::BILLING_INTERVALS[$state]),
             Infolists\Components\TextEntry::make('contract_terms')->label('شرایط قرارداد')->columnSpanFull(),
+            self::featuresEntry(),
             Infolists\Components\TextEntry::make('published_at')->label('انتشار')->jalaliDateTime(),
             Infolists\Components\RepeatableEntry::make('deliverables')->label('تعهدات')->schema([
                 Infolists\Components\TextEntry::make('name')->label('نام'),

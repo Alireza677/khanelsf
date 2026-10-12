@@ -61,7 +61,7 @@ final class ServiceOfferingPublisher
                 'published_at' => now(),
                 'published_by' => $actor->id,
                 'catalog_snapshot' => [
-                    'schema_version' => 1,
+                    'schema_version' => ServiceAgreementData::SCHEMA_VERSION,
                     'offering' => ['id' => $version->offering->id, 'code' => $version->offering->code, 'name' => $version->offering->name, 'description' => $version->offering->description],
                     'service' => ['id' => $version->offering->service_id, 'name' => $version->offering->service->name],
                     'offering_version' => $version->version,

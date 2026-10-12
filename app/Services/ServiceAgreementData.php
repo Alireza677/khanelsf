@@ -9,11 +9,17 @@ use Illuminate\Validation\ValidationException;
 
 final class ServiceAgreementData
 {
+    public const SCHEMA_VERSION = 2;
+
+    public const FEATURE_TYPES = ['boolean' => 'دارد / ندارد', 'text' => 'متن', 'number' => 'عدد'];
+
+    public const FEATURE_NUMBER = '/^-?\d{1,14}(?:\.\d{1,4})?$/';
+
     public const BILLING_BASES = ['package' => 'مبلغ بسته', 'usage' => 'مصرف', 'hybrid' => 'ترکیبی'];
 
     public const BILLING_INTERVALS = ['monthly' => 'ماهانه', 'one_time' => 'یک‌باره'];
 
-    public const OVERRIDE_FIELDS = ['amount', 'currency_code', 'contract_terms', 'deliverables', 'billing_basis', 'billing_interval', 'scheduling_defaults'];
+    public const OVERRIDE_FIELDS = ['amount', 'currency_code', 'contract_terms', 'features', 'deliverables', 'billing_basis', 'billing_interval', 'scheduling_defaults'];
 
     private const DECIMAL = '/^\d{1,14}(?:\.\d{1,4})?$/';
 
@@ -31,6 +37,7 @@ final class ServiceAgreementData
 
     public static function validate(array $data): array
     {
+        $data['features'] = self::features($data['features'] ?? []);
         self::decimal($data['amount'] ?? null, 'amount');
         foreach (is_array($data['deliverables'] ?? null) ? $data['deliverables'] : [] as $index => $line) {
             if (is_array($line)) {
@@ -46,6 +53,7 @@ final class ServiceAgreementData
             'amount' => ['nullable', 'regex:'.self::DECIMAL],
             'currency_code' => ['required', 'regex:/^[A-Z]{3}$/'],
             'contract_terms' => ['nullable', 'string'],
+            'features' => ['array'],
             'scheduling_defaults' => ['nullable', 'array:cycle_anchor_day,monthly_hour_limit_minutes,start_date,end_date'],
             'scheduling_defaults.cycle_anchor_day' => ['nullable', 'integer', 'between:1,31'],
             'scheduling_defaults.monthly_hour_limit_minutes' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
@@ -66,6 +74,42 @@ final class ServiceAgreementData
             'deliverables.*.scheduling_rules' => ['nullable', 'array:due_day_offset'],
             'deliverables.*.scheduling_rules.due_day_offset' => ['nullable', 'integer', 'min:0', 'max:3660'],
         ])->validate();
+    }
+
+    /** Display-only terms: never quantity commitments or inputs to work generation. */
+    public static function features(mixed $features): array
+    {
+        $data = ['features' => $features ?? []];
+        $validated = Validator::make($data, [
+            'features' => ['array', 'max:100'],
+            'features.*' => ['array:title,type,value,unit'],
+            'features.*.title' => ['required', 'string', 'max:255'],
+            'features.*.type' => ['required', Rule::in(array_keys(self::FEATURE_TYPES))],
+            'features.*.value' => ['required', function ($attribute, $value, $fail) use ($data): void {
+                $type = data_get($data, substr($attribute, 0, -strlen('value')).'type');
+                if ($type === 'boolean' && ! in_array($value, [true, false, 0, 1, '0', '1'], true)) {
+                    $fail('مقدار ویژگی باید دارد یا ندارد باشد.');
+                } elseif ($type === 'text' && (! is_string($value) || mb_strlen($value) > 2000)) {
+                    $fail('مقدار متنی ویژگی باید متن حداکثر ۲۰۰۰ نویسه باشد.');
+                } elseif ($type === 'number' && ((! is_string($value) && ! is_int($value)) || preg_match(self::FEATURE_NUMBER, (string) $value) !== 1)) {
+                    $fail('مقدار عددی ویژگی باید عدد اعشاری معتبر با حداکثر ۴ رقم اعشار باشد.');
+                }
+            }],
+            'features.*.unit' => ['nullable', 'string', 'max:100', 'prohibited_unless:features.*.type,number'],
+        ])->validate();
+
+        return array_values(array_map(function (array $feature): array {
+            $value = $feature['value'];
+            if ($feature['type'] === 'boolean') {
+                $value = (bool) $value;
+            } elseif ($feature['type'] === 'number') {
+                // Exact decimal strings, including zero/negatives; no float conversion.
+                $value = rtrim(rtrim(bcadd((string) $value, '0', 4), '0'), '.');
+            }
+
+            return ['title' => trim($feature['title']), 'type' => $feature['type'], 'value' => $value,
+                'unit' => $feature['type'] === 'number' && filled($feature['unit'] ?? null) ? trim($feature['unit']) : null];
+        }, $validated['features']));
     }
 
     public static function canonical(array $data): array

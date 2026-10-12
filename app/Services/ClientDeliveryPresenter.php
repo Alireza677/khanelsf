@@ -35,7 +35,7 @@ final class ClientDeliveryPresenter
         // The cycle snapshot, never the mutable current catalog, is the display source.
         $snapshot = $cycle->agreement_snapshot ?? [];
 
-        return array_intersect_key($snapshot, array_flip(['service', 'offering', 'amount', 'currency_code', 'contract_terms', 'billing_basis', 'billing_interval', 'schedule_mode', 'delivery_mode']));
+        return array_intersect_key($snapshot, array_flip(['service', 'offering', 'amount', 'currency_code', 'contract_terms', 'features', 'billing_basis', 'billing_interval', 'schedule_mode', 'delivery_mode']));
     }
 
     public function item(ClientProjectWorkItem $item, ?User $viewer = null): array

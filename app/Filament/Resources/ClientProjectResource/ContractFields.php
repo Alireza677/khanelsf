@@ -86,6 +86,7 @@ final class ContractFields
                     Infolists\Components\TextEntry::make('agreement_snapshot.billing_basis')->label('مبنای مبلغ')->formatStateUsing(fn ($state) => ServiceAgreementData::BILLING_BASES[$state]),
                     Infolists\Components\TextEntry::make('agreement_snapshot.billing_interval')->label('دوره صورتحساب')->formatStateUsing(fn ($state) => ServiceAgreementData::BILLING_INTERVALS[$state]),
                     Infolists\Components\TextEntry::make('agreement_snapshot.contract_terms')->label('شرایط')->columnSpanFull(),
+                    ServiceOfferingVersionResource::featuresEntry('agreement_snapshot.features'),
                     Infolists\Components\TextEntry::make('override_reason')->label('دلیل اصلاح')->columnSpanFull(),
                     Infolists\Components\TextEntry::make('creator.name')->label('ثبت‌کننده'),
                     Infolists\Components\RepeatableEntry::make('agreement_snapshot.deliverables')->label('تعهدات ثبت‌شده')->schema([

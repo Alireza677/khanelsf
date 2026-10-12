@@ -46,9 +46,9 @@ final class ClientProjectCycleDelivery
         }
     }
 
-    public function assertAmendmentDate(ClientProject $project, string $date): void
+    public function assertAmendmentDate(ClientProject $project, string $date, bool $requireFuturePeriod = false): void
     {
-        if ($project->delivery_mode === 'time' || ! $project->planVersions()->exists()) {
+        if (($project->delivery_mode === 'time' && ! $requireFuturePeriod) || ! $project->planVersions()->exists()) {
             return;
         }
         $period = app(ClientProjectCycleResolver::class)->periodForDate($project, CarbonImmutable::parse($date));
@@ -56,7 +56,7 @@ final class ClientProjectCycleDelivery
             || $project->planVersions()->whereDate('effective_from', '>=', $date)->exists()
             || ! $period || $period['starts_at']->toDateString() !== $date
             || $project->cycles()->whereDate('ends_at', '>', $date)->whereNotNull('agreement_snapshot')->exists()) {
-            throw ValidationException::withMessages(['effective_from' => 'اصلاحیه تحویل باید در شروع یک دوره آینده و بدون تعهد ثبت‌شده مؤثر شود. در پروژه مدت‌دار، قرارداد همان دوره ثابت می‌ماند.']);
+            throw ValidationException::withMessages(['effective_from' => 'اصلاحیه قرارداد باید در شروع یک دوره آینده و بدون تعهد ثبت‌شده مؤثر شود. در پروژه مدت‌دار، قرارداد همان دوره ثابت می‌ماند.']);
         }
     }
 }

@@ -36,7 +36,7 @@ class ViewClientProject extends ViewRecord
                         ->options(fn () => ContractFields::versionOptions($this->record->planVersions()->orderByDesc('version')->value('service_offering_version_id')))
                         ->afterStateUpdated(fn (Forms\Set $set, $state) => $set('overrides', ServiceOfferingVersion::find($state)?->catalog_snapshot ?? [])),
                     Forms\Components\DatePicker::make('effective_from')->label('تاریخ اثر')->jalali()->required()->minDate(today())
-                        ->helperText('برای تحویل وظیفه‌ای یا ترکیبی، شروع دوره آینده‌ای را انتخاب کنید که هنوز تعهد ثبت‌شده ندارد.'),
+                        ->helperText('تغییر ویژگی‌ها در همه حالت‌ها، و اصلاحیه تحویل وظیفه‌ای یا ترکیبی، باید در شروع دوره آینده مؤثر شود. دوره دارای تعهد ثبت‌شده قابل تغییر نیست.'),
                     Forms\Components\Section::make('شرایط توافق‌شده')->statePath('overrides')->schema(ServiceOfferingVersionResource::agreementFields())->columns(2),
                     Forms\Components\Textarea::make('contract_override_reason')->label('دلیل اصلاح')->required(),
                 ])
