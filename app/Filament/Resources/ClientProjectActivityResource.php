@@ -49,9 +49,12 @@ class ClientProjectActivityResource extends Resource
             Forms\Components\Section::make('ثبت فعالیت')->schema([
                 Forms\Components\Select::make('client_project_id')
                     ->label('پروژه مشتری')
-                    ->relationship('project', 'title', modifyQueryUsing: fn (Builder $query): Builder => $query
+                    ->relationship('project', 'title', modifyQueryUsing: fn (Builder $query, ?ClientProjectActivity $record): Builder => $query
+                        ->where(fn (Builder $query): Builder => $query->whereIn('delivery_mode', ['time', 'hybrid'])
+                            ->when($record?->client_project_id, fn (Builder $query, $id): Builder => $query->orWhereKey($id)))
                         ->whereHas('customer', fn (Builder $query): Builder => $query->where('status', Customer::STATUS_ACTIVE)))
-                    ->searchable()->preload()->live()->required(),
+                    ->searchable()->preload()->live()->required()
+                    ->helperText('برای پروژه تحویل‌محور از «ثبت کار انجام‌شده» و مسیر تحویل خروجی استفاده کنید.'),
                 Forms\Components\Placeholder::make('cycle_context')->label('دوره تعهد زمانی')->content(fn (Forms\Get $get) => self::cycleSummary($get('client_project_id'))),
                 Forms\Components\Select::make('service_id')
                     ->label('خدمت')

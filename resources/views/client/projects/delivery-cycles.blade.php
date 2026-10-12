@@ -1,4 +1,4 @@
-<x-client.card title="دوره‌های تحویل و بایگانی">
+<x-client.card title="دوره جاری و دوره‌های تاریخی">
     <form method="GET" action="{{ route($serviceRoutes['project'], ['project' => $project['id']]) }}" class="portal-actions">
         <input type="hidden" name="customer" value="{{ $portalCustomer->id }}">
         @if ($project['delivery_mode'] === 'hybrid')<input type="hidden" name="month" value="{{ $summary['month'] }}">@endif
@@ -10,17 +10,19 @@
         </select>
         <button class="portal-button" type="submit">نمایش دوره</button>
     </form>
+</x-client.card>
     @if ($cycle = $delivery['cycle'])
+    <x-client.card title="تعهدات و برنامه دوره انتخاب‌شده">
         <p>{{ $cycle['agreement']['service']['name'] ?? 'خدمت' }} / {{ $cycle['agreement']['offering']['name'] ?? 'بسته' }}</p>
-        <p>قیمت قراردادی: {{ $cycle['agreement']['amount'] ?? '—' }} {{ $cycle['agreement']['currency_code'] ?? '' }}</p>
-        <p>{{ $cycle['agreement']['contract_terms'] ?? '' }}</p>
+        <p>دوره: {{ $cycle['start'] }} تا {{ $cycle['end'] }} (پایان غیرشامل)</p>
         <p class="portal-privacy-note">تعهدات این دوره از قرارداد تاریخی خوانده می‌شوند. تکمیل هر نوع تحویل مستقل محاسبه می‌شود.</p>
         <div class="portal-activity-list">
             @foreach ($cycle['commitments'] as $line)
-                <article class="portal-activity-item"><h3>{{ $line['name'] }}</h3><p>تعهد: {{ $line['committed'] }} {{ $line['unit'] }}؛ تکمیل: {{ $line['completed'] }}؛ باقی‌مانده: {{ $line['remaining'] }}</p></article>
+                <article class="portal-activity-item"><h3>{{ $line['name'] }}</h3><p>تعهد: {{ \App\Support\ServiceDeliveryNumber::format($line['committed']) }} {{ $line['unit'] }}؛ تکمیل: {{ \App\Support\ServiceDeliveryNumber::format($line['completed']) }}؛ باقی‌مانده: {{ \App\Support\ServiceDeliveryNumber::format($line['remaining']) }}</p></article>
             @endforeach
         </div>
-        <h3>برنامه کار، موعدها و تحویل‌ها</h3>
+    </x-client.card>
+    <x-client.card title="کارها، موعدها و تحویل‌ها">
         <div class="portal-activity-list">
             @forelse ($cycle['items'] as $work)
                 <article class="portal-activity-item">
@@ -34,13 +36,14 @@
                 <p>کار قابل نمایشی برای این دوره ثبت نشده است.</p>
             @endforelse
         </div>
-        <h3>گزارش‌های منتشرشده</h3>
+    </x-client.card>
+    <x-client.card title="گزارش‌های منتشرشده و بایگانی">
         @forelse ($cycle['reports'] as $report)
             <details class="portal-activity-item"><summary>نسخه {{ $report['version'] }} — {{ $report['date'] }} — {{ $report['outcome'] === 'successful' ? 'تعهدات تکمیل‌شده' : 'گزارش ناقص' }}</summary>
                 <p>دوره محفوظ: {{ \App\Support\PersianDate::date($report['snapshot']['starts_at']) }} تا {{ \App\Support\PersianDate::date($report['snapshot']['ends_at']) }}</p>
                 <p>{{ $report['snapshot']['agreement']['offering']['name'] ?? '' }} — {{ $report['snapshot']['agreement']['amount'] ?? '' }} {{ $report['snapshot']['agreement']['currency_code'] ?? '' }}</p>
                 <p>{{ $report['snapshot']['message'] }}</p>
-                @foreach ($report['snapshot']['commitments'] as $line)<p>{{ $line['name'] }}: {{ $line['completed'] }} از {{ $line['committed'] }} {{ $line['unit'] }}؛ باقی‌مانده {{ $line['remaining'] }}</p>@endforeach
+                @foreach ($report['snapshot']['commitments'] as $line)<p>{{ $line['name'] }}: {{ \App\Support\ServiceDeliveryNumber::format($line['completed']) }} از {{ \App\Support\ServiceDeliveryNumber::format($line['committed']) }} {{ $line['unit'] }}؛ باقی‌مانده {{ \App\Support\ServiceDeliveryNumber::format($line['remaining']) }}</p>@endforeach
                 @foreach ($report['snapshot']['items'] as $work)
                     <details><summary>{{ $work['title'] }} — {{ $work['status_label'] }}</summary>
                         <p>موعد محفوظ: {{ $work['due'] ?: '—' }}</p>
@@ -59,7 +62,8 @@
         @empty
             <p>گزارش منتشرشده‌ای برای این دوره وجود ندارد.</p>
         @endforelse
+    </x-client.card>
+    @include('client.projects.contract', ['agreement' => $cycle['agreement']])
     @else
-        <p>دوره خدماتی ثبت نشده است.</p>
+        <x-client.card title="دوره جاری"><p>دوره خدماتی ثبت نشده است.</p></x-client.card>
     @endif
-</x-client.card>

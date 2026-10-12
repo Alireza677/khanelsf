@@ -8,6 +8,7 @@ use App\Filament\Resources\ServiceOfferingVersionResource;
 use App\Models\ClientProject;
 use App\Models\ServiceOfferingVersion;
 use App\Services\ServiceAgreementData;
+use App\Support\ServiceDeliveryNumber;
 use Filament\Forms;
 use Filament\Infolists;
 
@@ -39,7 +40,7 @@ final class ContractFields
 
                         return;
                     }
-                    $definition = ServiceAgreementData::canonical($version->catalog_snapshot);
+                    $definition = ServiceAgreementData::canonical($version->catalog_snapshot, $version->catalog_snapshot['deliverables']);
                     $set('contract_overrides', array_intersect_key($definition, array_flip(ServiceAgreementData::OVERRIDE_FIELDS)));
                     $set('schedule_mode', $definition['schedule_mode']);
                     foreach ($definition['scheduling_defaults'] as $key => $value) {
@@ -92,7 +93,7 @@ final class ContractFields
                     Infolists\Components\RepeatableEntry::make('agreement_snapshot.deliverables')->label('تعهدات ثبت‌شده')->schema([
                         Infolists\Components\TextEntry::make('name')->label('نام'),
                         Infolists\Components\TextEntry::make('description')->label('توضیحات'),
-                        Infolists\Components\TextEntry::make('quantity')->label('مقدار'),
+                        Infolists\Components\TextEntry::make('quantity')->label('مقدار')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
                         Infolists\Components\TextEntry::make('unit')->label('واحد'),
                         Infolists\Components\TextEntry::make('approval_required')->label('تأیید مشتری')->formatStateUsing(fn ($state) => $state ? 'بله' : 'خیر'),
                         Infolists\Components\TextEntry::make('revision_allowance')->label('اصلاح مجاز'),

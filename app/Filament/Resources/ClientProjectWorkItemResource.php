@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\ClientProjectWorkItemManager;
 use App\Services\ClientWorkItemDeliveryManager;
 use App\Support\PersianDate;
+use App\Support\ServiceDeliveryNumber;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -40,13 +41,24 @@ class ClientProjectWorkItemResource extends Resource
             Forms\Components\Select::make('client_project_cycle_id')->label('دوره پروژه')->required()->searchable()
                 ->options(fn () => ClientProjectCycle::query()->whereIn('delivery_mode', ['tasks', 'hybrid'])->with('project.customer')->orderByDesc('starts_at')->get()->mapWithKeys(fn ($cycle) => [$cycle->id => $cycle->project->customer->display_name.' / '.$cycle->project->title.' / '.PersianDate::date($cycle->starts_at)])->all())
                 ->disabled(fn (?ClientProjectWorkItem $record) => $record !== null)->dehydrated(fn (?ClientProjectWorkItem $record) => $record === null),
+            Forms\Components\Group::make()->schema(fn (?ClientProjectWorkItem $record) => self::workItemFields($record))->columns(2)->columnSpanFull(),
+        ])->columns(2);
+    }
+
+    public static function workItemFields(?ClientProjectWorkItem $record = null): array
+    {
+        return [
             Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(255),
             Forms\Components\Textarea::make('description')->label('توضیحات')->columnSpanFull(),
-            Forms\Components\TextInput::make('quantity')->label('مقدار کار اضافی')->regex('/^\d{1,14}(?:\.\d{1,4})?$/')->disabled(fn (?ClientProjectWorkItem $record) => (bool) $record?->client_project_cycle_commitment_id),
-            Forms\Components\TextInput::make('unit')->label('واحد')->maxLength(255)->disabled(fn (?ClientProjectWorkItem $record) => (bool) $record?->client_project_cycle_commitment_id),
+            Forms\Components\TextInput::make('quantity')->label($record?->client_project_cycle_commitment_id ? 'مقدار قراردادی' : 'مقدار کار اضافی')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state))
+                ->regex(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? '/^\d{1,14}(?:\.0{1,4})?$/' : '/^\d{1,14}(?:\.\d{1,4})?$/')
+                ->type('number')->step(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? '1' : '0.0001')
+                ->inputMode(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? 'numeric' : 'decimal')
+                ->disabled(fn () => (bool) $record?->client_project_cycle_commitment_id),
+            Forms\Components\TextInput::make('unit')->label('واحد')->maxLength(255)->live(onBlur: true)->disabled(fn () => (bool) $record?->client_project_cycle_commitment_id),
             Forms\Components\Select::make('visibility')->label('دسترسی')->options(['internal' => 'داخلی', 'client' => 'قابل نمایش به مشتری'])->default('internal')->required(),
             Forms\Components\Select::make('status')->label('وضعیت اجرایی')->required()->default('planned')
-                ->options(function (?ClientProjectWorkItem $record): array {
+                ->options(function () use ($record): array {
                     $keys = $record ? [$record->status->value, ...$record->status->administrativeTargets($record->approvalRequired())] : ['planned'];
                     if ($record?->status->value !== 'submitted') {
                         $keys = array_diff($keys, ['submitted']);
@@ -60,10 +72,10 @@ class ClientProjectWorkItemResource extends Resource
             Forms\Components\DateTimePicker::make('due_at')->label('موعد')->jalali(),
             Forms\Components\Select::make('assignees')->label('مدیران مسئول')->multiple()->searchable()->options(fn () => User::query()->where('is_admin', true)->where('status', 'active')->pluck('name', 'id')),
             Forms\Components\Select::make('activities')->label('فعالیت‌های زمانی مرتبط')->multiple()->searchable()
-                ->options(fn (?ClientProjectWorkItem $record) => $record && $record->cycle->delivery_mode === 'hybrid' ? $record->project->activities()->where('client_project_cycle_id', $record->client_project_cycle_id)->pluck('title', 'id') : [])
-                ->visible(fn (?ClientProjectWorkItem $record) => $record?->cycle->delivery_mode === 'hybrid'),
+                ->options(fn () => $record && $record->cycle->delivery_mode === 'hybrid' ? $record->project->activities()->where('client_project_cycle_id', $record->client_project_cycle_id)->pluck('title', 'id') : [])
+                ->visible(fn () => $record?->cycle->delivery_mode === 'hybrid'),
             Forms\Components\Hidden::make('lock_version')->default(0),
-        ])->columns(2);
+        ];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -73,7 +85,7 @@ class ClientProjectWorkItemResource extends Resource
             Infolists\Components\TextEntry::make('project.title')->label('پروژه'),
             Infolists\Components\TextEntry::make('commitment.name')->label('تعهد')->placeholder('کار اضافی'),
             Infolists\Components\TextEntry::make('status')->label('وضعیت')->formatStateUsing(fn ($state) => ClientProjectWorkItemStatus::options()[$state->value]),
-            Infolists\Components\TextEntry::make('quantity')->label('مقدار'),
+            Infolists\Components\TextEntry::make('quantity')->label('مقدار')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
             Infolists\Components\TextEntry::make('unit')->label('واحد'),
             Infolists\Components\TextEntry::make('description')->label('توضیحات')->columnSpanFull(),
             Infolists\Components\TextEntry::make('scheduled_start_at')->label('شروع برنامه')->jalaliDateTime()->placeholder('—'),
@@ -133,12 +145,7 @@ class ClientProjectWorkItemResource extends Resource
             Tables\Actions\Action::make('submitDelivery')->label('ارسال نسخه تحویل')
                 ->visible(fn ($record) => auth()->user()?->can('update', $record->project) && ($record->status->value === 'in_progress' || ($record->status->value === 'submitted' && ! $record->deliveries()->exists())))
                 ->fillForm(fn ($record) => ['lock_version' => $record->lock_version])
-                ->form([
-                    Forms\Components\Hidden::make('lock_version')->required(),
-                    Forms\Components\Textarea::make('message')->label('پیام تحویل')->maxLength(10000)->helperText('برای کار قابل نمایش، این پیام به مشتری نمایش داده می‌شود.'),
-                    Forms\Components\FileUpload::make('client_files')->label('فایل‌های مشتری')->multiple()->maxFiles(10)->maxSize(102400)->acceptedFileTypes(ClientWorkItemDeliveryManager::MIME_TYPES)->storeFiles(false),
-                    Forms\Components\FileUpload::make('internal_files')->label('فایل‌های داخلی')->multiple()->maxFiles(10)->maxSize(102400)->acceptedFileTypes(ClientWorkItemDeliveryManager::MIME_TYPES)->storeFiles(false),
-                ])->action(function ($record, array $data): void {
+                ->form(self::deliveryFields())->action(function ($record, array $data): void {
                     app(ClientWorkItemDeliveryManager::class)->submit($record, auth()->user(), (int) $data['lock_version'], $data['message'] ?? null,
                         ['client' => $data['client_files'] ?? [], 'internal' => $data['internal_files'] ?? []]);
                     Notification::make()->success()->title('نسخه تحویل ثبت شد')->send();
@@ -148,6 +155,16 @@ class ClientProjectWorkItemResource extends Resource
                 ->mutateRecordDataUsing(fn (array $data, $record) => [...$data, 'status' => $record->status->value, 'assignees' => $record->assignees()->pluck('users.id')->all(), 'activities' => $record->activities()->pluck('client_project_activities.id')->all()])
                 ->using(fn ($record, array $data) => app(ClientProjectWorkItemManager::class)->update($record, $data, (int) $data['lock_version'], auth()->user())),
         ])->bulkActions([]);
+    }
+
+    public static function deliveryFields(): array
+    {
+        return [
+            Forms\Components\Hidden::make('lock_version')->required(),
+            Forms\Components\Textarea::make('message')->label('پیام تحویل')->maxLength(10000)->helperText('برای کار قابل نمایش، این پیام به مشتری نمایش داده می‌شود.'),
+            Forms\Components\FileUpload::make('client_files')->label('فایل‌های مشتری')->multiple()->maxFiles(10)->maxSize(102400)->acceptedFileTypes(ClientWorkItemDeliveryManager::MIME_TYPES)->storeFiles(false),
+            Forms\Components\FileUpload::make('internal_files')->label('فایل‌های داخلی')->multiple()->maxFiles(10)->maxSize(102400)->acceptedFileTypes(ClientWorkItemDeliveryManager::MIME_TYPES)->storeFiles(false),
+        ];
     }
 
     public static function getPages(): array

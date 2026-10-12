@@ -60,7 +60,8 @@ class ServiceOfferingDeliverable extends Model
         static::saving(function (self $line) use ($guard): void {
             $guard($line);
             $parent = ServiceOfferingVersion::findOrFail($line->service_offering_version_id);
-            ServiceAgreementData::validate([...$parent->attributesToArray(), 'deliverables' => [$line->attributesToArray()]]);
+            $preserved = $line->exists && ! $line->isDirty(['quantity', 'unit', 'deliverable_type_id']) ? [$line->getOriginal()] : [];
+            ServiceAgreementData::validate([...$parent->attributesToArray(), 'deliverables' => [$line->attributesToArray()]], $preserved);
         });
         static::deleting($guard);
     }

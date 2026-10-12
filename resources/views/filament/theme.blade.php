@@ -1826,6 +1826,17 @@
         min-height: 18rem;
     }
 
+    .activity-creation-wizard-modal .fi-modal-content {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .activity-creation-wizard-modal .fi-fo-field-wrp {
+        text-align: right;
+        min-width: 0;
+    }
+
     .activity-wizard-summary {
         display: grid;
         gap: .45rem;

@@ -36,12 +36,12 @@ final class ClientProjectAgreementManager
             if (array_diff(array_keys($overrides), $allowed) !== []) {
                 throw ValidationException::withMessages(['contract' => 'فیلد اصلاحیه معتبر نیست.']);
             }
-            $base = ServiceAgreementData::canonical($catalog);
+            $base = ServiceAgreementData::canonical($catalog, $catalog['deliverables']);
             // An unrelated amendment of the same package must retain customer feature overrides.
             if ($latest?->service_offering_version_id === $version->id && ! array_key_exists('features', $overrides)) {
                 $overrides['features'] = $latest->agreement_snapshot['features'] ?? [];
             }
-            $agreed = ServiceAgreementData::canonical([...$base, ...$overrides]);
+            $agreed = ServiceAgreementData::canonical([...$base, ...$overrides], $latest?->agreement_snapshot['deliverables'] ?? []);
             $schedule = self::projectSchedule($project);
             $defaultsChanged = collect($base['scheduling_defaults'])->contains(fn ($value, $key) => ($schedule[$key] ?? null) != $value);
             if (($latest || $agreed !== $base || $defaultsChanged) && blank($reason)) {

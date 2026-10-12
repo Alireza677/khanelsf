@@ -16,7 +16,7 @@ class ClientProjectPresenter
             'description' => $project->description,
             'type' => $project->type,
             'status' => $project->status,
-            'status_label' => $this->statusLabels()[$project->status] ?? $project->status,
+            'status_label' => $this->statusLabels()[$project->status] ?? 'وضعیت نامشخص',
             'progress' => max(0, min(100, $project->progress)),
             'monthly_hour_limit_minutes' => $project->monthly_hour_limit_minutes,
             'start_date' => PersianDate::date($project->start_date),

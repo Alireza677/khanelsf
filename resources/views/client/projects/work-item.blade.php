@@ -5,6 +5,7 @@
     <a class="portal-button portal-button--secondary" href="{{ route('account.projects.show', ['project' => $projectId, 'customer' => $portalCustomer->id]) }}">بازگشت به پروژه</a>
     <x-client.card :title="$item['title']">
         <p>{{ $item['description'] }}</p><span class="portal-badge">{{ $item['status_label'] }}</span>
+        @if ($item['quantity'] !== null)<p>مقدار: {{ \App\Support\ServiceDeliveryNumber::format($item['quantity']) }} {{ $item['unit'] }}</p>@endif
         <p>برنامه: {{ $item['scheduled_start'] ?: '—' }} تا {{ $item['scheduled_end'] ?: '—' }}؛ موعد: {{ $item['due'] ?: '—' }}</p>
         <p>مسئولان: {{ implode('، ', $item['assignees']) ?: '—' }}</p>
     </x-client.card>

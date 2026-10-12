@@ -9,6 +9,7 @@ use App\Services\ClientProjectActivityPresenter;
 use App\Services\ClientProjectCycleUsage;
 use App\Services\ClientProjectMonthlyTimeService;
 use App\Services\ClientProjectPresenter;
+use App\Services\ClientServicesDashboardPresenter;
 use App\Services\DurationFormatter;
 use App\Services\MonthResolver;
 use App\Support\PersianDate;
@@ -19,11 +20,12 @@ use Illuminate\View\View;
 
 class ProjectController extends Controller
 {
-    public function index(Request $request, ClientProjectAccess $access, ClientProjectPresenter $presenter): View
+    public function index(Request $request, ClientProjectAccess $access, ClientServicesDashboardPresenter $presenter): View
     {
         $customer = $request->attributes->get('portalCustomer');
         $projects = $access->paginateFor($customer);
-        $projects->through(fn ($project): array => $presenter->present($project));
+        $projects->getCollection()->load(['currentCycle', 'cycles.invoice']);
+        $projects->through(fn ($project): array => $presenter->projectCard($project, CarbonImmutable::today()));
 
         return view('client.projects.index', [
             'projects' => $projects,
@@ -82,6 +84,8 @@ class ProjectController extends Controller
             'activities' => $activities,
             'summary' => $summary,
             'currentCycleSummary' => $currentCycleSummary,
+            'contractAgreement' => $project->delivery_mode === 'time'
+                ? ($currentCycle?->agreement_snapshot ?? $project->currentPlan?->agreement_snapshot) : null,
             'delivery' => $project->delivery_mode !== 'time'
                 ? app(ClientDeliveryPresenter::class)->project($project, $request->integer('cycle') ?: null) : null,
             'serviceRoutes' => $this->serviceRoutes($request),

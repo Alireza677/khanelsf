@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ClientProjectDeliveryMode;
+use App\Support\ServiceDeliveryNumber;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -35,13 +36,38 @@ final class ServiceAgreementData
         return bcadd((string) $value, '0', 4);
     }
 
-    public static function validate(array $data): array
+    public static function quantity(mixed $value, mixed $unit, string $field = 'quantity'): ?string
+    {
+        if ($unit !== null && ! is_string($unit)) {
+            throw ValidationException::withMessages([preg_replace('/quantity$/', 'unit', $field) => 'واحد باید متن معتبر باشد.']);
+        }
+        $value = self::decimal($value, $field);
+        if ($value !== null) {
+            if (bccomp($value, '0', 4) <= 0) {
+                throw ValidationException::withMessages([$field => 'مقدار تعهد باید بیشتر از صفر باشد.']);
+            }
+            ServiceDeliveryNumber::assertPrecision($value, ServiceDeliveryNumber::quantityFormat($unit), $field);
+        }
+
+        return $value;
+    }
+
+    /** Only unchanged quantities from an immutable, trusted agreement may be carried forward. */
+    public static function validate(array $data, array $preservedDeliverables = []): array
     {
         $data['features'] = self::features($data['features'] ?? []);
         self::decimal($data['amount'] ?? null, 'amount');
+        $position = 0;
         foreach (is_array($data['deliverables'] ?? null) ? $data['deliverables'] : [] as $index => $line) {
+            $old = $preservedDeliverables[$position++] ?? [];
             if (is_array($line)) {
-                self::decimal($line['quantity'] ?? null, "deliverables.$index.quantity");
+                $quantity = self::decimal($line['quantity'] ?? null, "deliverables.$index.quantity");
+                $preserved = (string) ($old['deliverable_type_id'] ?? '') === (string) ($line['deliverable_type_id'] ?? '')
+                    && ($old['unit'] ?? null) === ($line['unit'] ?? null)
+                    && $quantity !== null && $quantity === self::decimal($old['quantity'] ?? null, 'quantity');
+                if (! $preserved) {
+                    self::quantity($line['quantity'] ?? null, $line['unit'] ?? null, "deliverables.$index.quantity");
+                }
             }
         }
 
@@ -82,7 +108,7 @@ final class ServiceAgreementData
         $data = ['features' => $features ?? []];
         $validated = Validator::make($data, [
             'features' => ['array', 'max:100'],
-            'features.*' => ['array:title,type,value,unit'],
+            'features.*' => ['array:title,type,value,unit,numeric_format'],
             'features.*.title' => ['required', 'string', 'max:255'],
             'features.*.type' => ['required', Rule::in(array_keys(self::FEATURE_TYPES))],
             'features.*.value' => ['required', function ($attribute, $value, $fail) use ($data): void {
@@ -93,8 +119,11 @@ final class ServiceAgreementData
                     $fail('مقدار متنی ویژگی باید متن حداکثر ۲۰۰۰ نویسه باشد.');
                 } elseif ($type === 'number' && ((! is_string($value) && ! is_int($value)) || preg_match(self::FEATURE_NUMBER, (string) $value) !== 1)) {
                     $fail('مقدار عددی ویژگی باید عدد اعشاری معتبر با حداکثر ۴ رقم اعشار باشد.');
+                } elseif ($type === 'number' && data_get($data, substr($attribute, 0, -strlen('value')).'numeric_format', 'decimal') === 'integer' && ! ServiceDeliveryNumber::isInteger($value)) {
+                    $fail('برای ویژگی با نوع عدد صحیح، مقدار اعشاری مجاز نیست.');
                 }
             }],
+            'features.*.numeric_format' => ['sometimes', 'required', Rule::in(array_keys(ServiceDeliveryNumber::FORMATS)), 'prohibited_unless:features.*.type,number'],
             'features.*.unit' => ['nullable', 'string', 'max:100', 'prohibited_unless:features.*.type,number'],
         ])->validate();
 
@@ -104,17 +133,23 @@ final class ServiceAgreementData
                 $value = (bool) $value;
             } elseif ($feature['type'] === 'number') {
                 // Exact decimal strings, including zero/negatives; no float conversion.
-                $value = rtrim(rtrim(bcadd((string) $value, '0', 4), '0'), '.');
+                $value = ServiceDeliveryNumber::format(bcadd((string) $value, '0', 4));
             }
 
             return ['title' => trim($feature['title']), 'type' => $feature['type'], 'value' => $value,
-                'unit' => $feature['type'] === 'number' && filled($feature['unit'] ?? null) ? trim($feature['unit']) : null];
+                'unit' => $feature['type'] === 'number' && filled($feature['unit'] ?? null) ? trim($feature['unit']) : null,
+                ...($feature['type'] === 'number' && isset($feature['numeric_format']) ? ['numeric_format' => $feature['numeric_format']] : [])];
         }, $validated['features']));
     }
 
-    public static function canonical(array $data): array
+    public static function featuresForComparison(mixed $features): array
     {
-        $data = self::validate($data);
+        return array_map(fn ($feature) => $feature['type'] === 'number' ? [...$feature, 'numeric_format' => $feature['numeric_format'] ?? 'decimal'] : $feature, self::features($features));
+    }
+
+    public static function canonical(array $data, array $preservedDeliverables = []): array
+    {
+        $data = self::validate($data, $preservedDeliverables);
         $data['amount'] = isset($data['amount']) ? bcadd((string) $data['amount'], '0', 4) : null;
         $data['contract_terms'] = $data['contract_terms'] ?? null;
         $data['scheduling_defaults'] = array_filter($data['scheduling_defaults'] ?? [], fn ($value) => $value !== null && $value !== '');

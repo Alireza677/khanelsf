@@ -25,14 +25,14 @@ class ClientProjectPlanVersion extends Model
             if (! $source->isPublished() || $plan->catalog_snapshot !== $source->catalog_snapshot) {
                 throw ValidationException::withMessages(['catalog_snapshot' => 'قرارداد باید از نسخه منتشرشده و snapshot اصلی آن ساخته شود.']);
             }
-            ServiceAgreementData::validate($plan->agreement_snapshot);
+            $latest = $plan->project?->planVersions()->orderByDesc('version')->first();
+            ServiceAgreementData::validate($plan->agreement_snapshot, $latest?->agreement_snapshot['deliverables'] ?? []);
             validator([...$plan->getAttributes(), 'effective_from' => $plan->effective_from?->toDateString()], [
                 'client_project_id' => ['required', 'exists:client_projects,id'],
                 'version' => ['required', 'integer', 'min:1'],
                 'effective_from' => ['required', 'date_format:Y-m-d'],
             ])->validate();
-            $latest = $plan->project->planVersions()->orderByDesc('version')->first();
-            $featuresChanged = $latest && ServiceAgreementData::features($latest->agreement_snapshot['features'] ?? []) !== ServiceAgreementData::features($plan->agreement_snapshot['features'] ?? []);
+            $featuresChanged = $latest && ServiceAgreementData::featuresForComparison($latest->agreement_snapshot['features'] ?? []) !== ServiceAgreementData::featuresForComparison($plan->agreement_snapshot['features'] ?? []);
             app(ClientProjectCycleDelivery::class)->assertAmendmentDate($plan->project, $plan->effective_from->toDateString(), $featuresChanged);
         });
         static::updating(fn () => throw new LogicException('Customer agreements are immutable; create a new version.'));

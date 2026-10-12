@@ -14,7 +14,7 @@
         <h3 class="font-medium">تعهدات تحویل</h3>
         <ul class="mt-2 space-y-2">
             @forelse ($data['deliverables'] ?? [] as $line)
-                <li>{{ $line['name'] ?? 'تعهد بدون نام' }} — {{ $line['quantity'] ?? '—' }} {{ $line['unit'] ?? '' }}؛ {{ !empty($line['approval_required']) ? 'نیازمند تأیید مشتری' : 'بدون تأیید مشتری' }}؛ اصلاح مجاز: {{ $line['revision_allowance'] ?? 0 }}
+                <li>{{ $line['name'] ?? 'تعهد بدون نام' }} — {{ \App\Support\ServiceDeliveryNumber::format($line['quantity'] ?? null) ?? '—' }} {{ $line['unit'] ?? '' }}؛ {{ !empty($line['approval_required']) ? 'نیازمند تأیید مشتری' : 'بدون تأیید مشتری' }}؛ اصلاح مجاز: {{ $line['revision_allowance'] ?? 0 }}
                     @if (filled(data_get($line, 'scheduling_rules.due_day_offset')))
                         ؛ موعد: {{ data_get($line, 'scheduling_rules.due_day_offset') }} روز پس از شروع دوره
                     @endif
@@ -28,7 +28,7 @@
         <h3 class="font-medium">ویژگی‌ها و شرایط بسته</h3>
         <ul class="mt-2 space-y-2">
             @forelse ($data['features'] ?? [] as $feature)
-                <li>{{ $feature['title'] ?? 'ویژگی بدون عنوان' }}: {{ ($feature['type'] ?? null) === 'boolean' ? (!empty($feature['value']) ? 'دارد' : 'ندارد') : ($feature['value'] ?? '—') }} {{ ($feature['type'] ?? null) === 'number' ? ($feature['unit'] ?? '') : '' }}</li>
+                <li>{{ $feature['title'] ?? 'ویژگی بدون عنوان' }}: {{ match ($feature['type'] ?? null) { 'boolean' => !empty($feature['value']) ? 'دارد' : 'ندارد', 'number' => \App\Support\ServiceDeliveryNumber::format($feature['value'] ?? null) ?? '—', default => $feature['value'] ?? '—' } }} {{ ($feature['type'] ?? null) === 'number' ? ($feature['unit'] ?? '') : '' }}</li>
             @empty
                 <li>ویژگی اختیاری تعریف نشده است.</li>
             @endforelse

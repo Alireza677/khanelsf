@@ -12,14 +12,14 @@ use Illuminate\Validation\ValidationException;
 
 final class ServiceOfferingPublisher
 {
-    public function newDraft(ServiceOffering $offering, User $actor): ServiceOfferingVersion
+    public function newDraft(ServiceOffering $offering, User $actor, ?array $definition = null): ServiceOfferingVersion
     {
         Gate::forUser($actor)->authorize('update', $offering);
 
-        return DB::transaction(function () use ($offering): ServiceOfferingVersion {
+        return DB::transaction(function () use ($offering, $definition): ServiceOfferingVersion {
             $offering = ServiceOffering::query()->whereKey($offering)->lockForUpdate()->firstOrFail();
             $source = $offering->versions()->first();
-            $definition = $source?->definition();
+            $definition = $definition !== null ? ServiceAgreementData::canonical($definition) : $source?->definition();
             $version = $offering->versions()->create([
                 ...($definition ? array_diff_key($definition, ['deliverables' => true]) : []),
                 'version' => ((int) $offering->versions()->max('version')) + 1,

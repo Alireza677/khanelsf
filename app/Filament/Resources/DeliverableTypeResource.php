@@ -30,7 +30,7 @@ class DeliverableTypeResource extends Resource
     {
         return [
             Forms\Components\TextInput::make('name')->label('نام')->required()->maxLength(255),
-            Forms\Components\TextInput::make('unit')->label('واحد')->default('count')->required()->maxLength(100)->helperText('مانند عدد، جلسه یا واحد سفارشی قرارداد.'),
+            Forms\Components\TextInput::make('unit')->label('واحد')->default('count')->required()->maxLength(100)->helperText('count/عدد و session/جلسه/نوبت شمارشی و صحیح‌اند؛ واحدهای قابل تقسیم مثل متر، اعشار می‌پذیرند. واحد، نوع عدد و نمایش آن مفاهیم مستقلی هستند.'),
             Forms\Components\Toggle::make('active')->label('فعال')->default(true),
             Forms\Components\Textarea::make('description')->label('توضیحات')->columnSpanFull(),
         ];

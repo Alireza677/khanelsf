@@ -98,6 +98,12 @@ class ServiceOfferingFeaturesTest extends TestCase
         $draft = $this->draft();
         $features = $this->features();
         $features[1]['value'] = 'شرایط عمومی جدید';
+        foreach ($features as &$feature) {
+            if ($feature['type'] === 'number') {
+                $feature['numeric_format'] = 'decimal';
+            }
+        }
+        unset($feature);
         $this->actingAs($this->admin);
         Livewire::test(EditServiceOfferingVersion::class, ['record' => $draft->id])->fillForm(['features' => $features])->call('save')->assertHasNoFormErrors();
         $this->assertSame($features, $draft->fresh()->features);

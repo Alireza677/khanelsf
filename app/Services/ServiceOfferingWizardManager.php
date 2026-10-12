@@ -39,7 +39,7 @@ final class ServiceOfferingWizardManager
                 'amount' => null, 'currency_code' => 'IRT', 'contract_terms' => null,
                 'features' => [], 'deliverables' => [], 'scheduling_defaults' => ['cycle_anchor_day' => 1],
                 ...($offering ? Arr::only($offering->attributesToArray(), self::METADATA) : []),
-                ...(($draft ?? $published)?->definition() ?? []),
+                ...(($draft ?? $published)?->definition(false) ?? []),
             ],
         ];
     }
@@ -87,11 +87,11 @@ final class ServiceOfferingWizardManager
                 }
                 $offering ??= ServiceOffering::create($metadata);
                 $offering->update([...$metadata, ...($publish ? ['status' => 'active'] : [])]);
-                $version ??= app(ServiceOfferingPublisher::class)->newDraft($offering, $actor);
+                $version ??= app(ServiceOfferingPublisher::class)->newDraft($offering, $actor, $definition);
                 Gate::forUser($actor)->authorize('update', $version);
 
                 // Avoid rewriting definition rows for an identical draft retry.
-                if ($version->definition() !== $definition) {
+                if ($version->definition(false) !== $definition) {
                     $version->update(Arr::except($definition, ['deliverables']));
                     foreach ($version->deliverables()->get() as $line) {
                         $line->delete();

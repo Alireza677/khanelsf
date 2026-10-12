@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ClientProjectWorkItemStatus;
 use App\Services\ServiceAgreementData;
+use App\Support\ServiceDeliveryNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -42,6 +43,14 @@ class ClientProjectWorkItem extends Model
                 if ((int) $commitment->client_project_cycle_id !== (int) $cycle->id || $item->unit !== $commitment->unit || bccomp($item->quantity ?? '0', '0', 4) <= 0) {
                     throw ValidationException::withMessages(['quantity' => 'مقدار و واحد کار باید با تعهد دوره سازگار باشند.']);
                 }
+                // Keep the generator's fractional remainder from a historical snapshot
+                // usable, while new integral commitments cannot acquire fractional work.
+                $remainder = bcsub($commitment->quantity, bcdiv($commitment->quantity, '1', 0), 4);
+                if (ServiceDeliveryNumber::quantityFormat($item->unit) !== 'integer' || bccomp($remainder, '0', 4) === 0 || bccomp($item->quantity, $remainder, 4) !== 0) {
+                    ServiceAgreementData::quantity($item->quantity, $item->unit);
+                }
+            } else {
+                ServiceAgreementData::quantity($item->quantity, $item->unit);
             }
         });
     }

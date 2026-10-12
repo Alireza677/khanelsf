@@ -8,6 +8,7 @@ use App\Filament\Resources\ServiceOfferingVersionResource\Pages;
 use App\Models\DeliverableType;
 use App\Models\ServiceOfferingVersion;
 use App\Services\ServiceAgreementData;
+use App\Support\ServiceDeliveryNumber;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -63,8 +64,13 @@ class ServiceOfferingVersionResource extends Resource
             $type,
             Forms\Components\TextInput::make('name')->label('نام تعهد')->required()->maxLength(255),
             Forms\Components\Textarea::make('description')->label('توضیحات'),
-            Forms\Components\TextInput::make('quantity')->label('مقدار')->required()->default('1')->regex('/^\d{1,14}(?:\.\d{1,4})?$/')->inputMode('decimal'),
-            Forms\Components\TextInput::make('unit')->label('واحد')->required()->default('count')->maxLength(100),
+            Forms\Components\TextInput::make('quantity')->label('مقدار')->required()->default('1')
+                ->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state))
+                ->regex(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? '/^\d{1,14}(?:\.0{1,4})?$/' : '/^\d{1,14}(?:\.\d{1,4})?$/')
+                ->type('number')->step(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? '1' : '0.0001')
+                ->inputMode(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? 'numeric' : 'decimal')
+                ->helperText(fn (Forms\Get $get) => ServiceDeliveryNumber::quantityFormat($get('unit')) === 'integer' ? 'این واحد شمارشی است؛ عدد صحیح مثبت وارد کنید.' : 'عدد مثبت؛ حداکثر ۴ رقم اعشار.'),
+            Forms\Components\TextInput::make('unit')->label('واحد')->required()->default('count')->maxLength(100)->live(onBlur: true),
             Forms\Components\Toggle::make('approval_required')->label('نیازمند تأیید مشتری')->default(false),
             Forms\Components\TextInput::make('revision_allowance')->label('تعداد اصلاح مجاز')->integer()->minValue(0)->maxValue(4294967295)->default(0)->required(),
             Forms\Components\TextInput::make('scheduling_rules.due_day_offset')->label('موعد: روز پس از شروع دوره')->integer()->minValue(0)->maxValue(3660),
@@ -107,10 +113,19 @@ class ServiceOfferingVersionResource extends Resource
                     ->afterStateUpdated(function (Forms\Set $set, ?string $state): void {
                         $set('value', $state === 'boolean' ? false : null);
                         $set('unit', null);
+                        $set('numeric_format', 'decimal');
                     }),
+                Forms\Components\Select::make('numeric_format')->label('نوع عدد')->options(ServiceDeliveryNumber::FORMATS)->default('decimal')->required()->live()
+                    ->visible(fn (Forms\Get $get) => $get('type') === 'number')->dehydrated(fn (Forms\Get $get) => $get('type') === 'number')
+                    ->helperText('مستقل از واحد نمایشی؛ برای مدت یا تعداد نیز نوع مناسب را انتخاب کنید.'),
                 Forms\Components\Group::make()->schema(fn (Forms\Get $get) => [match ($get('type')) {
                     'boolean' => Forms\Components\Toggle::make('value')->label('دارد')->onIcon('heroicon-o-check')->offIcon('heroicon-o-x-mark')->default(false)->helperText('خاموش: ندارد؛ روشن: دارد.'),
-                    'number' => Forms\Components\TextInput::make('value')->label('مقدار عددی')->required()->regex(ServiceAgreementData::FEATURE_NUMBER)->inputMode('decimal')->helperText('عدد با حداکثر ۴ رقم اعشار؛ مانند ۶۰.'),
+                    'number' => Forms\Components\TextInput::make('value')->label('مقدار عددی')->required()
+                        ->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state))
+                        ->regex(fn (Forms\Get $get) => $get('numeric_format') === 'integer' ? ServiceDeliveryNumber::INTEGER_INPUT : ServiceAgreementData::FEATURE_NUMBER)
+                        ->type('number')->step(fn (Forms\Get $get) => $get('numeric_format') === 'integer' ? '1' : '0.0001')
+                        ->inputMode(fn (Forms\Get $get) => $get('numeric_format') === 'integer' ? 'numeric' : 'decimal')
+                        ->helperText(fn (Forms\Get $get) => $get('numeric_format') === 'integer' ? 'عدد صحیح؛ مانند ۶۰. مقدار اعشاری رد می‌شود.' : 'عدد با حداکثر ۴ رقم اعشار؛ مانند ۲٫۵.'),
                     default => Forms\Components\Textarea::make('value')->label('مقدار متنی')->required()->maxLength(2000)->placeholder('مانند ۳ تا ۴ ساعت'),
                 }]),
                 Forms\Components\TextInput::make('unit')->label('واحد نمایشی — اختیاری')->maxLength(100)
@@ -124,7 +139,12 @@ class ServiceOfferingVersionResource extends Resource
         return Infolists\Components\RepeatableEntry::make($path)->label('ویژگی‌ها و شرایط پکیج')->schema([
             Infolists\Components\TextEntry::make('title')->label('عنوان'),
             Infolists\Components\TextEntry::make('type')->label('نوع')->formatStateUsing(fn ($state) => ServiceAgreementData::FEATURE_TYPES[$state] ?? $state),
-            Infolists\Components\TextEntry::make('value')->label('مقدار')->formatStateUsing(fn ($state, Infolists\Components\TextEntry $component) => data_get($component->getContainer()->getState(), 'type') === 'boolean' ? ($state ? 'دارد' : 'ندارد') : $state),
+            Infolists\Components\TextEntry::make('value')->label('مقدار')->formatStateUsing(fn ($state, Infolists\Components\TextEntry $component) => match (data_get($component->getContainer()->getState(), 'type')) {
+                'boolean' => $state ? 'دارد' : 'ندارد',
+                'number' => ServiceDeliveryNumber::format($state),
+                default => $state,
+            }),
+            Infolists\Components\TextEntry::make('numeric_format')->label('نوع عدد')->default('decimal')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::FORMATS[$state] ?? $state)->visible(fn (Infolists\Components\TextEntry $component) => data_get($component->getContainer()->getState(), 'type') === 'number'),
             Infolists\Components\TextEntry::make('unit')->label('واحد نمایشی')->placeholder('—')->visible(fn (Infolists\Components\TextEntry $component) => data_get($component->getContainer()->getState(), 'type') === 'number'),
         ])->columns(4)->columnSpanFull();
     }
@@ -151,7 +171,7 @@ class ServiceOfferingVersionResource extends Resource
             Infolists\Components\RepeatableEntry::make('deliverables')->label('تعهدات')->schema([
                 Infolists\Components\TextEntry::make('name')->label('نام'),
                 Infolists\Components\TextEntry::make('description')->label('توضیحات'),
-                Infolists\Components\TextEntry::make('quantity')->label('مقدار'),
+                Infolists\Components\TextEntry::make('quantity')->label('مقدار')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
                 Infolists\Components\TextEntry::make('unit')->label('واحد'),
                 Infolists\Components\TextEntry::make('approval_required')->label('تأیید مشتری')->formatStateUsing(fn ($state) => $state ? 'بله' : 'خیر'),
                 Infolists\Components\TextEntry::make('revision_allowance')->label('اصلاح مجاز'),

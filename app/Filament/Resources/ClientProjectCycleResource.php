@@ -7,6 +7,7 @@ use App\Models\ClientProjectCycle;
 use App\Services\ClientCycleReportPublisher;
 use App\Services\ClientProjectDeliveryProgress;
 use App\Services\ClientProjectWorkItemGenerator;
+use App\Support\ServiceDeliveryNumber;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists;
@@ -50,13 +51,13 @@ class ClientProjectCycleResource extends Resource
             Infolists\Components\TextEntry::make('agreement_snapshot.contract_terms')->label('شرایط محفوظ')->columnSpanFull(),
             Infolists\Components\RepeatableEntry::make('commitments')->label('تعهدات مستقل این دوره')->schema([
                 Infolists\Components\TextEntry::make('name')->label('تعهد'),
-                Infolists\Components\TextEntry::make('quantity')->label('مقدار تعهد'),
+                Infolists\Components\TextEntry::make('quantity')->label('مقدار تعهد')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
                 Infolists\Components\TextEntry::make('unit')->label('واحد'),
                 Infolists\Components\TextEntry::make('approval_required')->label('تأیید لازم')->formatStateUsing(fn ($state) => $state ? 'بله' : 'خیر'),
                 Infolists\Components\TextEntry::make('revision_allowance')->label('اصلاح مجاز'),
-                Infolists\Components\TextEntry::make('operational_completed')->label('اجراشده')->getStateUsing(fn ($record) => app(ClientProjectDeliveryProgress::class)->commitment($record)['operational_completed']),
-                Infolists\Components\TextEntry::make('accepted_completed')->label('تکمیل تعهد')->getStateUsing(fn ($record) => app(ClientProjectDeliveryProgress::class)->commitment($record)['completed']),
-                Infolists\Components\TextEntry::make('remaining')->label('باقی‌مانده تعهد')->getStateUsing(fn ($record) => app(ClientProjectDeliveryProgress::class)->commitment($record)['remaining']),
+                Infolists\Components\TextEntry::make('operational_completed')->label('اجراشده')->getStateUsing(fn ($record) => app(ClientProjectDeliveryProgress::class)->commitment($record)['operational_completed'])->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
+                Infolists\Components\TextEntry::make('accepted_completed')->label('تکمیل تعهد')->getStateUsing(fn ($record) => app(ClientProjectDeliveryProgress::class)->commitment($record)['completed'])->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
+                Infolists\Components\TextEntry::make('remaining')->label('باقی‌مانده تعهد')->getStateUsing(fn ($record) => app(ClientProjectDeliveryProgress::class)->commitment($record)['remaining'])->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
             ])->columns(3)->columnSpanFull(),
             Infolists\Components\RepeatableEntry::make('reports')->label('گزارش‌های تاریخی منتشرشده')->schema([
                 Infolists\Components\TextEntry::make('version')->label('نسخه'),
@@ -67,9 +68,9 @@ class ClientProjectCycleResource extends Resource
                 Infolists\Components\TextEntry::make('snapshot.agreement.amount')->label('قیمت محفوظ'),
                 Infolists\Components\RepeatableEntry::make('snapshot.commitments')->label('تعهدات محفوظ')->schema([
                     Infolists\Components\TextEntry::make('name')->label('نام'),
-                    Infolists\Components\TextEntry::make('committed')->label('تعهد'),
-                    Infolists\Components\TextEntry::make('completed')->label('تکمیل'),
-                    Infolists\Components\TextEntry::make('remaining')->label('باقی‌مانده'),
+                    Infolists\Components\TextEntry::make('committed')->label('تعهد')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
+                    Infolists\Components\TextEntry::make('completed')->label('تکمیل')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
+                    Infolists\Components\TextEntry::make('remaining')->label('باقی‌مانده')->formatStateUsing(fn ($state) => ServiceDeliveryNumber::format($state)),
                 ])->columns(4)->columnSpanFull(),
             ])->columns(3)->columnSpanFull(),
         ];

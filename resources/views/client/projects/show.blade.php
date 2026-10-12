@@ -99,5 +99,9 @@
         </x-client.card>
         @endif
 
+        @if ($contractAgreement)
+            @include('client.projects.contract', ['agreement' => $contractAgreement])
+        @endif
+
     </div>
 @endsection

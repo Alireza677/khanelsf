@@ -19,40 +19,10 @@
                 @if ($servicesDashboard['projects']->isEmpty())
                     <x-client.empty-state title="پروژه‌ها" message="هنوز پروژه‌ای برای شما ثبت نشده است." />
                 @else
-                    <div class="services-project-table" role="table" aria-label="فهرست پروژه‌ها">
-                        <div class="services-project-table__head" role="row">
-                            <span role="columnheader">نام پروژه</span><span role="columnheader">نوع پروژه</span><span role="columnheader">وضعیت پروژه</span><span role="columnheader">سهم دوره جاری</span><span role="columnheader">مصرف دوره جاری</span><span role="columnheader">وضعیت پرداخت</span>
-                        </div>
-                        <div class="services-project-table__body">
-                            @foreach ($servicesDashboard['projects'] as $project)
-                                <a class="services-project-row services-project-row--{{ $project['timeline']['state'] ?? 'neutral' }}" role="row" href="{{ route($serviceRoutes['project_show'], ['project' => $project['id'], 'customer' => $customer->id]) }}" aria-label="مشاهده پروژه {{ $project['title'] }}">
-                                    <div class="services-project-row__summary">
-                                        <div class="services-project-name" role="cell"><strong>{{ $project['title'] }}</strong><small>مشاهده جزئیات پروژه ←</small></div>
-                                        <div role="cell"><small>نوع پروژه</small><span>{{ $project['type'] ?: 'پروژه خدماتی' }}</span></div>
-                                        <div role="cell"><small>وضعیت پروژه</small><span class="portal-badge">{{ $project['status_label'] }}</span></div>
-                                        <div role="cell"><small>سهم دوره جاری</small><strong>{{ $project['delivery_mode'] === 'tasks' ? 'تعهدات تحویل' : ($project['limit_time'] ?? 'دوره جاری ندارد') }}</strong></div>
-                                        <div role="cell"><small>مصرف دوره جاری</small><strong>{{ $project['delivery_mode'] === 'tasks' ? 'پیشرفت مستقل هر تعهد' : $project['used_time'] }}</strong>@if($project['overage_time'])<span class="portal-badge">خدمات مازاد: {{ $project['overage_time'] }}</span>@endif @if($project['cycle_start'])<small>دوره جاری: {{ $project['cycle_start'] }} تا {{ $project['cycle_end'] }}</small>@endif</div>
-                                        <div role="cell"><small>وضعیت پرداخت</small><span class="services-payment services-payment--{{ $project['payment']['state'] }}">{{ $project['payment']['label'] }}</span></div>
-                                    </div>
-                                    @if ($project['delivery_mode'] !== 'time')
-                                        <div class="services-project-timeline">
-                                            @foreach ($project['commitments'] as $line)<p>{{ $line['name'] }}: {{ $line['completed'] }} از {{ $line['committed'] }} {{ $line['unit'] }}؛ باقی‌مانده {{ $line['remaining'] }}</p>@endforeach
-                                        </div>
-                                    @endif
-                                    @if ($project['delivery_mode'] !== 'tasks')
-                                    <div class="services-project-timeline">
-                                        <div class="services-timeline-date"><small>{{ $project['timeline']['start_label'] }}</small><strong>{{ $project['timeline']['start_date'] ?: 'تعیین نشده' }}</strong></div>
-                                        <div class="services-timeline-track" style="--timeline-progress: {{ $project['timeline']['percentage'] }}%; --today-position: {{ $project['timeline']['today_percentage'] ?? 0 }}%">
-                                            <span class="services-timeline-track__base"></span><span class="services-timeline-track__progress"></span><i class="is-start"></i><i class="is-end"></i>
-                                            @if ($project['timeline']['today_percentage'] !== null && $project['timeline']['state'] === 'active')<b class="services-timeline-today"><span>امروز</span></b>@endif
-                                        </div>
-                                        <div class="services-timeline-date services-timeline-date--end"><small>{{ $project['timeline']['end_label'] }}</small><strong>{{ $project['timeline']['end_date'] ?: 'تعیین نشده' }}</strong></div>
-                                        <p class="services-timeline-status"><span>{{ $project['timeline']['label'] }}</span>{{ $project['timeline']['detail'] }}</p>
-                                    </div>
-                                    @endif
-                                </a>
-                            @endforeach
-                        </div>
+                    <div class="portal-project-grid">
+                        @foreach ($servicesDashboard['projects'] as $project)
+                            @include('client.projects.card', ['projectUrl' => route($serviceRoutes['project_show'], ['project' => $project['id'], 'customer' => $customer->id])])
+                        @endforeach
                     </div>
                 @endif
             </section>

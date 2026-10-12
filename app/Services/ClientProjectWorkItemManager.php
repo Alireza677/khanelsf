@@ -48,13 +48,19 @@ final class ClientProjectWorkItemManager
             // Generated contractual quantities and associations never drift.
             if ($item->client_project_cycle_commitment_id) {
                 foreach (['quantity', 'unit'] as $field) {
-                    if (array_key_exists($field, $attributes) && (string) $attributes[$field] !== (string) $item->$field) {
+                    $value = array_key_exists($field, $attributes) ? $attributes[$field] : $item->$field;
+                    $same = $field === 'quantity'
+                        ? ServiceAgreementData::decimal($value, 'quantity') === $item->quantity
+                        : (string) $value === (string) $item->$field;
+                    if (array_key_exists($field, $attributes) && ! $same) {
                         throw ValidationException::withMessages([$field => 'مقدار و واحد کار قراردادی ثابت است.']);
                     }
                     unset($attributes[$field]);
                 }
             }
-            $this->validate([...$item->attributesToArray(), ...$attributes]);
+            $quantityChanged = array_key_exists('quantity', $attributes) && ServiceAgreementData::decimal($attributes['quantity'], 'quantity') !== $item->quantity;
+            $unitChanged = array_key_exists('unit', $attributes) && $attributes['unit'] !== $item->unit;
+            $this->validate([...$item->attributesToArray(), ...$attributes], $quantityChanged || $unitChanged);
             $from = $item->status->value;
             $target = $data['status'] ?? $from;
             if ($target !== $from) {
@@ -104,9 +110,9 @@ final class ClientProjectWorkItemManager
         }, 3);
     }
 
-    private function validate(array $data): void
+    private function validate(array $data, bool $validateQuantityUnits = true): void
     {
-        $quantity = ServiceAgreementData::decimal($data['quantity'] ?? null, 'quantity');
+        $quantity = $validateQuantityUnits ? ServiceAgreementData::quantity($data['quantity'] ?? null, $data['unit'] ?? null) : ServiceAgreementData::decimal($data['quantity'] ?? null, 'quantity');
         validator($data, [
             'title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'],
             'unit' => [$quantity !== null ? 'required' : 'nullable', 'string', 'max:255'],

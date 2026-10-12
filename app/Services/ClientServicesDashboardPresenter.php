@@ -19,35 +19,7 @@ class ClientServicesDashboardPresenter
     public function present(Collection $projects, CarbonImmutable $month): array
     {
         $date = $month->startOfDay();
-        $projectCards = $projects->map(function (ClientProject $project) use ($date): array {
-            $cycle = $project->relationLoaded('currentCycle')
-                ? $project->currentCycle
-                : $project->cycles->sortBy('starts_at')
-                    ->first(fn ($cycle): bool => $cycle->containsDate($date));
-            $summary = $cycle && $project->delivery_mode !== 'tasks' ? $this->cycleUsage->summary($cycle) : null;
-            $hasAllocation = $cycle && ($project->delivery_mode !== 'hybrid' || $cycle->hasHourlyAllocation());
-            $timeline = $project->delivery_mode === 'tasks' ? [] : $this->schedules->timeline($project, $cycle, $date);
-
-            return [
-                ...$this->projects->present($project),
-                'used_minutes' => $summary['consumed_minutes'] ?? 0,
-                'used_time' => $this->durations->format($summary['consumed_minutes'] ?? 0),
-                'limit_minutes' => $hasAllocation ? ($summary['allocated_minutes'] ?? null) : null,
-                'limit_time' => $summary && $hasAllocation ? $this->durations->format($summary['allocated_minutes']) : null,
-                'remaining_time' => $summary && $hasAllocation ? $this->durations->format($summary['remaining_minutes']) : null,
-                'overage_minutes' => $summary['overage_minutes'] ?? 0,
-                'overage_time' => ($summary['overage_minutes'] ?? 0) > 0
-                    ? $this->durations->format($summary['overage_minutes'])
-                    : null,
-                'cycle_start' => $cycle ? PersianDate::date($cycle->starts_at) : null,
-                'cycle_end' => $cycle ? PersianDate::date($cycle->ends_at) : null,
-                'payment' => $this->payment($project),
-                'timeline' => $timeline,
-                'commitments' => $cycle && $project->delivery_mode !== 'time' ? app(ClientProjectDeliveryProgress::class)->cycle($cycle) : [],
-                'awaiting_approval_count' => $cycle && $project->delivery_mode !== 'time' ? $cycle->workItems()->where('visibility', 'client')->where('status', 'submitted')
-                    ->whereHas('deliveries', fn ($query) => $query->where('visibility', 'client')->where('approval_required', true)->whereDoesntHave('review'))->count() : 0,
-            ];
-        });
+        $projectCards = $projects->map(fn (ClientProject $project): array => $this->projectCard($project, $date));
 
         $hourlyCards = $projectCards->filter(fn ($project) => $project['delivery_mode'] !== 'tasks');
         $used = (int) $hourlyCards->sum('used_minutes');
@@ -72,6 +44,48 @@ class ClientServicesDashboardPresenter
                 'chart_percentage' => $percentage ?? 0,
                 'has_limit' => $limit !== null,
             ],
+        ];
+    }
+
+    public function projectCard(ClientProject $project, CarbonImmutable $date): array
+    {
+        $cycle = $project->relationLoaded('currentCycle')
+            ? $project->currentCycle
+            : $project->cycles()->containingDate($date)->oldest('starts_at')->first();
+        $summary = $cycle && $project->delivery_mode !== 'tasks' ? $this->cycleUsage->summary($cycle) : null;
+        $hasAllocation = $cycle && ($project->delivery_mode !== 'hybrid' || $cycle->hasHourlyAllocation());
+        $timeline = $project->delivery_mode === 'tasks' ? [] : $this->schedules->timeline($project, $cycle, $date);
+
+        $agreement = $cycle?->agreement_snapshot ?? [];
+        if ($agreement === [] && $project->delivery_mode === 'time') {
+            // Legacy hourly cycles have no agreement snapshot; use the immutable effective agreement.
+            $agreement = $project->planVersions()->whereDate('effective_from', '<=', $date)
+                ->orderByDesc('effective_from')->orderByDesc('version')->first()?->agreement_snapshot ?? [];
+        }
+        $deadline = $cycle && $project->delivery_mode !== 'time' ? $cycle->workItems()->where('visibility', 'client')->whereNotIn('status', ['accepted', 'completed', 'cancelled'])->whereNotNull('due_at')->orderBy('due_at')->first()?->due_at : null;
+
+        return [
+            ...$this->projects->present($project),
+            'package_name' => $agreement['offering']['name'] ?? null,
+            'service_name' => $agreement['service']['name'] ?? null,
+            'deadline' => PersianDate::dateTime($deadline) ?? ($cycle ? PersianDate::date($cycle->ends_at->copy()->subDay()) : PersianDate::date($project->end_date)),
+            'has_current_cycle' => $cycle !== null,
+            'used_minutes' => $summary['consumed_minutes'] ?? 0,
+            'used_time' => $this->durations->format($summary['consumed_minutes'] ?? 0),
+            'limit_minutes' => $hasAllocation ? ($summary['allocated_minutes'] ?? null) : null,
+            'limit_time' => $summary && $hasAllocation ? $this->durations->format($summary['allocated_minutes']) : null,
+            'remaining_time' => $summary && $hasAllocation ? $this->durations->format($summary['remaining_minutes']) : null,
+            'overage_minutes' => $summary['overage_minutes'] ?? 0,
+            'overage_time' => ($summary['overage_minutes'] ?? 0) > 0
+                ? $this->durations->format($summary['overage_minutes'])
+                : null,
+            'cycle_start' => $cycle ? PersianDate::date($cycle->starts_at) : null,
+            'cycle_end' => $cycle ? PersianDate::date($cycle->ends_at) : null,
+            'payment' => $this->payment($project),
+            'timeline' => $timeline,
+            'commitments' => $cycle && $project->delivery_mode !== 'time' ? app(ClientProjectDeliveryProgress::class)->cycle($cycle) : [],
+            'awaiting_approval_count' => $cycle && $project->delivery_mode !== 'time' ? $cycle->workItems()->where('visibility', 'client')->where('status', 'submitted')
+                ->whereHas('deliveries', fn ($query) => $query->where('visibility', 'client')->where('approval_required', true)->whereDoesntHave('review'))->count() : 0,
         ];
     }
 

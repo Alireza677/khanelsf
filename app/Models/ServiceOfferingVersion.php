@@ -80,8 +80,10 @@ class ServiceOfferingVersion extends Model
         return $this->status === 'published';
     }
 
-    public function definition(): array
+    public function definition(bool $validateQuantityUnits = true): array
     {
+        $deliverables = $this->deliverables()->get()->map->attributesToArray()->all();
+
         return ServiceAgreementData::canonical([
             'delivery_mode' => $this->delivery_mode,
             'schedule_mode' => $this->schedule_mode,
@@ -92,7 +94,7 @@ class ServiceOfferingVersion extends Model
             'contract_terms' => $this->contract_terms,
             'features' => $this->features ?? [],
             'scheduling_defaults' => $this->scheduling_defaults,
-            'deliverables' => $this->deliverables()->get()->map->attributesToArray()->all(),
-        ]);
+            'deliverables' => $deliverables,
+        ], $this->isPublished() || ! $validateQuantityUnits ? $deliverables : []);
     }
 }
