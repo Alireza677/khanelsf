@@ -19,14 +19,21 @@ class DeliverableTypeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-list-bullet';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Form $form): Form
     {
-        return $form->schema([
+        return $form->schema(self::fields());
+    }
+
+    public static function fields(): array
+    {
+        return [
             Forms\Components\TextInput::make('name')->label('نام')->required()->maxLength(255),
             Forms\Components\TextInput::make('unit')->label('واحد')->default('count')->required()->maxLength(100)->helperText('مانند عدد، جلسه یا واحد سفارشی قرارداد.'),
             Forms\Components\Toggle::make('active')->label('فعال')->default(true),
             Forms\Components\Textarea::make('description')->label('توضیحات')->columnSpanFull(),
-        ]);
+        ];
     }
 
     public static function table(Table $table): Table

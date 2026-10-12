@@ -15,6 +15,7 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 
 class ServiceOfferingVersionResource extends Resource
 {
@@ -37,8 +38,29 @@ class ServiceOfferingVersionResource extends Resource
 
     public static function agreementFields(bool $relationship = false): array
     {
+        return [...self::billingFields(), self::featuresField(), ...self::schedulingFields(), self::deliverablesField($relationship)];
+    }
+
+    public static function deliverablesField(bool $relationship = false, bool $inlineCreation = false): Forms\Components\Repeater
+    {
+        $type = Forms\Components\Select::make('deliverable_type_id')->label('نوع تحویل')->options(fn () => DeliverableType::query()->get()->mapWithKeys(fn ($type) => [$type->id => $type->name.($type->active ? '' : ' (غیرفعال)')]))->searchable()->required();
+        if ($inlineCreation) {
+            $type->live()->afterStateUpdated(function (Forms\Set $set, $state): void {
+                if ($type = DeliverableType::find($state)) {
+                    $set('name', $type->name);
+                    $set('unit', $type->unit);
+                }
+            })->createOptionForm(fn () => DeliverableTypeResource::fields())
+                ->createOptionModalHeading('افزودن نوع تحویل')
+                ->createOptionAction(fn (Forms\Components\Actions\Action $action) => $action->visible(fn () => DeliverableTypeResource::canCreate())->modalSubmitActionLabel('ذخیره و انتخاب'))
+                ->createOptionUsing(function (array $data): int {
+                    Gate::authorize('create', DeliverableType::class);
+
+                    return DeliverableType::create($data)->id;
+                });
+        }
         $deliverables = Forms\Components\Repeater::make('deliverables')->label('تعهدات تحویل')->schema([
-            Forms\Components\Select::make('deliverable_type_id')->label('نوع تحویل')->options(fn () => DeliverableType::query()->pluck('name', 'id'))->searchable()->required(),
+            $type,
             Forms\Components\TextInput::make('name')->label('نام تعهد')->required()->maxLength(255),
             Forms\Components\Textarea::make('description')->label('توضیحات'),
             Forms\Components\TextInput::make('quantity')->label('مقدار')->required()->default('1')->regex('/^\d{1,14}(?:\.\d{1,4})?$/')->inputMode('decimal'),
@@ -51,18 +73,27 @@ class ServiceOfferingVersionResource extends Resource
             $deliverables->relationship('deliverables')->orderColumn('sort_order');
         }
 
+        return $deliverables;
+    }
+
+    public static function billingFields(): array
+    {
         return [
             Forms\Components\Select::make('billing_basis')->label('مبنای مبلغ')->options(ServiceAgreementData::BILLING_BASES)->required()->default('package'),
             Forms\Components\Select::make('billing_interval')->label('دوره صورتحساب')->options(ServiceAgreementData::BILLING_INTERVALS)->required()->default('monthly'),
             Forms\Components\TextInput::make('amount')->label('مبلغ')->regex('/^\d{1,14}(?:\.\d{1,4})?$/')->inputMode('decimal')->helperText('خالی: نیازمند تعیین مبلغ؛ صفر: بدون هزینه.'),
             Forms\Components\TextInput::make('currency_code')->label('کد واحد پول')->required()->default('IRT')->regex('/^[A-Z]{3}$/')->maxLength(3),
             Forms\Components\Textarea::make('contract_terms')->label('شرایط قرارداد')->columnSpanFull(),
-            self::featuresField(),
+        ];
+    }
+
+    public static function schedulingFields(): array
+    {
+        return [
             Forms\Components\TextInput::make('scheduling_defaults.cycle_anchor_day')->label('روز ماهانه پیش‌فرض')->integer()->minValue(1)->maxValue(31),
             Forms\Components\TextInput::make('scheduling_defaults.monthly_hour_limit_minutes')->label('سهمیه پیش‌فرض — دقیقه')->integer()->minValue(0)->maxValue(4294967295),
             Forms\Components\DatePicker::make('scheduling_defaults.start_date')->label('شروع پیش‌فرض')->jalali(),
             Forms\Components\DatePicker::make('scheduling_defaults.end_date')->label('پایان پیش‌فرض')->jalali()->after('scheduling_defaults.start_date'),
-            $deliverables,
         ];
     }
 
@@ -100,7 +131,12 @@ class ServiceOfferingVersionResource extends Resource
 
     public static function infolist(Infolist $infolist): Infolist
     {
-        return $infolist->schema([
+        return $infolist->schema(self::definitionEntries());
+    }
+
+    public static function definitionEntries(): array
+    {
+        return [
             Infolists\Components\TextEntry::make('version')->label('نسخه'),
             Infolists\Components\TextEntry::make('status')->label('وضعیت')->formatStateUsing(fn ($state) => $state === 'published' ? 'منتشرشده و قفل‌شده' : 'پیش‌نویس'),
             Infolists\Components\TextEntry::make('delivery_mode')->label('نوع تحویل')->formatStateUsing(fn ($state) => ClientProjectDeliveryMode::options()[$state]),
@@ -121,7 +157,7 @@ class ServiceOfferingVersionResource extends Resource
                 Infolists\Components\TextEntry::make('revision_allowance')->label('اصلاح مجاز'),
                 Infolists\Components\TextEntry::make('scheduling_rules.due_day_offset')->label('فاصله موعد — روز'),
             ])->columns(3)->columnSpanFull(),
-        ]);
+        ];
     }
 
     public static function table(Table $table): Table

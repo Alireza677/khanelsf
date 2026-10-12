@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ServiceOfferingResource\RelationManagers;
 
+use App\Filament\Resources\ServiceOfferingResource;
 use App\Filament\Resources\ServiceOfferingVersionResource;
 use App\Models\ServiceOfferingVersion;
 use App\Services\ServiceOfferingPublisher;
@@ -24,19 +25,19 @@ class VersionsRelationManager extends RelationManager
             Tables\Columns\TextColumn::make('currency_code')->label('واحد پول'),
             Tables\Columns\TextColumn::make('published_at')->label('انتشار')->jalaliDateTime(),
         ])->headerActions([
-            Tables\Actions\Action::make('newDraft')->label('نسخه پیش‌نویس جدید')->visible(fn () => ServiceOfferingVersionResource::canViewAny())
+            Tables\Actions\Action::make('newDraft')->label('نسخه جدید — مدیریت پیشرفته')->color('gray')->visible(fn () => $this->getOwnerRecord()->status !== 'archived' && ServiceOfferingResource::canEdit($this->getOwnerRecord()))
                 ->action(function (): void {
                     $version = app(ServiceOfferingPublisher::class)->newDraft($this->getOwnerRecord(), auth()->user());
                     $this->redirect(ServiceOfferingVersionResource::getUrl('edit', ['record' => $version]));
                 }),
         ])->actions([
             Tables\Actions\Action::make('view')->label('مشاهده')->url(fn ($record) => ServiceOfferingVersionResource::getUrl('view', ['record' => $record])),
-            Tables\Actions\Action::make('edit')->label('ویرایش پیش‌نویس')->visible(fn (ServiceOfferingVersion $record) => ServiceOfferingVersionResource::canEdit($record))->url(fn ($record) => ServiceOfferingVersionResource::getUrl('edit', ['record' => $record])),
+            Tables\Actions\Action::make('edit')->label('ویرایش پیش‌نویس — پیشرفته')->visible(fn (ServiceOfferingVersion $record) => $this->getOwnerRecord()->status !== 'archived' && ServiceOfferingVersionResource::canEdit($record))->url(fn ($record) => ServiceOfferingVersionResource::getUrl('edit', ['record' => $record])),
         ])->bulkActions([]);
     }
 
     public function isReadOnly(): bool
     {
-        return false;
+        return $this->getOwnerRecord()->status === 'archived';
     }
 }
