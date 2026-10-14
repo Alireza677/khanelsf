@@ -51,7 +51,7 @@ class ClientProjectActivityResource extends Resource
                     ->label('پروژه مشتری')
                     ->relationship('project', 'title', modifyQueryUsing: fn (Builder $query, ?ClientProjectActivity $record): Builder => $query
                         ->where(fn (Builder $query): Builder => $query->whereIn('delivery_mode', ['time', 'hybrid'])
-                            ->when($record?->client_project_id, fn (Builder $query, $id): Builder => $query->orWhereKey($id)))
+                            ->when($record?->client_project_id, fn (Builder $query, $id): Builder => $query->orWhere($query->getModel()->getQualifiedKeyName(), '=', $id)))
                         ->whereHas('customer', fn (Builder $query): Builder => $query->where('status', Customer::STATUS_ACTIVE)))
                     ->searchable()->preload()->live()->required()
                     ->helperText('برای پروژه تحویل‌محور از «ثبت کار انجام‌شده» و مسیر تحویل خروجی استفاده کنید.'),
