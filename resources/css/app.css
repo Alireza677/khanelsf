@@ -1,6 +1,7 @@
 @import "./client-portal.css";
 @import "./project-filters.css";
 @import "./form-page.css";
+@import "./text-image.css";
 
 @tailwind base;
 @tailwind components;

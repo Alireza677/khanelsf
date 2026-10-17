@@ -83,6 +83,7 @@ class PageResource extends Resource
                                 ->blocks([
                                     app(BlockRegistry::class)->find('hero')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     app(BlockRegistry::class)->find('cta')->filamentBlock(HeroBlock::CONTEXT_PAGE),
+                                    app(BlockRegistry::class)->find('text_image')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     app(BlockRegistry::class)->find('form')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     app(BlockRegistry::class)->find('feature_grid')->filamentBlock(HeroBlock::CONTEXT_PAGE),
                                     app(BlockRegistry::class)->find('pricing_cards')->filamentBlock(HeroBlock::CONTEXT_PAGE),

@@ -40,6 +40,8 @@ use App\CMS\Blocks\SiteFooter\SiteFooterBlock;
 use App\CMS\Blocks\SiteFooter\SiteFooterRuntime;
 use App\CMS\Blocks\SiteHeader\SiteHeaderBlock;
 use App\CMS\Blocks\SiteHeader\SiteHeaderRuntime;
+use App\CMS\Blocks\TextImage\TextImageBlock;
+use App\CMS\Blocks\TextImage\TextImageRuntime;
 use App\CMS\Templates\SiteFooterTemplateResolver;
 use App\CMS\Templates\SiteHeaderTemplateResolver;
 use App\Models\Template;
@@ -60,6 +62,7 @@ class BlockServiceProvider extends ServiceProvider
             [
                 'hero' => HeroBlock::class,
                 'cta' => CTABlock::class,
+                'text_image' => TextImageBlock::class,
                 'form' => FormBlock::class,
                 'feature_grid' => FeatureGridBlock::class,
                 'pricing_cards' => PricingCardsBlock::class,
@@ -102,7 +105,19 @@ class BlockServiceProvider extends ServiceProvider
         SiteFooterTemplateResolver $footerTemplates,
         PublicAccountNavigation $accounts,
         BusinessNetworkRuntime $businessNetwork,
+        TextImageRuntime $textImages,
     ): void {
+        View::composer('partials.blocks.text_image', function (IlluminateView $view) use ($textImages): void {
+            $viewData = $view->getData();
+            $context = is_array($viewData['context'] ?? null) ? $viewData['context'] : [];
+
+            $view->with('textImage', $textImages->prepare(
+                is_array($viewData['data'] ?? null) ? $viewData['data'] : [],
+                $context,
+                ! empty($viewData['isPreview']) || ! empty($context['preview']) || ! empty($context['isPreview']),
+            ));
+        });
+
         View::composer('partials.blocks.pricing_cards', function (IlluminateView $view) use ($pricingCards): void {
             $viewData = $view->getData();
             $context = is_array($viewData['context'] ?? null) ? $viewData['context'] : [];
