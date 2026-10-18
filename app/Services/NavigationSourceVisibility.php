@@ -30,17 +30,21 @@ class NavigationSourceVisibility
 
     public function menuItemIsVisible(MenuItem $item): bool
     {
-        if ($item->status !== 'active') {
-            return false;
-        }
+        return $item->status === 'active' && $this->destinationIsVisible($item);
+    }
 
+    public function destinationIsVisible(MenuItem $item): bool
+    {
         if (filled($item->source_key) || $item->type === MenuItem::TYPE_SOURCE) {
             return filled($item->source_key)
                 && $this->sourceIsVisible($item->source_key)
                 && filled($item->resolvedUrl());
         }
 
-        return $this->canAdd($item->type, $item->resolvedUrl());
+        $url = $item->resolvedUrl();
+
+        return ($item->type === MenuItem::TYPE_CUSTOM_URL || filled($url))
+            && $this->canAdd($item->type, $url);
     }
 
     /**

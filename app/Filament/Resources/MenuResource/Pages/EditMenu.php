@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MenuResource\Pages;
 
 use App\CMS\Navigation\NavigationSourceRegistry;
+use App\CMS\Navigation\Sources\ServiceNavigationSource;
 use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use App\Filament\Resources\MenuResource;
 use App\Models\MenuItem;
@@ -30,6 +31,18 @@ class EditMenu extends EditRecord
      * @var array<int, int|string>
      */
     public array $selectedPageIds = [];
+
+    public array $selectedServiceIds = [];
+
+    public bool $servicesLoaded = false;
+
+    public string $serviceSearch = '';
+
+    public int $serviceSearchPage = 1;
+
+    public array $expandedServiceIds = [];
+
+    public array $serviceBranchPages = [];
 
     /**
      * @var array<int, string>
@@ -63,6 +76,47 @@ class EditMenu extends EditRecord
     public function getVisibleNavigationSources(): array
     {
         return app(NavigationSourceVisibility::class)->visibleSources();
+    }
+
+    public function loadServices(): void
+    {
+        $this->servicesLoaded = true;
+    }
+
+    public function updatedServiceSearch(): void
+    {
+        $this->serviceSearchPage = 1;
+        $this->servicesLoaded = true;
+    }
+
+    public function toggleServiceBranch(int $serviceId): void
+    {
+        $expanded = array_map('intval', $this->expandedServiceIds);
+        $this->expandedServiceIds = in_array($serviceId, $expanded, true)
+            ? array_values(array_diff($expanded, [$serviceId]))
+            : [...$expanded, $serviceId];
+    }
+
+    public function changeServicePage(int $parentId, int $page): void
+    {
+        if (filled(trim($this->serviceSearch))) {
+            $this->serviceSearchPage = max(1, $page);
+        } else {
+            $this->serviceBranchPages[$parentId] = max(1, $page);
+        }
+    }
+
+    public function getServicePicker(): ?array
+    {
+        if (! $this->servicesLoaded) {
+            return null;
+        }
+
+        $source = app(ServiceNavigationSource::class);
+
+        return filled(trim($this->serviceSearch))
+            ? $source->search($this->serviceSearch, $this->serviceSearchPage)
+            : $source->browse($this->expandedServiceIds, $this->serviceBranchPages);
     }
 
     /**
@@ -150,6 +204,56 @@ class EditMenu extends EditRecord
 
         Notification::make()
             ->title($pages->count().' برگه به منو افزوده شد.')
+            ->success()
+            ->send();
+    }
+
+    public function addSelectedServices(): void
+    {
+        $validated = $this->validate([
+            'selectedServiceIds' => ['required', 'array', 'min:1', 'max:200'],
+            'selectedServiceIds.*' => ['required', 'integer', 'min:1', 'distinct'],
+        ], [
+            'selectedServiceIds.required' => 'حداقل یک خدمت را انتخاب کنید.',
+            'selectedServiceIds.min' => 'حداقل یک خدمت را انتخاب کنید.',
+            'selectedServiceIds.max' => 'در هر نوبت حداکثر ۲۰۰ خدمت را انتخاب کنید.',
+            'selectedServiceIds.*.distinct' => 'هر خدمت را فقط یک‌بار انتخاب کنید.',
+            'selectedServiceIds.*.integer' => 'خدمت انتخاب‌شده معتبر نیست.',
+            'selectedServiceIds.*.min' => 'خدمت انتخاب‌شده معتبر نیست.',
+        ]);
+
+        $ids = array_map('intval', $validated['selectedServiceIds']);
+        $services = app(ServiceNavigationSource::class)->selected($ids);
+
+        if ($services->count() !== count($ids)) {
+            throw ValidationException::withMessages([
+                'selectedServiceIds' => 'یکی از خدمات انتخاب‌شده دیگر در وب‌سایت عمومی قابل دسترسی نیست؛ فهرست را بررسی کنید.',
+            ]);
+        }
+
+        DB::transaction(function () use ($services): void {
+            $sortOrder = $this->nextMenuItemSortOrder();
+
+            foreach ($services as $service) {
+                $this->getRecord()->items()->create([
+                    'parent_id' => null,
+                    'type' => MenuItem::TYPE_SERVICE,
+                    'source_key' => null,
+                    'reference_id' => $service->getKey(),
+                    'reference_type' => $service->getMorphClass(),
+                    'title' => $service->name,
+                    'url' => null,
+                    'target' => '_self',
+                    'sort_order' => $sortOrder++,
+                    'status' => 'active',
+                ]);
+            }
+        });
+
+        $this->reset('selectedServiceIds');
+
+        Notification::make()
+            ->title($services->count().' خدمت به منو افزوده شد.')
             ->success()
             ->send();
     }

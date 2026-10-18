@@ -278,6 +278,9 @@
             ])
             ->values();
         $navigationSources = collect($this->getVisibleNavigationSources())->values();
+        if ($errors->has('selectedServiceIds*')) {
+            $sourceValidationSection = 'services';
+        }
     @endphp
 
     <div class="menu-builder-layout menu-builder-compact">
@@ -306,6 +309,10 @@
 
                             if (validationSection) {
                                 this.open = validationSection
+                            }
+
+                            if (this.open === 'services' && ! $wire.servicesLoaded) {
+                                $wire.loadServices()
                             }
                         },
                         normalize(value) {
@@ -440,6 +447,8 @@
                             </form>
                         </div>
                     </div>
+
+                    @include('filament.resources.menu-resource.pages.partials.service-source-picker')
 
                     <div class="menu-builder-accordion">
                         <button

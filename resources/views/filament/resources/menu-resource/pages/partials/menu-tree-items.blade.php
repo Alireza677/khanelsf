@@ -105,6 +105,12 @@
                                 {{ $typeLabel }}
                             </span>
 
+                            @if (! ($item['destination_available'] ?? true))
+                                <span class="rounded-md bg-danger-50 px-1.5 py-0.5 text-[10px] text-danger-600 dark:bg-danger-400/10 dark:text-danger-400">
+                                    مقصد در دسترس نیست
+                                </span>
+                            @endif
+
                             @if (filled($item['source_key'] ?? null))
                                 <span class="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-white/10 dark:text-gray-300" dir="ltr">
                                     {{ $item['source_key'] }}

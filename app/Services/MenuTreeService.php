@@ -81,6 +81,7 @@ class MenuTreeService
                 'reference_type' => $item->reference_type,
                 'title' => $item->title,
                 'url' => $item->resolvedUrl(),
+                'destination_available' => app(NavigationSourceVisibility::class)->destinationIsVisible($item),
                 'target' => $item->target,
                 'status' => $item->status,
                 'children' => $children,

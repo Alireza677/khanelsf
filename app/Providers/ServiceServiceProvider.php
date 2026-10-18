@@ -11,12 +11,18 @@ use App\CMS\InternalLinks\Registry\InternalLinkSearchRegistry;
 use App\CMS\InternalLinks\Sources\ServiceInternalLinkSource;
 use App\CMS\Navigation\NavigationSource;
 use App\CMS\Navigation\NavigationSourceRegistry;
+use App\CMS\Navigation\Sources\ServiceNavigationSource;
 use App\Services\ServiceSettings;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 final class ServiceServiceProvider extends ServiceProvider implements RegistersActionTargets
 {
+    public function register(): void
+    {
+        $this->app->singleton(ServiceNavigationSource::class);
+    }
+
     public function boot(
         NavigationSourceRegistry $sources,
         ActionTargetRegistry $actionTargets,
