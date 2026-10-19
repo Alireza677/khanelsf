@@ -148,6 +148,10 @@ const initDesktopNavigationOverflow = () => {
         };
 
         const restoreItems = () => {
+            navigation.querySelectorAll('.is-submenu-inline-end').forEach((item) => {
+                item.classList.remove('is-submenu-inline-end');
+            });
+
             Array.from(moreItems.children).forEach((item) => {
                 navigation.insertBefore(item, more);
             });
@@ -213,21 +217,16 @@ const initDesktopNavigationOverflow = () => {
             }
         };
 
-        moreItems.addEventListener('pointerover', (event) => {
+        const positionEventSubmenu = (event) => {
             const item = event.target.closest('li.has-children');
 
-            if (item?.parentElement === moreItems) {
+            if (window.innerWidth > 900 && item && item.parentElement !== navigation) {
                 positionNestedSubmenu(item);
             }
-        });
+        };
 
-        moreItems.addEventListener('focusin', (event) => {
-            const item = event.target.closest('li.has-children');
-
-            if (item?.parentElement === moreItems) {
-                positionNestedSubmenu(item);
-            }
-        });
+        navigation.addEventListener('pointerover', positionEventSubmenu);
+        navigation.addEventListener('focusin', positionEventSubmenu);
 
         document.addEventListener('click', (event) => {
             if (! more.contains(event.target)) {

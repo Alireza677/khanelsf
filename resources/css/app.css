@@ -897,15 +897,23 @@ img {
         z-index: 30;
     }
 
-    .industrial-header__more > ul > li > ul {
+    .industrial-header__navigation li li > ul {
         right: 100%;
         top: -.55rem;
         z-index: 31;
     }
 
-    .industrial-header__more > ul > li.is-submenu-inline-end > ul {
+    .industrial-header__navigation li li.is-submenu-inline-end > ul {
         left: 100%;
         right: auto;
+    }
+
+    .industrial-header__navigation li li.has-children > a::after {
+        transform: rotate(135deg);
+    }
+
+    .industrial-header__navigation li li.is-submenu-inline-end > a::after {
+        transform: rotate(-45deg);
     }
 }
 

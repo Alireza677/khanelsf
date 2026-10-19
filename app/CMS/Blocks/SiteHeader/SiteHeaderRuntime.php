@@ -144,7 +144,8 @@ final class SiteHeaderRuntime
     /** @return array<int, array<string, mixed>> */
     private function navigationItems(array $items, int $depth): array
     {
-        if ($depth > 2) {
+        // Preserve the full depth supported by MenuTreeService when presenting the header.
+        if ($depth > 20) {
             return [];
         }
 

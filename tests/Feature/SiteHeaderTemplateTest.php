@@ -11,9 +11,13 @@ use App\Filament\Resources\TemplateResource;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Page;
+use App\Models\Service;
 use App\Models\Setting;
 use App\Models\Template;
 use App\Models\User;
+use App\Services\MenuService;
+use App\Services\MenuTreeService;
+use App\Services\SettingsService;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -125,6 +129,66 @@ class SiteHeaderTemplateTest extends TestCase
             ->assertSee(route('search.index', absolute: false), false);
     }
 
+    public function test_industrial_header_renders_nested_services_with_independent_menu_parenting_and_mobile_controls(): void
+    {
+        $this->home();
+        $menu = $this->menu();
+        $catalogParent = Service::query()->create([
+            'name' => 'Catalog parent', 'slug' => 'catalog-parent', 'status' => Service::STATUS_PUBLISHED,
+        ]);
+        $archive = $menu->items()->create([
+            'title' => 'Services archive', 'type' => MenuItem::TYPE_SOURCE,
+            'source_key' => 'services.archive', 'status' => 'active', 'target' => '_self',
+        ]);
+        $serviceItems = [];
+        foreach (['engineering', 'nested-service', 'deep-service'] as $slug) {
+            $service = Service::query()->create([
+                'name' => $slug, 'slug' => $slug, 'status' => Service::STATUS_PUBLISHED,
+                'parent_id' => $catalogParent->id,
+            ]);
+            $serviceItems[] = $menu->items()->create([
+                'title' => $slug, 'type' => MenuItem::TYPE_SERVICE,
+                'reference_id' => $service->id, 'reference_type' => $service->getMorphClass(),
+                'status' => 'active', 'target' => '_blank',
+            ]);
+        }
+        [$engineering, $nested, $deep] = $serviceItems;
+        app(MenuTreeService::class)->save($menu, [
+            ['id' => $menu->items()->where('url', '/projects')->sole()->id, 'children' => []],
+            ['id' => $archive->id, 'children' => [
+                ['id' => $engineering->id, 'children' => [
+                    ['id' => $nested->id, 'children' => [
+                        ['id' => $deep->id, 'children' => []],
+                    ]],
+                ]],
+            ]],
+        ]);
+
+        $this->assertSame($engineering->id, $nested->fresh()->parent_id);
+        $managed = collect(app(MenuTreeService::class)->tree($menu))->firstWhere('id', $archive->id);
+        $this->assertTrue($managed['children'][0]['children'][0]['destination_available']);
+        $public = app(MenuService::class)->byId($menu->id)->rootItems->firstWhere('id', $archive->id);
+        $this->assertSame($deep->id, $public->children[0]->children[0]->children[0]->id);
+        $this->select($this->template(blocks: $this->headerBlocks(menuId: $menu->id)));
+
+        $html = $this->get(route('home'))->assertOk()->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        $xpath = new \DOMXPath($document);
+        $navigation = '//nav[contains(@class, "industrial-header__navigation")]';
+        $this->assertSame(1, $xpath->query($navigation.'//a[@href="/services"]/following-sibling::ul/li/a[@href="/services/engineering"]/following-sibling::ul/li/a[@href="/services/nested-service"]/following-sibling::ul/li/a[@href="/services/deep-service"]')->length);
+        $this->assertSame(1, $xpath->query($navigation.'//a[@href="/projects"]')->length);
+        $toggles = $xpath->query($navigation.'//button[@data-industrial-submenu-toggle]');
+        $this->assertCount(3, $toggles);
+        foreach ($toggles as $toggle) {
+            $id = $toggle->getAttribute('aria-controls');
+            $this->assertSame('false', $toggle->getAttribute('aria-expanded'));
+            $this->assertSame(1, $xpath->query('//*[@id="'.$id.'"]')->length);
+            $this->assertSame(1, $xpath->query('//*[@id="'.$id.'"]/preceding-sibling::button[@aria-controls="'.$id.'"]')->length);
+        }
+        $this->assertSame(3, $xpath->query($navigation.'//a[@target="_blank" and @rel="noopener noreferrer"]')->length);
+    }
+
     public function test_industrial_header_visual_contract_keeps_desktop_navigation_single_line(): void
     {
         $blade = file_get_contents(resource_path('views/partials/blocks/site-header-industrial.blade.php'));
@@ -150,15 +214,15 @@ class SiteHeaderTemplateTest extends TestCase
 
         $this->assertStringContainsString('<ul data-navigation-more-items></ul>', $blade);
         $this->assertStringContainsString('moreItems.prepend(candidates().at(-1))', $javascript);
-        $this->assertStringContainsString("moreItems.addEventListener('pointerover'", $javascript);
-        $this->assertStringContainsString("moreItems.addEventListener('focusin'", $javascript);
+        $this->assertStringContainsString("navigation.addEventListener('pointerover', positionEventSubmenu)", $javascript);
+        $this->assertStringContainsString("navigation.addEventListener('focusin', positionEventSubmenu)", $javascript);
         $this->assertStringContainsString("item.querySelector(':scope > ul')", $javascript);
         $this->assertMatchesRegularExpression(
-            '/\.industrial-header__more\s*>\s*ul\s*>\s*li\s*>\s*ul\s*\{[^}]*right:\s*100%;[^}]*top:\s*-\.55rem;/s',
+            '/\.industrial-header__navigation li li\s*>\s*ul\s*\{[^}]*right:\s*100%;[^}]*top:\s*-\.55rem;/s',
             $css,
         );
         $this->assertMatchesRegularExpression(
-            '/\.industrial-header__more\s*>\s*ul\s*>\s*li\.is-submenu-inline-end\s*>\s*ul\s*\{[^}]*left:\s*100%;[^}]*right:\s*auto;/s',
+            '/\.industrial-header__navigation li li\.is-submenu-inline-end\s*>\s*ul\s*\{[^}]*left:\s*100%;[^}]*right:\s*auto;/s',
             $css,
         );
     }
@@ -244,7 +308,7 @@ class SiteHeaderTemplateTest extends TestCase
         $this->home();
         $template = $this->template(blocks: $this->headerBlocks());
         $this->select($template);
-        app(\App\Services\SettingsService::class)->set('shop_enabled', false, 'shop', 'boolean');
+        app(SettingsService::class)->set('shop_enabled', false, 'shop', 'boolean');
 
         $html = $this->get(route('home'))->assertOk()->getContent();
 
@@ -260,7 +324,7 @@ class SiteHeaderTemplateTest extends TestCase
         $this->home();
         $template = $this->template(blocks: $this->headerBlocks());
         $this->select($template);
-        app(\App\Services\SettingsService::class)->set('shop_enabled', true, 'shop', 'boolean');
+        app(SettingsService::class)->set('shop_enabled', true, 'shop', 'boolean');
 
         $this->get(route('home'))
             ->assertOk()
@@ -316,7 +380,7 @@ class SiteHeaderTemplateTest extends TestCase
         $this->home();
         $template = $this->template(blocks: $this->headerBlocks());
         $this->select($template);
-        app(\App\Services\SettingsService::class)->set('shop_enabled', true, 'shop', 'boolean');
+        app(SettingsService::class)->set('shop_enabled', true, 'shop', 'boolean');
 
         $cart = static fn (int $first, int $second): array => [
             ['product_id' => 10, 'title' => 'محصول اول', 'slug' => 'first', 'image' => null, 'quantity' => $first, 'unit_price' => 100],
