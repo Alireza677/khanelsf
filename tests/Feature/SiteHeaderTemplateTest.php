@@ -75,7 +75,11 @@ class SiteHeaderTemplateTest extends TestCase
         $this->assertContains('cta', $keys);
         $this->assertNotContains('site_footer', $keys);
         $this->assertNotContains('product_header', $keys);
-        $this->assertCount(3, $pickers);
+        $this->assertCount(4, $pickers);
+        $secondaryPicker = $pickers->first(fn (ActionPicker $picker): bool => $picker->getStatePath(false) === 'content.secondary_action.action');
+        $this->assertInstanceOf(ActionPicker::class, $secondaryPicker);
+        $this->assertFalse($secondaryPicker->isRequired());
+        $this->assertTrue($secondaryPicker->allowsNewTab());
 
         foreach ($pickers as $picker) {
             $this->assertSame([
@@ -127,6 +131,69 @@ class SiteHeaderTemplateTest extends TestCase
             ->assertSee('پروژه‌ها')
             ->assertSee('/projects', false)
             ->assertSee(route('search.index', absolute: false), false);
+    }
+
+    public function test_secondary_header_action_resolves_its_reference_and_hides_unavailable_destinations(): void
+    {
+        $this->home();
+        $primary = Page::factory()->published()->create(['slug' => 'primary-destination']);
+        $secondary = Page::factory()->published()->create(['slug' => 'secondary-destination']);
+        $blocks = $this->headerBlocks($primary->id);
+        $blocks[0]['data']['content']['secondary_action'] = [
+            'label' => 'درخواست مشاوره',
+            'action' => [
+                'schema_version' => 1, 'type' => 'page', 'reference_id' => $secondary->id,
+                'open_in_new_tab' => true,
+            ],
+        ];
+        $this->select($this->template(blocks: $blocks));
+
+        $html = $this->get(route('home'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<div class="industrial-header__actions">\s*<a\s+class="industrial-header__primary-action"[^>]*href="\/primary-destination"[^>]*>.*?<\/a>\s*<a\s+class="industrial-header__secondary-action"[^>]*href="\/secondary-destination"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>درخواست مشاوره<\/a>/s',
+            $html,
+        );
+        $secondary->update(['slug' => 'updated-secondary']);
+        $this->get(route('home'))->assertOk()->assertSee('href="/updated-secondary"', false);
+
+        $secondary->update(['status' => 'draft']);
+        $this->get(route('home'))->assertOk()
+            ->assertDontSee('class="industrial-header__secondary-action"', false)
+            ->assertDontSee('class="industrial-header__actions"', false)
+            ->assertSee('href="/primary-destination"', false);
+
+        $secondary->delete();
+        $this->get(route('home'))->assertOk()
+            ->assertDontSee('درخواست مشاوره')
+            ->assertDontSee('class="industrial-header__actions"', false)
+            ->assertSee('class="industrial-header__primary-action"', false);
+    }
+
+    public function test_incomplete_secondary_header_actions_keep_the_legacy_header_markup(): void
+    {
+        $this->home();
+        $primary = Page::factory()->published()->create(['slug' => 'primary-destination']);
+        $blocks = $this->headerBlocks($primary->id);
+        $template = $this->template(blocks: $blocks);
+        $this->select($template);
+        $baselineHtml = $this->get(route('home'))->assertOk()->getContent();
+        preg_match('/<header\b.*?<\/header>/s', $baselineHtml, $baseline);
+        $this->assertNotEmpty($baseline);
+        $this->assertStringNotContainsString('class="industrial-header__actions"', $baseline[0]);
+
+        foreach ([
+            ['label' => 'مشاوره'],
+            ['action' => ['type' => 'custom_url', 'value' => '/contact']],
+            ['label' => '   ', 'action' => ['type' => 'custom_url', 'value' => '/contact']],
+            ['label' => 'مشاوره', 'action' => ['type' => 'custom_url', 'value' => 'javascript:alert(1)']],
+            ['label' => 'مشاوره', 'action' => ['type' => 'page', 'reference_id' => 999999]],
+        ] as $secondary) {
+            $blocks[0]['data']['content']['secondary_action'] = $secondary;
+            $template->update(['blocks' => $blocks]);
+            $html = $this->get(route('home'))->assertOk()->getContent();
+            preg_match('/<header\b.*?<\/header>/s', $html, $actual);
+            $this->assertSame($baseline[0], $actual[0]);
+        }
     }
 
     public function test_industrial_header_renders_nested_services_with_independent_menu_parenting_and_mobile_controls(): void

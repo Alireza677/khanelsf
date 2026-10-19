@@ -125,11 +125,26 @@
                         'iconOnlyGuest' => true,
                     ])
 
-                    @include('partials.actions.render', [
-                        'label' => $header['primary_action']['label'],
-                        'class' => 'industrial-header__primary-action',
-                        'presentation' => $header['primary_action']['presentation'],
-                    ])
+                    @if ($header['secondary_action'])
+                        <div class="industrial-header__actions">
+                            @include('partials.actions.render', [
+                                'label' => $header['primary_action']['label'],
+                                'class' => 'industrial-header__primary-action',
+                                'presentation' => $header['primary_action']['presentation'],
+                            ])
+                            @include('partials.actions.render', [
+                                'label' => $header['secondary_action']['label'],
+                                'class' => 'industrial-header__secondary-action',
+                                'presentation' => $header['secondary_action']['presentation'],
+                            ])
+                        </div>
+                    @else
+                        @include('partials.actions.render', [
+                            'label' => $header['primary_action']['label'],
+                            'class' => 'industrial-header__primary-action',
+                            'presentation' => $header['primary_action']['presentation'],
+                        ])
+                    @endif
 
                 </div>
             </div>

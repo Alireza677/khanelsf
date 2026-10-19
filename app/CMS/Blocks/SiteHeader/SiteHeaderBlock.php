@@ -110,6 +110,7 @@ final class SiteHeaderBlock extends AbstractBlock implements BlockNormalizer
             ...$this->actionFields('content.top_actions.0', 'اقدام بالایی اول', 'خدمات و پشتیبانی'),
             ...$this->actionFields('content.top_actions.1', 'اقدام بالایی دوم', 'همکاری با ما'),
             ...$this->actionFields('content.primary_action', 'اقدام اصلی', 'محاسبه هزینه ساخت'),
+            ...$this->actionFields('content.secondary_action', 'دکمه دوم', null),
         ];
     }
 
@@ -119,7 +120,7 @@ final class SiteHeaderBlock extends AbstractBlock implements BlockNormalizer
     }
 
     /** @return array<Component> */
-    private function actionFields(string $path, string $title, string $defaultLabel): array
+    private function actionFields(string $path, string $title, ?string $defaultLabel): array
     {
         return [
             Forms\Components\TextInput::make("{$path}.label")

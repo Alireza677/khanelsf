@@ -39,6 +39,10 @@ final class SiteHeaderDataNormalizer implements BlockNormalizer
                     $content['primary_action'] ?? null,
                     'محاسبه هزینه ساخت',
                 ),
+                'secondary_action' => $this->button(
+                    $content['secondary_action'] ?? null,
+                    null,
+                ),
             ],
             'settings' => [
                 'menu_id' => $this->positiveIntegerOrNull($settings['menu_id'] ?? null),
@@ -49,7 +53,7 @@ final class SiteHeaderDataNormalizer implements BlockNormalizer
         ];
     }
 
-    private function button(mixed $button, string $defaultLabel): array
+    private function button(mixed $button, ?string $defaultLabel): array
     {
         $button = is_array($button) ? $button : [];
         $input = is_array($button['action'] ?? null) ? $button['action'] : [];

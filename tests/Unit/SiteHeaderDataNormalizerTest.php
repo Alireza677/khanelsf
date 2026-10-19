@@ -40,6 +40,14 @@ class SiteHeaderDataNormalizerTest extends TestCase
                         'display' => 'modal',
                     ],
                 ],
+                'secondary_action' => [
+                    'label' => ' درخواست مشاوره ',
+                    'action' => [
+                        'type' => 'custom_url',
+                        'value' => '/contact',
+                        'open_in_new_tab' => true,
+                    ],
+                ],
             ],
             'settings' => [
                 'menu_id' => '5',
@@ -60,6 +68,8 @@ class SiteHeaderDataNormalizerTest extends TestCase
         $this->assertSame(12, $once['content']['top_actions'][0]['action']['reference_id']);
         $this->assertNull($once['content']['top_actions'][1]['action']);
         $this->assertSame('modal', $once['content']['primary_action']['action']['display']);
+        $this->assertSame('درخواست مشاوره', $once['content']['secondary_action']['label']);
+        $this->assertTrue($once['content']['secondary_action']['action']['open_in_new_tab']);
         $this->assertSame(5, $once['settings']['menu_id']);
         $this->assertTrue($once['settings']['search_enabled']);
         $this->assertFalse($once['settings']['sticky_enabled']);
@@ -78,8 +88,27 @@ class SiteHeaderDataNormalizerTest extends TestCase
             $header['content']['primary_action']['label'],
         );
         $this->assertNull($header['settings']['menu_id']);
+        $this->assertSame(['label' => null, 'action' => null], $header['content']['secondary_action']);
         $this->assertTrue($header['settings']['search_enabled']);
         $this->assertTrue($header['settings']['sticky_enabled']);
         $this->assertTrue($header['settings']['top_bar_enabled']);
+    }
+
+    public function test_secondary_action_has_no_fallback_label_and_rejects_unsafe_destinations(): void
+    {
+        $normalizer = app(SiteHeaderDataNormalizer::class);
+        $header = $normalizer->normalize(['content' => ['secondary_action' => [
+            'label' => '   ',
+            'action' => ['type' => 'custom_url', 'value' => '/contact'],
+        ]]]);
+        $this->assertNull($header['content']['secondary_action']['label']);
+        $this->assertSame('/contact', $header['content']['secondary_action']['action']['value']);
+
+        $header = $normalizer->normalize(['content' => ['secondary_action' => [
+            'label' => 'مشاوره',
+            'action' => ['type' => 'custom_url', 'value' => 'javascript:alert(1)'],
+        ]]]);
+        $this->assertNull($header['content']['secondary_action']['action']);
+        $this->assertSame($header, $normalizer->normalize($header));
     }
 }

@@ -45,6 +45,7 @@ final class SiteHeaderRuntime
         $buttons = [
             ...$header['content']['top_actions'],
             $header['content']['primary_action'],
+            $header['content']['secondary_action'],
         ];
         $destinations = array_map(
             static fn (array $button): ActionDestination => ActionDestination::fromArray(
@@ -127,6 +128,9 @@ final class SiteHeaderRuntime
             'settings' => $header['settings'],
             'top_actions' => array_slice($buttons, 0, 2),
             'primary_action' => $buttons[2],
+            'secondary_action' => filled($buttons[3]['label']) && is_array($buttons[3]['presentation'])
+                ? $buttons[3]
+                : null,
             'account' => $this->accounts->present(),
         ];
     }
