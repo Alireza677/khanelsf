@@ -797,7 +797,8 @@ img {
     align-items: center;
     display: grid;
     gap: clamp(.75rem, 1.5vw, 1.5rem);
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, max-content) max-content;
+    justify-content: center;
     min-width: 0;
 }
 
@@ -7771,6 +7772,7 @@ body.form-action-modal-open {
         grid-column: 1 / -1;
         grid-auto-rows: max-content;
         grid-template-columns: 1fr;
+        justify-content: stretch;
         height: calc(100vh - 70px);
         height: calc(100dvh - 70px);
         inset-inline: 0;
