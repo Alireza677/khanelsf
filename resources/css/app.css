@@ -1917,14 +1917,14 @@ body.header-overlay-open {
 .industrial-header__actions {
     align-items: stretch;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: .5rem;
     max-width: min(36vw, 28rem);
     min-width: 0;
 }
 
 .industrial-header__actions > * {
-    flex: 1 1 9rem;
+    flex: 1 1 0;
     min-width: 0;
 }
 
