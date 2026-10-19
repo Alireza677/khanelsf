@@ -104,6 +104,7 @@
 
                     const toggle = header.querySelector('[data-menu-toggle]')
                     const nav = header.querySelector('[data-site-nav]')
+                    const isMobile = () => window.getComputedStyle(toggle).display !== 'none'
 
                     if (! toggle || ! nav) {
                         return
@@ -151,7 +152,7 @@
                     nav.addEventListener('click', function (event) {
                         const submenuToggle = event.target.closest('[data-industrial-submenu-toggle]')
 
-                        if (submenuToggle && header.classList.contains('industrial-header') && window.innerWidth <= 900) {
+                        if (submenuToggle && header.classList.contains('industrial-header') && isMobile()) {
                             const expanded = submenuToggle.getAttribute('aria-expanded') !== 'true'
                             submenuToggle.setAttribute('aria-expanded', String(expanded))
                             submenuToggle.parentElement.classList.toggle('is-mobile-submenu-open', expanded)
@@ -176,7 +177,7 @@
                     })
 
                     window.addEventListener('resize', function () {
-                        if (window.innerWidth > 900) {
+                        if (! isMobile()) {
                             close()
                         }
                     })

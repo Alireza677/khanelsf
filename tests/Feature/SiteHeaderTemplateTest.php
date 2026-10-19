@@ -265,10 +265,11 @@ class SiteHeaderTemplateTest extends TestCase
         $this->assertStringNotContainsString('industrial-header__topbar', $blade);
         $this->assertStringNotContainsString('راهکارهای تخصصی ساخت‌وساز', $blade);
         $this->assertStringContainsString('flex-wrap: nowrap;', $css);
-        $this->assertStringContainsString('@media (max-width: 1080px) and (min-width: 901px)', $css);
+        $this->assertStringContainsString('@media (max-width: 1359px) and (min-width: 1200px)', $css);
+        $this->assertStringContainsString('@media (max-width: 1199px)', $css);
         $this->assertStringContainsString('navigation.scrollWidth > navigation.clientWidth', $javascript);
         $this->assertStringContainsString('moreItems.prepend', $javascript);
-        $this->assertStringContainsString('window.innerWidth <= 900', $javascript);
+        $this->assertStringContainsString("window.getComputedStyle(toggle).display !== 'none'", $javascript);
         $this->assertStringContainsString("event.key === 'Escape'", $javascript);
         $this->assertStringContainsString('moreTrigger.focus()', $javascript);
     }

@@ -39,6 +39,7 @@ const initMobileHeader = () => {
 
         const toggle = header.querySelector('[data-menu-toggle]');
         const nav = header.querySelector('[data-site-nav]');
+        const isMobile = () => window.getComputedStyle(toggle).display !== 'none';
 
         if (! toggle || ! nav) {
             return;
@@ -86,7 +87,7 @@ const initMobileHeader = () => {
         nav.addEventListener('click', (event) => {
             const submenuToggle = event.target.closest('[data-industrial-submenu-toggle]');
 
-            if (submenuToggle && header.classList.contains('industrial-header') && window.innerWidth <= 900) {
+            if (submenuToggle && header.classList.contains('industrial-header') && isMobile()) {
                 const expanded = submenuToggle.getAttribute('aria-expanded') !== 'true';
                 submenuToggle.setAttribute('aria-expanded', String(expanded));
                 submenuToggle.parentElement.classList.toggle('is-mobile-submenu-open', expanded);
@@ -111,7 +112,7 @@ const initMobileHeader = () => {
         });
 
         window.addEventListener('resize', () => {
-            if (window.innerWidth > 900) {
+            if (! isMobile()) {
                 close();
             }
         });
@@ -127,6 +128,8 @@ const initDesktopNavigationOverflow = () => {
         const more = navigation.querySelector(':scope > [data-navigation-more]');
         const moreTrigger = more?.querySelector('[data-navigation-more-trigger]');
         const moreItems = more?.querySelector('[data-navigation-more-items]');
+        const toggle = navigation.closest('[data-site-header]')?.querySelector('[data-menu-toggle]');
+        const isMobile = () => toggle && window.getComputedStyle(toggle).display !== 'none';
 
         if (! more || ! moreTrigger || ! moreItems) {
             return;
@@ -164,7 +167,7 @@ const initDesktopNavigationOverflow = () => {
         const fitItems = () => {
             restoreItems();
 
-            if (window.innerWidth <= 900) {
+            if (isMobile()) {
                 return;
             }
 
@@ -221,7 +224,7 @@ const initDesktopNavigationOverflow = () => {
         const positionEventSubmenu = (event) => {
             const item = event.target.closest('li.has-children');
 
-            if (window.innerWidth > 900 && item && item.parentElement !== navigation) {
+            if (! isMobile() && item && item.parentElement !== navigation) {
                 positionNestedSubmenu(item);
             }
         };
