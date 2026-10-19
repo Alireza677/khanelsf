@@ -218,11 +218,19 @@ class SiteHeaderTemplateTest extends TestCase
         $this->assertStringContainsString("navigation.addEventListener('focusin', positionEventSubmenu)", $javascript);
         $this->assertStringContainsString("item.querySelector(':scope > ul')", $javascript);
         $this->assertMatchesRegularExpression(
-            '/\.industrial-header__navigation li li\s*>\s*ul\s*\{[^}]*right:\s*100%;[^}]*top:\s*-\.55rem;/s',
+            '/\.industrial-header__navigation li li\s*>\s*ul\s*\{[^}]*left:\s*auto;[^}]*right:\s*100%;[^}]*top:\s*0;[^}]*z-index:\s*31;/s',
             $css,
         );
         $this->assertMatchesRegularExpression(
             '/\.industrial-header__navigation li li\.is-submenu-inline-end\s*>\s*ul\s*\{[^}]*left:\s*100%;[^}]*right:\s*auto;/s',
+            $css,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__navigation > ul > li > ul\s*\{[^}]*right:\s*0;[^}]*top:\s*100%;/s',
+            $css,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.industrial-header__navigation li > ul\s*\{[^}]*margin:\s*0;[^}]*overflow:\s*visible;[^}]*position:\s*absolute;/s',
             $css,
         );
     }

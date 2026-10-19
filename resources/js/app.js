@@ -134,13 +134,16 @@ const initDesktopNavigationOverflow = () => {
 
         navigation.dataset.desktopOverflowInitialized = 'true';
 
+        const resetNestedSubmenu = (item) => {
+            item.classList.remove('is-submenu-inline-end');
+            item.querySelector(':scope > ul')?.style.removeProperty('--industrial-flyout-max-width');
+        };
+
         const closeMore = (restoreFocus = false) => {
             more.classList.remove('is-open');
             moreTrigger.setAttribute('aria-expanded', 'false');
 
-            moreItems.querySelectorAll('.is-submenu-inline-end').forEach((item) => {
-                item.classList.remove('is-submenu-inline-end');
-            });
+            moreItems.querySelectorAll('li.has-children').forEach(resetNestedSubmenu);
 
             if (restoreFocus) {
                 moreTrigger.focus();
@@ -148,9 +151,7 @@ const initDesktopNavigationOverflow = () => {
         };
 
         const restoreItems = () => {
-            navigation.querySelectorAll('.is-submenu-inline-end').forEach((item) => {
-                item.classList.remove('is-submenu-inline-end');
-            });
+            navigation.querySelectorAll('li.has-children').forEach(resetNestedSubmenu);
 
             Array.from(moreItems.children).forEach((item) => {
                 navigation.insertBefore(item, more);
@@ -205,16 +206,16 @@ const initDesktopNavigationOverflow = () => {
                 return;
             }
 
-            item.classList.remove('is-submenu-inline-end');
+            resetNestedSubmenu(item);
 
             const itemRect = item.getBoundingClientRect();
-            const submenuWidth = Math.min(submenu.scrollWidth, window.innerWidth - 32);
-            const roomBefore = itemRect.left - 16;
-            const roomAfter = window.innerWidth - itemRect.right - 16;
+            const submenuWidth = submenu.getBoundingClientRect().width;
+            const roomBefore = Math.max(0, itemRect.left - 16);
+            const roomAfter = Math.max(0, window.innerWidth - itemRect.right - 16);
+            const openRight = roomBefore < submenuWidth && roomAfter > 0;
 
-            if (roomBefore < submenuWidth && roomAfter > roomBefore) {
-                item.classList.add('is-submenu-inline-end');
-            }
+            item.classList.toggle('is-submenu-inline-end', openRight);
+            submenu.style.setProperty('--industrial-flyout-max-width', `${openRight ? roomAfter : roomBefore}px`);
         };
 
         const positionEventSubmenu = (event) => {
