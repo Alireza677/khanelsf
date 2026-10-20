@@ -128,10 +128,12 @@ const initDesktopNavigationOverflow = () => {
         const more = navigation.querySelector(':scope > [data-navigation-more]');
         const moreTrigger = more?.querySelector('[data-navigation-more-trigger]');
         const moreItems = more?.querySelector('[data-navigation-more-items]');
+        const panel = navigation.closest('.industrial-header__panel');
+        const utilities = panel?.querySelector(':scope > .industrial-header__utilities');
         const toggle = navigation.closest('[data-site-header]')?.querySelector('[data-menu-toggle]');
         const isMobile = () => toggle && window.getComputedStyle(toggle).display !== 'none';
 
-        if (! more || ! moreTrigger || ! moreItems) {
+        if (! more || ! moreTrigger || ! moreItems || ! panel || ! utilities) {
             return;
         }
 
@@ -168,19 +170,42 @@ const initDesktopNavigationOverflow = () => {
             restoreItems();
 
             if (isMobile()) {
+                navigation.parentElement.style.removeProperty('--industrial-navigation-max-width');
                 return;
             }
 
-            const candidates = () => Array.from(navigation.children)
-                .filter((item) => item !== more);
-
-            while (navigation.scrollWidth > navigation.clientWidth && candidates().length > 0) {
-                more.hidden = false;
-                moreItems.prepend(candidates().at(-1));
+            if (document.fonts?.status === 'loading') {
+                return;
             }
 
-            if (moreItems.children.length === 0) {
-                more.hidden = true;
+            // The panel is the stable space beside the logo; the list itself shrinks as items move.
+            const panelStyle = window.getComputedStyle(panel);
+            const availableWidth = Math.max(0,
+                panel.clientWidth
+                - (parseFloat(panelStyle.paddingLeft) || 0)
+                - (parseFloat(panelStyle.paddingRight) || 0)
+                - utilities.getBoundingClientRect().width
+                - (parseFloat(panelStyle.columnGap) || 0),
+            );
+            navigation.parentElement.style.setProperty('--industrial-navigation-max-width', `${availableWidth}px`);
+
+            const items = Array.from(navigation.children)
+                .filter((item) => item !== more);
+            const widths = items.map((item) => item.getBoundingClientRect().width);
+            const gap = parseFloat(window.getComputedStyle(navigation).columnGap) || 0;
+            let requiredWidth = widths.reduce((sum, width) => sum + width, 0)
+                + gap * Math.max(0, items.length - 1);
+
+            if (requiredWidth <= availableWidth + 0.5) {
+                return;
+            }
+
+            more.hidden = false;
+            const moreWidth = more.getBoundingClientRect().width;
+
+            while (items.length > 0 && requiredWidth + gap + moreWidth > availableWidth + 0.5) {
+                moreItems.prepend(items.pop());
+                requiredWidth -= widths.pop() + (items.length > 0 ? gap : 0);
             }
         };
 
@@ -245,7 +270,14 @@ const initDesktopNavigationOverflow = () => {
         });
 
         window.addEventListener('resize', scheduleFit);
+        window.addEventListener('load', scheduleFit, { once: true });
         document.fonts?.ready.then(scheduleFit);
+        document.fonts?.addEventListener('loadingdone', scheduleFit);
+        if (typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(scheduleFit);
+            observer.observe(panel);
+            observer.observe(utilities);
+        }
         scheduleFit();
     });
 };

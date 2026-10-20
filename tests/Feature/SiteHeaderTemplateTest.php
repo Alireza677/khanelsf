@@ -267,7 +267,8 @@ class SiteHeaderTemplateTest extends TestCase
         $this->assertStringContainsString('flex-wrap: nowrap;', $css);
         $this->assertStringContainsString('@media (max-width: 1359px) and (min-width: 1200px)', $css);
         $this->assertStringContainsString('@media (max-width: 1199px)', $css);
-        $this->assertStringContainsString('navigation.scrollWidth > navigation.clientWidth', $javascript);
+        $this->assertStringContainsString('panel.clientWidth', $javascript);
+        $this->assertStringContainsString('requiredWidth + gap + moreWidth > availableWidth', $javascript);
         $this->assertStringContainsString('moreItems.prepend', $javascript);
         $this->assertStringContainsString("window.getComputedStyle(toggle).display !== 'none'", $javascript);
         $this->assertStringContainsString("event.key === 'Escape'", $javascript);
@@ -281,7 +282,7 @@ class SiteHeaderTemplateTest extends TestCase
         $javascript = file_get_contents(resource_path('js/app.js'));
 
         $this->assertStringContainsString('<ul data-navigation-more-items></ul>', $blade);
-        $this->assertStringContainsString('moreItems.prepend(candidates().at(-1))', $javascript);
+        $this->assertStringContainsString('moreItems.prepend(items.pop())', $javascript);
         $this->assertStringContainsString("navigation.addEventListener('pointerover', positionEventSubmenu)", $javascript);
         $this->assertStringContainsString("navigation.addEventListener('focusin', positionEventSubmenu)", $javascript);
         $this->assertStringContainsString("item.querySelector(':scope > ul')", $javascript);

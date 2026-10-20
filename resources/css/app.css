@@ -795,16 +795,18 @@ img {
 
 .industrial-header__panel {
     align-items: center;
-    display: grid;
+    display: flex;
     gap: clamp(.75rem, 1.5vw, 1.5rem);
-    grid-template-columns: minmax(0, max-content) max-content;
     justify-content: center;
     min-width: 0;
 }
 
 .industrial-header__navigation {
+    flex: 0 1 auto;
+    max-width: var(--industrial-navigation-max-width, 100%);
     min-width: 0;
     position: relative;
+    width: max-content;
     z-index: 10;
 }
 
@@ -954,6 +956,7 @@ img {
 .industrial-header__utilities {
     align-items: center;
     display: flex;
+    flex: 0 0 auto;
     gap: .7rem;
 }
 
