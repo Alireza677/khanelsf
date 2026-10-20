@@ -31,7 +31,9 @@ class ClientProjectWorkItemResource extends Resource
 
     protected static ?string $navigationLabel = 'کارهای اجرایی';
 
-    protected static ?string $navigationGroup = 'پرتال مشتری';
+    protected static ?string $navigationGroup = 'پرتال مشتریان';
+
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
 

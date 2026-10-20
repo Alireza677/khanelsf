@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ClientProjectResource\Pages;
 
+use App\Filament\Actions\ActivityCreationWizardAction;
 use App\Filament\Resources\ClientProjectResource;
 use App\Filament\Resources\ClientProjectResource\ContractFields;
 use App\Filament\Resources\ServiceOfferingVersionResource;
@@ -19,6 +20,7 @@ class ViewClientProject extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ActivityCreationWizardAction::make($this->getRecord()),
             Actions\EditAction::make()->label('ویرایش'),
             Actions\Action::make('reviseAgreement')->label('ثبت نسخه جدید قرارداد')
                 ->visible(fn () => ClientProjectResource::canEdit($this->record) && $this->record->planVersions()->exists())

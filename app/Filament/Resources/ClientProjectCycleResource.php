@@ -26,7 +26,9 @@ class ClientProjectCycleResource extends Resource
 
     protected static ?string $pluralModelLabel = 'دوره‌های تحویل';
 
-    protected static ?string $navigationGroup = 'پرتال مشتری';
+    protected static ?string $navigationGroup = 'پرتال مشتریان';
+
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
 

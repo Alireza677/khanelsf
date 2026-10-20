@@ -3,18 +3,78 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\ClientProjectActivityResource\Pages\ListClientProjectActivities;
+use App\Filament\Resources\ClientProjectResource\Pages\ViewClientProject;
 use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\ActivityWizardProjectContext;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class ActivityCreationWizardTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_project_wizard_locks_its_context_and_records_time_for_that_project(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $project = ClientProject::factory()->create(['monthly_hour_limit_minutes' => 600, 'start_date' => today()]);
+
+        Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()])
+            ->mountAction('quickCreateActivity')
+            ->assertActionDataSet(['client_project_id' => $project->id, 'operation' => 'time'])
+            ->assertFormFieldIsDisabled('client_project_id', 'mountedActionForm')
+            ->assertFormFieldIsHidden('recent_project_id', 'mountedActionForm')
+            ->setActionData(['title' => 'زمان در صفحه پروژه', 'duration_hours' => 0, 'duration_remainder_minutes' => 25])
+            ->callMountedAction()->assertHasNoActionErrors()->assertNotified('فعالیت ثبت شد')
+            ->assertSee('25 دقیقه');
+
+        $activity = $project->activities()->sole();
+        $this->assertSame(25, $activity->duration_minutes);
+        $this->assertSame($project->id, $activity->cycle->client_project_id);
+    }
+
+    public function test_project_wizard_rejects_a_forged_project_id(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $project = ClientProject::factory()->create();
+        $foreign = ClientProject::factory()->create();
+
+        $page = Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()]);
+        // Bypass form validation and UI hooks to exercise the submission guard itself.
+        try {
+            $page->instance()->getAction('quickCreateActivity')->formData([
+                'client_project_id' => $foreign->id, 'title' => 'پروژه جعلی', 'duration_hours' => 1, 'duration_remainder_minutes' => 0,
+            ])->call();
+            $this->fail('A context-bound action accepted a different project.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+
+        $this->assertDatabaseCount('client_project_activities', 0);
+    }
+
+    public function test_project_wizard_rechecks_update_permission_when_submitted(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $project = ClientProject::factory()->create();
+        $page = Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()]);
+        Gate::before(fn ($user, $ability) => $ability === 'update' ? false : null);
+
+        try {
+            $page->instance()->getAction('quickCreateActivity')->formData([
+                'client_project_id' => $project->id, 'title' => 'بدون مجوز', 'duration_hours' => 1, 'duration_remainder_minutes' => 0,
+            ])->call();
+            $this->fail('Work registration did not recheck project permission.');
+        } catch (AuthorizationException $exception) {
+            $this->assertDatabaseCount('client_project_activities', 0);
+        }
+    }
 
     public function test_wizard_opens_and_validates_each_step_before_navigation(): void
     {

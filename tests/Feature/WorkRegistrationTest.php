@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\ClientProjectActivityResource\Pages\CreateClientProjectActivity;
 use App\Filament\Resources\ClientProjectActivityResource\Pages\ListClientProjectActivities;
+use App\Filament\Resources\ClientProjectResource\Pages\ViewClientProject;
 use App\Models\ClientProject;
 use App\Models\Customer;
 use App\Models\DeliverableType;
@@ -69,6 +70,51 @@ class WorkRegistrationTest extends TestCase
         $item = $manager->update($item, ['visibility' => 'client', 'status' => 'ready'], $item->lock_version, $this->admin);
 
         return $manager->update($item, ['status' => 'in_progress'], $item->lock_version, $this->admin);
+    }
+
+    public function test_project_wizard_delivers_tasks_and_rejects_work_from_another_project(): void
+    {
+        $project = $this->project();
+        $item = $this->item($project);
+        $foreign = $this->item($this->project());
+
+        Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()])
+            ->mountAction('quickCreateActivity')
+            ->assertActionDataSet(['client_project_id' => $project->id, 'operation' => 'work_item', 'work_cycle_id' => $item->client_project_cycle_id])
+            ->setActionData(['task_action' => 'deliver', 'work_item_id' => $foreign->id, 'work_data' => ['lock_version' => $foreign->lock_version]])
+            ->callMountedAction()->assertHasActionErrors(['work_item_id']);
+        $this->assertSame(0, $foreign->deliveries()->count());
+
+        Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()])
+            ->callAction('quickCreateActivity', data: [
+                'task_action' => 'deliver', 'work_item_id' => $item->id,
+                'work_data' => ['lock_version' => $item->lock_version, 'message' => 'تحویل از صفحه پروژه',
+                    'client_files' => [UploadedFile::fake()->createWithContent('output.txt', 'project output')]],
+            ])->assertHasNoActionErrors()->assertNotified('نسخه تحویل ثبت شد');
+
+        $this->assertSame('submitted', $item->fresh()->status->value);
+        $this->assertNull($item->fresh()->accepted_at);
+        $this->assertSame(1, $item->deliveries()->count());
+        $this->assertDatabaseCount('client_project_activities', 0);
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_project_wizard_preserves_both_hybrid_operations(): void
+    {
+        $project = $this->project('hybrid');
+        Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()])
+            ->callAction('quickCreateActivity', data: [
+                'operation' => 'time', 'title' => 'زمان ترکیبی در پروژه', 'duration_hours' => 0, 'duration_remainder_minutes' => 15,
+            ])->assertHasNoActionErrors();
+        Livewire::test(ViewClientProject::class, ['record' => $project->getRouteKey()])
+            ->callAction('quickCreateActivity', data: [
+                'operation' => 'work_item', 'task_action' => 'extra',
+                'work_data' => ['title' => 'کار ترکیبی اضافی', 'quantity' => 1, 'unit' => 'count', 'visibility' => 'internal'],
+            ])->assertHasNoActionErrors();
+
+        $this->assertSame(15, $project->activities()->sole()->duration_minutes);
+        $this->assertSame('کار ترکیبی اضافی', $project->workItems()->sole()->title);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_task_wizard_delivers_without_duration_and_waits_for_authorized_customer(): void

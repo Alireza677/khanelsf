@@ -6,6 +6,7 @@ use App\Enums\ServicePricingMode;
 use App\Filament\Resources\ClientProjectActivityResource;
 use App\Filament\Resources\ClientProjectResource;
 use App\Filament\Resources\ClientProjectWorkItemResource;
+use App\Models\ClientProject;
 use App\Models\ClientProjectActivity;
 use App\Models\ClientProjectWorkItem;
 use App\Services\ActivityWizardProjectContext;
@@ -36,30 +37,50 @@ use Illuminate\Validation\ValidationException;
 
 class ActivityCreationWizardAction
 {
-    public static function make(): Action
+    public static function make(?ClientProject $project = null): Action
     {
+        $projectId = $project?->getKey();
+
         return Action::make('quickCreateActivity')
             ->label('ثبت کار انجام‌شده')
+            ->visible(fn (): bool => $project === null || (ClientProjectResource::canEdit($project) && app(ActivityWizardProjectContext::class)->find($projectId) !== null))
             ->icon('heroicon-o-plus')
             ->color('primary')
             ->modalHeading('ثبت کار انجام‌شده')
-            ->modalDescription('پروژه را انتخاب کنید؛ ثبت زمان یا تحویل خروجی بر اساس قرارداد پروژه در دسترس است.')
+            ->modalDescription($projectId === null
+                ? 'پروژه را انتخاب کنید؛ ثبت زمان یا تحویل خروجی بر اساس قرارداد پروژه در دسترس است.'
+                : 'ثبت زمان یا تحویل خروجی برای همین پروژه، بر اساس قرارداد آن انجام می‌شود.')
             ->modalWidth(MaxWidth::TwoExtraLarge)
             ->stickyModalHeader()
             ->stickyModalFooter()
             ->extraModalWindowAttributes(['class' => 'activity-creation-wizard-modal'])
             ->modalSubmitAction(false)
-            ->fillForm([
-                'activity_date' => today()->toDateString(),
-                'duration_hours' => 0,
-                'duration_remainder_minutes' => 0,
-                'visibility' => ClientProjectActivity::VISIBILITY_INTERNAL,
-                'activity_status' => ClientProjectActivity::STATUS_DRAFT,
-            ])
-            ->form([self::wizard()])
-            ->action(function (array $data, $livewire): void {
+            ->fillForm(function () use ($projectId): array {
+                $data = [
+                    'activity_date' => today()->toDateString(),
+                    'duration_hours' => 0,
+                    'duration_remainder_minutes' => 0,
+                    'visibility' => ClientProjectActivity::VISIBILITY_INTERNAL,
+                    'activity_status' => ClientProjectActivity::STATUS_DRAFT,
+                ];
+                if ($projectId !== null) {
+                    $context = app(WorkRegistrationContext::class);
+                    abort_unless($context->project($projectId), 422);
+                    $data += [
+                        'client_project_id' => $projectId,
+                        'operation' => array_key_first($context->choices($projectId)),
+                        'work_cycle_id' => $context->cycle($projectId)?->id,
+                        'task_action' => 'update',
+                    ];
+                }
+
+                return $data;
+            })
+            ->form([self::wizard($projectId)])
+            ->action(function (array $data, $livewire) use ($projectId): void {
+                abort_unless($projectId === null || (string) ($data['client_project_id'] ?? '') === (string) $projectId, 403);
                 $projects = app(ActivityWizardProjectContext::class);
-                $project = $projects->find($data['client_project_id'] ?? null);
+                $project = $projects->find($projectId ?? $data['client_project_id'] ?? null);
                 abort_unless($project, 422);
 
                 $context = app(WorkRegistrationContext::class);
@@ -116,10 +137,15 @@ class ActivityCreationWizardAction
                         NotificationAction::make('project')->label('مشاهده پروژه')->url(ClientProjectResource::getUrl('view', ['record' => $project])),
                     ])
                     ->send();
+            })
+            ->after(function ($livewire) use ($projectId): void {
+                if ($projectId !== null) {
+                    $livewire->getRecord()->refresh();
+                }
             });
     }
 
-    private static function wizard(): Wizard
+    private static function wizard(?int $projectId): Wizard
     {
         return Wizard::make([
             Wizard\Step::make('انتخاب پروژه')
@@ -128,21 +154,31 @@ class ActivityCreationWizardAction
                 ->schema([
                     Forms\Components\Select::make('client_project_id')
                         ->label('پروژه')
-                        ->options(fn (): array => app(ActivityWizardProjectContext::class)->options())
+                        ->options(function () use ($projectId): array {
+                            $projects = app(ActivityWizardProjectContext::class);
+                            if ($projectId === null) {
+                                return $projects->options();
+                            }
+                            $project = $projects->find($projectId);
+
+                            return $project ? [$projectId => $project->title] : [];
+                        })
+                        ->disabled($projectId !== null)->dehydrated()
                         ->searchable()->preload()->live()->required()
-                        ->afterStateUpdated(fn (Set $set, mixed $state) => self::selectProject($set, $state)),
+                        ->afterStateUpdated(fn (Set $set, mixed $state) => self::selectProject($set, $projectId ?? $state)),
                     Forms\Components\Radio::make('recent_project_id')
                         ->label('پروژه‌های اخیر')
                         ->options(fn (): array => app(ActivityWizardProjectContext::class)->recentOptions())
+                        ->visible($projectId === null)
                         ->live()
-                        ->afterStateUpdated(fn (Set $set, mixed $state) => self::selectProject($set, $state)),
+                        ->afterStateUpdated(fn (Set $set, mixed $state) => self::selectProject($set, $projectId ?? $state)),
                     Forms\Components\Radio::make('operation')->label('نوع ثبت')
-                        ->options(fn (Get $get): array => app(WorkRegistrationContext::class)->choices($get('client_project_id')))
+                        ->options(fn (Get $get): array => app(WorkRegistrationContext::class)->choices(self::projectId($get, $projectId)))
                         ->default('time')->live()->required()
-                        ->visible(fn (Get $get): bool => app(WorkRegistrationContext::class)->project($get('client_project_id'))?->delivery_mode === 'hybrid'),
+                        ->visible(fn (Get $get): bool => app(WorkRegistrationContext::class)->project(self::projectId($get, $projectId))?->delivery_mode === 'hybrid'),
                     Forms\Components\Placeholder::make('project_context')
                         ->label('خلاصه پروژه')
-                        ->content(fn (Get $get): HtmlString => self::projectSummary($get('client_project_id'))),
+                        ->content(fn (Get $get): HtmlString => self::projectSummary(self::projectId($get, $projectId))),
                 ]),
             Wizard\Step::make('جزئیات کار')
                 ->description('مرحله ۲ از ۳')
@@ -182,26 +218,26 @@ class ActivityCreationWizardAction
                         Forms\Components\Textarea::make('description')->label('توضیحات قابل نمایش به مشتری')->rows(3),
                         Forms\Components\Textarea::make('internal_notes')->label('یادداشت داخلی — خصوصی')->rows(3)
                             ->helperText('این متن هرگز در پرتال مشتری نمایش داده نمی‌شود.'),
-                    ])->columns(2)->visible(fn (Get $get): bool => self::isTime($get)),
-                    Forms\Components\Group::make()->schema(self::taskFields())
-                        ->visible(fn (Get $get): bool => ! self::isTime($get)),
+                    ])->columns(2)->visible(fn (Get $get): bool => self::isTime($get, $projectId)),
+                    Forms\Components\Group::make()->schema(self::taskFields($projectId))
+                        ->visible(fn (Get $get): bool => ! self::isTime($get, $projectId)),
                 ]),
             Wizard\Step::make('ثبت نهایی')
                 ->description('مرحله ۳ از ۳')
                 ->icon('heroicon-o-check-circle')
                 ->schema([
                     Forms\Components\Placeholder::make('final_summary')->label('خلاصه فعالیت')
-                        ->content(fn (Get $get): HtmlString => self::finalSummary($get)),
+                        ->content(fn (Get $get): HtmlString => self::finalSummary($get, $projectId)),
                     Forms\Components\Radio::make('visibility')->label('نمایش')
                         ->options([
                             ClientProjectActivity::VISIBILITY_INTERNAL => 'داخلی — فقط مدیران',
                             ClientProjectActivity::VISIBILITY_CLIENT => 'قابل مشاهده برای مشتری',
-                        ])->default(ClientProjectActivity::VISIBILITY_INTERNAL)->visible(fn (Get $get): bool => self::isTime($get)),
+                        ])->default(ClientProjectActivity::VISIBILITY_INTERNAL)->visible(fn (Get $get): bool => self::isTime($get, $projectId)),
                     Forms\Components\Radio::make('activity_status')->label('وضعیت')
                         ->options([
                             ClientProjectActivity::STATUS_DRAFT => 'پیش‌نویس',
                             ClientProjectActivity::STATUS_PUBLISHED => 'منتشرشده',
-                        ])->default(ClientProjectActivity::STATUS_DRAFT)->visible(fn (Get $get): bool => self::isTime($get)),
+                        ])->default(ClientProjectActivity::STATUS_DRAFT)->visible(fn (Get $get): bool => self::isTime($get, $projectId)),
                 ]),
         ])
             ->skippable(false)
@@ -223,21 +259,21 @@ class ActivityCreationWizardAction
         return new HtmlString('<div class="activity-wizard-summary"><strong>'.e($summary['project']->title).'</strong><span>مشتری: '.e($summary['project']->customer->display_name).'</span><span>این ماه: '.e($summary['usage_text']).'</span></div>');
     }
 
-    private static function finalSummary(Get $get): HtmlString
+    private static function finalSummary(Get $get, ?int $projectId): HtmlString
     {
-        if (! self::isTime($get)) {
-            $item = app(WorkRegistrationContext::class)->item($get('client_project_id'), $get('work_item_id'));
+        if (! self::isTime($get, $projectId)) {
+            $item = app(WorkRegistrationContext::class)->item(self::projectId($get, $projectId), $get('work_item_id'));
             $action = ['update' => 'ویرایش / پیشبرد کار', 'deliver' => 'ارسال نسخه تحویل', 'extra' => 'ایجاد کار خارج از بسته'][$get('task_action')] ?? '—';
             $title = $get('task_action') === 'extra' ? $get('work_data.title') : $item?->title;
 
-            return new HtmlString(self::taskSummary($get('client_project_id'))->toHtml().'<p>'.e($action).' · '.e($title ?? '—').'</p><p>عملیات انتخاب‌شده پس از ثبت نهایی انجام می‌شود. تأیید خروجی از مسیر بررسی مشتری انجام می‌شود.</p>');
+            return new HtmlString(self::taskSummary(self::projectId($get, $projectId))->toHtml().'<p>'.e($action).' · '.e($title ?? '—').'</p><p>عملیات انتخاب‌شده پس از ثبت نهایی انجام می‌شود. تأیید خروجی از مسیر بررسی مشتری انجام می‌شود.</p>');
         }
-        $project = app(ActivityWizardProjectContext::class)->find($get('client_project_id'));
+        $project = app(ActivityWizardProjectContext::class)->find(self::projectId($get, $projectId));
         $durationMinutes = ((int) $get('duration_hours') * 60) + (int) $get('duration_remainder_minutes');
         $duration = app(DurationFormatter::class)->format($durationMinutes);
         $service = ClientProjectActivityResource::serviceSummary($get('service_id'));
         $warning = app(ActivityWizardProjectContext::class)->overageWarning(
-            $get('client_project_id'),
+            self::projectId($get, $projectId),
             $get('activity_date'),
             $durationMinutes,
         );
@@ -259,10 +295,15 @@ class ActivityCreationWizardAction
         $set('work_cycle_id', app(WorkRegistrationContext::class)->cycle($id)?->id);
     }
 
-    private static function isTime(Get $get): bool
+    private static function projectId(Get $get, ?int $projectId): mixed
+    {
+        return $projectId ?? $get('client_project_id');
+    }
+
+    private static function isTime(Get $get, ?int $projectId): bool
     {
         $context = app(WorkRegistrationContext::class);
-        $choices = $context->choices($get('client_project_id'));
+        $choices = $context->choices(self::projectId($get, $projectId));
 
         return (count($choices) === 1 ? array_key_first($choices) : $get('operation')) === 'time';
     }
@@ -282,17 +323,18 @@ class ActivityCreationWizardAction
         return new HtmlString($html.'</div>');
     }
 
-    private static function taskFields(): array
+    private static function taskFields(?int $projectId): array
     {
         return [
             Forms\Components\Hidden::make('work_cycle_id'),
             Forms\Components\Placeholder::make('contract_context')->label('قرارداد و تعهدات دوره')
-                ->content(fn (Get $get): HtmlString => self::taskSummary($get('client_project_id'))),
+                ->content(fn (Get $get): HtmlString => self::taskSummary(self::projectId($get, $projectId))),
             Forms\Components\Actions::make([
                 FormAction::make('generateMissingWork')->label('ایجاد کارهای قراردادیِ ثبت‌نشده')
-                    ->visible(fn (Get $get): bool => app(WorkRegistrationContext::class)->cycle($get('client_project_id')) !== null)
-                    ->action(function (Get $get, Set $set): void {
-                        $cycle = app(WorkRegistrationContext::class)->cycle($get('client_project_id'));
+                    ->visible(fn (Get $get): bool => app(WorkRegistrationContext::class)->cycle(self::projectId($get, $projectId)) !== null)
+                    ->action(function (Get $get, Set $set) use ($projectId): void {
+                        abort_unless($projectId === null || (string) $get('client_project_id') === (string) $projectId, 403);
+                        $cycle = app(WorkRegistrationContext::class)->cycle(self::projectId($get, $projectId));
                         abort_unless($cycle, 422);
                         $count = app(ClientProjectWorkItemGenerator::class)->generate($cycle, auth()->user());
                         $set('work_cycle_id', $cycle->id);
@@ -302,20 +344,20 @@ class ActivityCreationWizardAction
             Forms\Components\Radio::make('task_action')->label('عملیات کار')
                 ->options(['update' => 'ویرایش / پیشبرد کار موجود', 'deliver' => 'ارسال نسخه تحویل کار موجود', 'extra' => 'ایجاد کار خارج از بسته'])
                 ->default('update')->live()->required()
-                ->afterStateUpdated(function (Set $set, Get $get, $state): void {
-                    $item = $state === 'extra' ? null : app(WorkRegistrationContext::class)->item($get('client_project_id'), $get('work_item_id'));
+                ->afterStateUpdated(function (Set $set, Get $get, $state) use ($projectId): void {
+                    $item = $state === 'extra' ? null : app(WorkRegistrationContext::class)->item(self::projectId($get, $projectId), $get('work_item_id'));
                     self::fillWorkData($set, $item);
                 }),
             Forms\Components\Select::make('work_item_id')->label('کار دوره جاری')
                 ->helperText('ابتدا کار را آماده و سپس در حال اجرا کنید. برای ارسال خروجیِ نیازمند تأیید، دسترسی کار باید قابل نمایش به مشتری باشد.')
-                ->options(fn (Get $get): array => app(WorkRegistrationContext::class)->itemOptions($get('client_project_id')))
+                ->options(fn (Get $get): array => app(WorkRegistrationContext::class)->itemOptions(self::projectId($get, $projectId)))
                 ->searchable()->preload()->live()->required()
                 ->visible(fn (Get $get): bool => $get('task_action') !== 'extra')
-                ->afterStateUpdated(fn (Set $set, Get $get, $state) => self::fillWorkData($set, app(WorkRegistrationContext::class)->item($get('client_project_id'), $state))),
+                ->afterStateUpdated(fn (Set $set, Get $get, $state) => self::fillWorkData($set, app(WorkRegistrationContext::class)->item(self::projectId($get, $projectId), $state))),
             Forms\Components\Placeholder::make('selected_work_context')->label('کار انتخاب‌شده')
                 ->visible(fn (Get $get): bool => $get('task_action') !== 'extra' && filled($get('work_item_id')))
-                ->content(function (Get $get): string {
-                    $item = app(WorkRegistrationContext::class)->item($get('client_project_id'), $get('work_item_id'));
+                ->content(function (Get $get) use ($projectId): string {
+                    $item = app(WorkRegistrationContext::class)->item(self::projectId($get, $projectId), $get('work_item_id'));
                     if (! $item) {
                         return 'کار به این پروژه و دوره تعلق ندارد.';
                     }
@@ -323,8 +365,8 @@ class ActivityCreationWizardAction
                     return $item->title.' · '.$item->status->options()[$item->status->value].' · '.ServiceDeliveryNumber::format($item->quantity).' '.$item->unit.' · '.($item->commitment ? 'داخل بسته قراردادی؛ بدون هزینه اضافی' : 'خارج از بسته').($item->approvalRequired() ? ' · نیازمند تأیید مشتری' : '');
                 }),
             Forms\Components\Group::make()->statePath('work_data')->columns(2)
-                ->schema(function (Get $get): array {
-                    $item = app(WorkRegistrationContext::class)->item($get('client_project_id'), $get('work_item_id'));
+                ->schema(function (Get $get) use ($projectId): array {
+                    $item = app(WorkRegistrationContext::class)->item(self::projectId($get, $projectId), $get('work_item_id'));
 
                     return $get('task_action') === 'deliver' ? ClientProjectWorkItemResource::deliveryFields() : ClientProjectWorkItemResource::workItemFields($get('task_action') === 'extra' ? null : $item);
                 })

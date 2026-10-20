@@ -24,7 +24,7 @@ class CustomerResource extends Resource
 
     protected static ?string $slug = 'client-portal/customers';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
