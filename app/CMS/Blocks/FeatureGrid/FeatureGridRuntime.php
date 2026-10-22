@@ -16,6 +16,7 @@ final class FeatureGridRuntime
         private readonly FeatureGridDataNormalizer $normalizer,
         private readonly RuntimeActionResolver $actions,
         private readonly ActionPresentation $presentation,
+        private readonly FeatureGridVideoResolver $videos,
     ) {}
 
     /**
@@ -33,7 +34,7 @@ final class FeatureGridRuntime
         $dynamic = $content['items_mode'] === 'dynamic';
         $items = $dynamic
             ? $this->dynamicItems($content, $settings)
-            : $content['items'];
+            : $this->videos->resolve($content['items'], $preview);
         $destinations = array_map(
             fn (array $item): ActionDestination => ActionDestination::fromArray(
                 is_array($item['action'] ?? null) ? $item['action'] : [],
@@ -65,6 +66,8 @@ final class FeatureGridRuntime
             'settings' => $settings,
             'items' => $items,
             'dynamic' => $dynamic,
+            'notice' => $preview && $dynamic && $content['dynamic_source'] === 'videos' && $items === []
+                ? 'ویدئوی قابل‌نمایش برای این منبع وجود ندارد؛ انتشار، دسته‌بندی و فعال بودن کتابخانه را بررسی کنید.' : null,
             'effective_columns' => $dynamic
                 ? $this->effectiveColumns($settings)
                 : 3,
@@ -76,6 +79,9 @@ final class FeatureGridRuntime
     private function dynamicItems(array $content, array $settings): array
     {
         $source = $content['dynamic_source'];
+        if ($source === 'videos') {
+            return $this->videos->dynamicCards($content['video_category_id'], $settings['video_limit'], $content['video_sort']);
+        }
         $limit = $settings['dynamic_rows'] * $this->effectiveColumns($settings);
         $overrides = collect($content['dynamic_button_overrides'])
             ->keyBy(fn (array $override): string => (string) $override['record_id']);

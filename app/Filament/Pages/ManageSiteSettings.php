@@ -9,6 +9,7 @@ use App\Models\Template;
 use App\Services\ModuleCleanupService;
 use App\Services\ModuleRedirectSuggestionService;
 use App\Services\SettingsService;
+use App\Services\VideoLibrarySettings;
 use App\Support\AdminLoginPath;
 use App\Support\TemporaryDebugLogger;
 use Filament\Forms;
@@ -99,6 +100,10 @@ class ManageSiteSettings extends Page implements HasForms
         'service_form_media_enabled' => ['services', 'boolean'],
         'service_form_related_projects_enabled' => ['services', 'boolean'],
         'projects_enabled' => ['projects', 'boolean'],
+        'video_library_enabled' => ['video_library', 'boolean'],
+        'video_library_archive_title' => ['video_library', 'text'],
+        'video_library_archive_description' => ['video_library', 'textarea'],
+        'video_library_per_page' => ['video_library', 'number'],
         'business_network_enabled' => ['business_network', 'boolean'],
         'projects_label' => ['projects', 'text'],
         'projects_index_title' => ['projects', 'text'],
@@ -160,6 +165,9 @@ class ManageSiteSettings extends Page implements HasForms
         $state = $settings->many(array_keys($this->settingsMeta))->all();
         $state['admin_login_path'] = app(AdminLoginPath::class)->current();
         $state['public_services_enabled'] ??= true;
+        $state['video_library_enabled'] ??= false;
+        $state['video_library_archive_title'] ??= VideoLibrarySettings::DEFAULT_TITLE;
+        $state['video_library_per_page'] ??= 12;
         $state['form_max_upload_size_mb'] ??= 10;
         $state['service_activity_catalog_enabled'] ??= true;
         $state['service_pricing_enabled'] ??= true;
@@ -423,6 +431,21 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->label('فعال‌سازی شبکه کسب‌وکار')
                                     ->default(false),
                             ]),
+                        Forms\Components\Tabs\Tab::make('کتابخانه ویدئویی')
+                            ->schema([
+                                Forms\Components\Toggle::make('video_library_enabled')
+                                    ->label('فعال‌سازی کتابخانه ویدئویی در وب‌سایت')->default(false),
+                                Forms\Components\Placeholder::make('video_library_module_note')
+                                    ->label('نمایش ماژول')
+                                    ->content('خاموش کردن ماژول فقط مسیر عمومی، سایت‌مپ و دسترسی مقصد منو را غیرفعال می‌کند؛ داده‌ها و مدیریت ویدئوها حفظ می‌شوند.'),
+                                Forms\Components\TextInput::make('video_library_archive_title')
+                                    ->label('عنوان آرشیو ویدئو')->maxLength(255)
+                                    ->default(VideoLibrarySettings::DEFAULT_TITLE),
+                                Forms\Components\TextInput::make('video_library_per_page')
+                                    ->label('تعداد ویدئو در هر صفحه')->integer()->minValue(1)->maxValue(48)->required()->default(12),
+                                Forms\Components\Textarea::make('video_library_archive_description')
+                                    ->label('توضیحات آرشیو ویدئو')->rows(3)->maxLength(5000)->columnSpanFull(),
+                            ])->columns(2),
                         Forms\Components\Tabs\Tab::make('پروژه‌ها')
                             ->schema([
                                 Forms\Components\Placeholder::make('projects_module_note')

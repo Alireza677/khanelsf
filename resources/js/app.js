@@ -5,6 +5,7 @@ import { initFormDatePickers } from './components/form-date-pickers';
 import { initFormNumberInputs } from './components/form-number-inputs';
 import { initFormPages } from './components/form-page';
 import { initProjectGalleryFilters } from './components/project-gallery-filters';
+import { initFeatureGridVideos } from './components/feature-grid-videos';
 
 const initJalaliMonthFilters = () => {
     document.querySelectorAll('[data-jalali-month-filter]').forEach((form) => {
@@ -22,6 +23,60 @@ const initJalaliMonthFilters = () => {
         };
         year.addEventListener('change', submit);
         month.addEventListener('change', submit);
+    });
+};
+
+const initFaqAccordions = () => {
+    document.querySelectorAll('.block-faq-section .block-faq').forEach((details) => {
+        if (details.dataset.faqReady === 'true') return;
+
+        const summary = details.querySelector(':scope > summary');
+        const answer = details.querySelector(':scope > .block-faq__answer');
+        if (! summary || ! answer) return;
+
+        details.dataset.faqReady = 'true';
+        let animation = null;
+        let expanded = details.open;
+        const sync = () => summary.setAttribute('aria-expanded', String(expanded));
+        sync();
+
+        // Keep native/programmatic toggles accessible as well as animated clicks.
+        details.addEventListener('toggle', () => {
+            if (animation) return;
+            expanded = details.open;
+            sync();
+        });
+
+        summary.addEventListener('click', (event) => {
+            if (event.defaultPrevented) return;
+            event.preventDefault();
+
+            const startHeight = details.open ? answer.getBoundingClientRect().height : 0;
+            expanded = ! expanded;
+            animation?.cancel();
+            animation = null;
+            sync();
+            // Hidden answer links must leave the tab order as soon as closing starts.
+            answer.inert = ! expanded;
+
+            const finish = () => {
+                details.open = expanded;
+                answer.inert = false;
+                animation = null;
+            };
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || ! answer.animate) {
+                finish();
+                return;
+            }
+
+            details.open = true;
+            animation = answer.animate(
+                [{ height: `${startHeight}px` }, { height: `${expanded ? answer.scrollHeight : 0}px` }],
+                { duration: 200, easing: 'ease-out' },
+            );
+            animation.onfinish = finish;
+        });
     });
 };
 
@@ -1061,6 +1116,8 @@ const initCalculatorResultModals = () => {
 };
 
 const initPublicInteractions = () => {
+    initFeatureGridVideos();
+    initFaqAccordions();
     initProjectGalleryFilters();
     initJalaliMonthFilters();
     initMobileHeader();

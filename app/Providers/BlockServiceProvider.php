@@ -166,7 +166,7 @@ class BlockServiceProvider extends ServiceProvider
                 $view->with('grid', $featureGrids->prepare(
                     $data,
                     $context,
-                    ! empty($viewData['isPreview']) || ! empty($context['preview']),
+                    ! empty($viewData['isPreview']) || ! empty($context['preview']) || ! empty($context['isPreview']),
                 ));
             },
         );

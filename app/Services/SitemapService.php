@@ -59,6 +59,10 @@ class SitemapService
             $this->add($urls, route('services.index'));
         }
 
+        if (app(VideoLibrarySettings::class)->enabled()) {
+            $this->add($urls, route('videos.index'));
+        }
+
         Page::query()
             ->published()
             ->where('robots_index', true)

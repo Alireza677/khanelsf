@@ -29,9 +29,11 @@ final class FeatureGridDataNormalizer implements BlockNormalizer
                 'section_title' => $this->stringOrNull($content['section_title'] ?? null),
                 'section_description' => $this->stringOrNull($content['section_description'] ?? null),
                 'items_mode' => $mode,
-                'dynamic_source' => ($content['dynamic_source'] ?? null) === 'projects'
-                    ? 'projects'
-                    : 'posts',
+                'dynamic_source' => in_array($content['dynamic_source'] ?? null, ['projects', 'videos'], true)
+                    ? $content['dynamic_source'] : 'posts',
+                'video_category_id' => $this->positiveId($content['video_category_id'] ?? null),
+                'video_sort' => in_array($content['video_sort'] ?? null, ['oldest', 'manual'], true)
+                    ? $content['video_sort'] : 'newest',
                 'dynamic_button_label' => $this->stringOrNull(
                     $content['dynamic_button_label'] ?? null,
                 ) ?? 'مشاهده بیشتر',
@@ -60,6 +62,7 @@ final class FeatureGridDataNormalizer implements BlockNormalizer
                     6,
                     1,
                 ),
+                'video_limit' => $this->boundedInteger($settings['video_limit'] ?? 6, 1, 72, 6),
                 'dynamic_columns' => $this->boundedInteger(
                     $settings['dynamic_columns'] ?? 3,
                     1,
@@ -97,6 +100,9 @@ final class FeatureGridDataNormalizer implements BlockNormalizer
 
             $destination = $this->actions->adapt($item);
             $normalizedItem = [
+                'media_type' => ($item['media_type'] ?? null) === 'video' ? 'video' : 'image',
+                'video_id' => $this->positiveId($item['video_id'] ?? null),
+                'video_text_mode' => ($item['video_text_mode'] ?? null) === 'custom' ? 'custom' : 'dynamic',
                 'title' => $this->stringOrNull($item['title'] ?? null),
                 'description' => $this->stringOrNull($item['description'] ?? null),
                 'icon' => $this->stringOrNull($item['icon'] ?? null),
@@ -175,12 +181,19 @@ final class FeatureGridDataNormalizer implements BlockNormalizer
 
     private function itemIsEmpty(array $item): bool
     {
-        return blank($item['title'])
+        return $item['media_type'] !== 'video'
+            && blank($item['title'])
             && blank($item['description'])
             && blank($item['icon'])
             && blank($item['image'])
             && blank($item['button_label'])
             && $item['action'] === null;
+    }
+
+    private function positiveId(mixed $value): ?int
+    {
+        return filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false
+            ? (int) $value : null;
     }
 
     private function stringOrNull(mixed $value): ?string

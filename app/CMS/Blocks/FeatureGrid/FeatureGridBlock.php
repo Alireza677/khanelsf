@@ -12,6 +12,7 @@ use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Models\Post;
 use App\Models\Project;
+use App\Models\VideoCategory;
 use Filament\Forms;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Get;
@@ -135,13 +136,15 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
     private function dynamicFields(bool $page): array
     {
         $visible = fn (Get $get): bool => $get('content.items_mode') === 'dynamic';
+        $videoVisible = fn (Get $get): bool => $visible($get) && $get('content.dynamic_source') === 'videos';
+        $otherVisible = fn (Get $get): bool => $visible($get) && $get('content.dynamic_source') !== 'videos';
 
         return [
             Forms\Components\Select::make('content.dynamic_source')
                 ->label($page ? 'منبع داینامیک' : __('Dynamic source'))
                 ->options($page
-                    ? ['posts' => 'آخرین نوشته‌ها', 'projects' => 'آخرین پروژه‌ها']
-                    : ['posts' => __('Latest posts'), 'projects' => __('Latest projects')])
+                    ? ['posts' => 'آخرین نوشته‌ها', 'projects' => 'آخرین پروژه‌ها', 'videos' => 'کتابخانه ویدئویی']
+                    : ['posts' => __('Latest posts'), 'projects' => __('Latest projects'), 'videos' => __('Video library')])
                 ->default('posts')
                 ->live()
                 ->afterStateUpdated(
@@ -149,10 +152,21 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
                 )
                 ->required()
                 ->visible($visible),
+            Forms\Components\Select::make('content.video_category_id')->label('دسته‌بندی ویدئوها')
+                ->options(fn (): array => VideoCategory::query()->orderBy('sort_order')->orderBy('name')->pluck('name', 'id')->all())
+                ->placeholder('همه دسته‌بندی‌ها')->searchable()->exists('video_categories', 'id')->visible($videoVisible),
+            Forms\Components\TextInput::make('settings.video_limit')->label('تعداد ویدئوها')
+                ->integer()->minValue(1)->maxValue(72)->default(6)->required()->visible($videoVisible),
+            Forms\Components\Select::make('content.video_sort')->label('ترتیب ویدئوها')
+                ->options(['newest' => 'جدیدترین', 'oldest' => 'قدیمی‌ترین', 'manual' => 'ترتیب دستی کتابخانه'])
+                ->default('newest')->required()->visible($videoVisible),
+            Forms\Components\Placeholder::make('video_publication_note')->label('انتشار عمومی')
+                ->content('فقط ویدئوهای منتشرشده با زمان انتشار رسیده در کتابخانه فعال نمایش داده می‌شوند.')
+                ->visible($videoVisible),
             Forms\Components\TextInput::make('settings.dynamic_rows')
                 ->label($page ? 'تعداد ردیف' : __('Rows'))
                 ->numeric()->minValue(1)->maxValue(6)->default(1)
-                ->required()->visible($visible),
+                ->required()->visible($otherVisible),
             Forms\Components\TextInput::make('settings.dynamic_columns')
                 ->label($page ? 'تعداد ستون درخواستی' : __('Requested columns'))
                 ->numeric()->minValue(1)->maxValue(12)->default(3)
@@ -169,7 +183,7 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
                 ->label($page ? 'متن پیش‌فرض دکمه' : __('Default button label'))
                 ->default('مشاهده بیشتر')
                 ->maxLength(255)
-                ->visible($visible),
+                ->visible($otherVisible),
             Forms\Components\Repeater::make('content.dynamic_button_overrides')
                 ->label($page ? 'متن دکمه اختصاصی' : __('Button label overrides'))
                 ->cloneable()
@@ -190,7 +204,7 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
                 ->columns(2)
                 ->columnSpanFull()
                 ->collapsible()
-                ->visible($visible),
+                ->visible($otherVisible),
         ];
     }
 
@@ -198,16 +212,29 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
     private function itemFields(bool $page): array
     {
         return [
+            Forms\Components\Select::make('media_type')->label($page ? 'نوع رسانه' : __('Media type'))
+                ->options(['image' => 'تصویر', 'video' => 'ویدئو'])->default('image')->live()->required(),
+            FeatureGridVideoPicker::make('video_id')
+                ->visible(fn (Get $get): bool => $get('media_type') === 'video')->columnSpan(2),
+            Forms\Components\Select::make('video_text_mode')->label('عنوان و توضیحات کارت')
+                ->options(['dynamic' => 'داینامیک از ویدئو', 'custom' => 'سفارشی'])->default('dynamic')->live()
+                ->visible(fn (Get $get): bool => $get('media_type') === 'video'),
             Forms\Components\TextInput::make('title')
                 ->label($page ? 'عنوان' : __('Title'))
-                ->required()
+                ->required(fn (Get $get): bool => $get('media_type') !== 'video' || $get('video_text_mode') === 'custom')
+                ->visible(fn (Get $get): bool => $get('media_type') !== 'video' || $get('video_text_mode') === 'custom')
+                ->dehydratedWhenHidden()
                 ->maxLength(255),
-            self::iconsaxIconPicker('icon', $page ? 'آیکن' : __('Icon')),
-            self::iconsaxIconSizeInput(label: $page ? 'اندازه آیکن' : __('Icon size')),
+            self::iconsaxIconPicker('icon', $page ? 'آیکن' : __('Icon'))
+                ->visible(fn (Get $get): bool => $get('media_type') !== 'video'),
+            self::iconsaxIconSizeInput(label: $page ? 'اندازه آیکن' : __('Icon size'))
+                ->visible(fn (Get $get): bool => $get('media_type') !== 'video'),
             Forms\Components\ViewField::make('image')
                 ->label($page ? 'تصویر' : __('Image'))
                 ->view('filament.forms.components.media-library-url-picker')
                 ->viewData(fn (): array => ['images' => self::mediaLibraryImageItems()])
+                ->visible(fn (Get $get): bool => $get('media_type') !== 'video')
+                ->dehydratedWhenHidden()
                 ->helperText($page
                     ? 'تصویر اختیاری برای این ویژگی.'
                     : __('Optional image for this feature.'))
@@ -215,6 +242,8 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
             ...$this->imageSettingsFields($page),
             Forms\Components\RichEditor::make('description')
                 ->label($page ? 'توضیحات' : __('Description'))
+                ->visible(fn (Get $get): bool => $get('media_type') !== 'video' || $get('video_text_mode') === 'custom')
+                ->dehydratedWhenHidden()
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('button_label')
                 ->label($page ? 'متن دکمه' : __('Button label'))
@@ -245,6 +274,8 @@ final class FeatureGridBlock extends AbstractBlock implements BlockNormalizer
     {
         return [
             Forms\Components\Section::make($page ? 'تنظیمات تصویر' : __('Image settings'))
+                ->visible(fn (Get $get): bool => $get('media_type') !== 'video')
+                ->dehydratedWhenHidden()
                 ->schema([
                     Forms\Components\Grid::make(['default' => 1, 'xl' => 2])
                         ->schema([

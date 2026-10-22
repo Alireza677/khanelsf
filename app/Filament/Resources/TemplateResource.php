@@ -517,6 +517,9 @@ class TemplateResource extends Resource
                 ->schema(static::sectionFields([
                     Forms\Components\TextInput::make('section_title')->label(__('Section title'))->required()->maxLength(255),
                     static::headingTagField(),
+                    Forms\Components\RichEditor::make('section_description')
+                        ->label('توضیح کوتاه بخش (اختیاری)')
+                        ->columnSpanFull(),
                     Forms\Components\Repeater::make('items')->label(__('Items'))
                         ->schema([
                             Forms\Components\TextInput::make('question')->label(__('Question'))->required()->maxLength(255),

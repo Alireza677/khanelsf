@@ -37,6 +37,7 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\VideoController;
 use App\Http\Controllers\ZarinpalCallbackController;
 use App\Http\Middleware\MatchAdminLoginPath;
 use Filament\Pages\Auth\Login as FilamentLogin;
@@ -134,6 +135,9 @@ Route::get('/projects/{slug}', [ProjectController::class, 'show'])->name('projec
 // Reserved public service URLs; keep these before the catch-all page route.
 Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
 Route::get('/services/{slug}', [ServiceController::class, 'show'])->name('services.show');
+
+// Reserved public video archive; no video detail route in phase 1.
+Route::get('/videos', [VideoController::class, 'index'])->name('videos.index');
 
 // Reserved public gallery URLs; keep these before the catch-all page route.
 Route::get('/galleries', [ProjectController::class, 'archive'])->name('galleries.index');

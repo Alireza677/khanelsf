@@ -1,0 +1,30 @@
+.block-feature-grid .feature-video {
+    align-self: center;
+    aspect-ratio: 16 / 9;
+    background: #111827;
+    border: 0;
+    border-radius: .75rem;
+    cursor: pointer;
+    display: block;
+    flex: 0 0 auto;
+    margin: 0 0 1rem;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+    width: 100%;
+}
+.block-feature-grid .feature-video > img { display: block; height: 100%; margin: 0; object-fit: cover; width: 100%; }
+.feature-video__play { background: rgb(0 0 0 / .7); border-radius: 50%; color: #fff; display: grid; font-size: 1.25rem; height: 3rem; inset: 50% auto auto 50%; place-items: center; position: absolute; transform: translate(-50%, -50%); width: 3rem; }
+.feature-video__duration { background: rgb(0 0 0 / .8); border-radius: .25rem; bottom: .5rem; color: #fff; font-size: .8rem; inset-inline-end: .5rem; padding: .15rem .4rem; position: absolute; }
+.feature-video:focus-visible, .feature-video-dialog button:focus-visible { outline: 3px solid var(--theme-primary, #2563eb); outline-offset: 3px; }
+.block-feature-grid--icon-list .block-card__media:has(.feature-video) { width: clamp(5rem, 18vw, 10rem); }
+.block-feature-grid--icon-list .feature-video { margin: 0; }
+.block-feature-grid--icon-list .feature-video__play { font-size: .9rem; height: 2rem; width: 2rem; }
+.feature-video-dialog-open { overflow: hidden; }
+.feature-video-dialog { background: #fff; border: 0; border-radius: 1rem; color: #111827; margin: auto; max-height: calc(100dvh - 2rem); max-width: 64rem; overflow: auto; padding: 0; width: calc(100% - 2rem); }
+.feature-video-dialog::backdrop { background: rgb(0 0 0 / .8); }
+.feature-video-dialog__header { align-items: center; display: flex; gap: 1rem; justify-content: space-between; padding: .75rem 1rem; }
+.feature-video-dialog__header h2 { font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
+.feature-video-dialog__header button { background: #f3f4f6; border-radius: .375rem; flex-shrink: 0; padding: .4rem .75rem; }
+.feature-video-dialog__player { aspect-ratio: 16 / 9; background: #000; width: 100%; }
+.feature-video-dialog__player > iframe { border: 0; display: block; height: 100%; width: 100%; }

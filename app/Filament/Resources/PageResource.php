@@ -145,6 +145,9 @@ class PageResource extends Resource
                                                 ->required()
                                                 ->maxLength(255),
                                             static::headingTagField(),
+                                            Forms\Components\RichEditor::make('section_description')
+                                                ->label('توضیح کوتاه بخش (اختیاری)')
+                                                ->columnSpanFull(),
                                             Forms\Components\Repeater::make('items')
                                                 ->label('پرسش‌ها')
                                                 ->cloneable()
