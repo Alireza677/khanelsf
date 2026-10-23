@@ -84,6 +84,10 @@ final class SubmissionAnswerSnapshot
 
     private function displayValue(array $field, mixed $value): mixed
     {
+        if (($field['type'] ?? null) === 'iran_province_city') {
+            return IranLocations::display($value);
+        }
+
         if (($field['type'] ?? null) === 'date' && is_string($value)) {
             return PersianDate::date($value) ?? $value;
         }

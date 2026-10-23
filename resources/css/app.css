@@ -6941,6 +6941,25 @@ input[name*="email"] {
     font-weight: 700;
 }
 
+.form-iran-location {
+    border: 0;
+    margin: 0;
+    min-width: 0;
+    padding: 0;
+}
+
+.form-iran-location__grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.form-iran-location__grid > div { min-width: 0; }
+.form-select__trigger:disabled { cursor: default; opacity: .55; }
+.form-select__option[hidden], .form-select__empty[hidden] { display: none !important; }
+.form-select__search { box-sizing: border-box; font: inherit; width: 100%; }
+.form-select__empty { color: #64748b; padding: .75rem; }
+
 .form-date-picker {
     position: relative;
 }

@@ -96,6 +96,7 @@ class FormResource extends Resource
                 'label' => 'فیلدهای انتخابی',
                 'fields' => [
                     'select' => ['label' => 'فهرست انتخاب', 'icon' => 'heroicon-o-chevron-up-down'],
+                    'iran_province_city' => ['label' => 'استان و شهر ایران', 'icon' => 'heroicon-o-map-pin'],
                     'radio' => ['label' => 'رادیویی', 'icon' => 'heroicon-o-list-bullet'],
                     'checkbox' => ['label' => 'انتخاب چندگانه', 'icon' => 'heroicon-o-check-badge'],
                     'image_choice' => ['label' => 'انتخاب تصویری', 'icon' => 'heroicon-o-photo'],

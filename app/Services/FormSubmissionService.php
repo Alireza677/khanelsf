@@ -26,6 +26,27 @@ final class FormSubmissionService
     public function submit(Form $form, array $payload, array $attribution = [], array $files = [], ?array $confirmationAudit = null): FormSubmission
     {
         $this->calculators->assertConfiguration($form);
+        // Resolve labels on the server, once, before building immutable answer snapshots.
+        foreach (app(FormSchema::class)->fields($form) as $field) {
+            if ($field['type'] !== 'iran_province_city') {
+                continue;
+            }
+
+            $value = $payload[$field['name']] ?? null;
+            if (! $field['required'] && IranLocations::isEmpty($value)) {
+                $payload[$field['name']] = null;
+
+                continue;
+            }
+
+            $location = app(IranLocations::class)->pair($value);
+            if ($location === null) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $field['name'] => 'استان و شهر انتخاب‌شده معتبر نیست.',
+                ]);
+            }
+            $payload[$field['name']] = $location;
+        }
         $storedPaths = [];
 
         try {

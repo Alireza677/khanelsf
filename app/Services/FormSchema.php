@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Form;
 use App\Services\Calculators\CalculatorScoringSchema;
+use App\Rules\IranProvinceCity;
 use App\Support\FormNumber;
 use App\Support\FormUpload;
 use App\Rules\FormUploadRule;
@@ -16,7 +17,7 @@ final class FormSchema
 
     public const DATE_GLOBAL_MIN = '1971-03-21';
 
-    private const INPUT_TYPES = ['text', 'number', 'email', 'tel', 'date', 'textarea', 'select', 'radio', 'checkbox', 'image_choice', 'radio_card', 'file'];
+    private const INPUT_TYPES = ['text', 'number', 'email', 'tel', 'date', 'textarea', 'select', 'radio', 'checkbox', 'image_choice', 'radio_card', 'file', 'iran_province_city'];
 
     private const STRUCTURAL_TYPES = ['page', 'step'];
 
@@ -150,6 +151,17 @@ final class FormSchema
                 continue;
             }
 
+            if ($field['type'] === 'iran_province_city') {
+                $rules[$field['name']] = [
+                    'bail',
+                    $field['required'] ? 'required' : 'nullable',
+                    'array:province_id,city_id',
+                    new IranProvinceCity($field['required']),
+                ];
+
+                continue;
+            }
+
             if ($field['type'] === 'checkbox') {
                 $values = array_column($field['options'], 'value');
                 $rules[$field['name']] = array_values(array_filter([
@@ -243,6 +255,11 @@ final class FormSchema
         $messages = [];
 
         foreach ($this->fields($form) as $field) {
+            if ($field['type'] === 'iran_province_city') {
+                $messages[$field['name'].'.required'] = "انتخاب استان و شهر برای «{$field['label']}» الزامی است.";
+                $messages[$field['name'].'.array'] = "استان و شهر انتخاب‌شده برای «{$field['label']}» معتبر نیست.";
+            }
+
             if ($field['type'] !== 'file') {
                 continue;
             }

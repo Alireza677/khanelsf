@@ -38,7 +38,7 @@ export const initFormPages = (root = document) => {
         let current = 0;
         let resultStale = false;
 
-        const controls = (field) => Array.from(field.querySelectorAll('input, select, textarea')).filter((input) => ! input.disabled);
+        const controls = (field) => Array.from(field.querySelectorAll('input, select, textarea')).filter((input) => ! input.disabled && ! input.matches('[data-form-select-search]'));
         const answered = (field) => controls(field).some((input) => ['checkbox', 'radio'].includes(input.type)
             ? input.checked : input.type === 'file' ? input.files.length > 0 : input.value.trim() !== '');
         const invalidControl = (field) => controls(field).find((input) => ! input.validity.valid);

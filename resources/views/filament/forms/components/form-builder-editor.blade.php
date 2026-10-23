@@ -208,6 +208,9 @@
                                     </div>
                                 </div>
 
+                                @if ($type === 'iran_province_city')
+                                    @include('filament.forms.components.iran-location-preview')
+                                @endif
                             @endif
 
                             <div class="form-builder-card__actions">

@@ -6,6 +6,17 @@
 @include('partials.site-font-styles')
 
 <style>
+    .form-builder-location-preview {
+        display: grid;
+        gap: .75rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+        padding: .75rem;
+    }
+    .form-builder-location-preview label { display: grid; gap: .35rem; min-width: 0; }
+    .form-builder-location-preview input,
+    .form-builder-location-preview select { border: 1px solid #94a3b8; border-radius: .5rem; color: #0f172a; background: #fff; font: inherit; min-width: 0; padding: .5rem; width: 100%; }
+    .form-builder-location-preview :disabled { opacity: .5; }
+
     :root {
         --admin-dashboard-background-light: {{ $adminDashboardBackgroundLight }};
         --cms-modal-layer-z: 60;

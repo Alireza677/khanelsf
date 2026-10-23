@@ -175,6 +175,10 @@ final class FormSubmissionPresenter
         }
 
         if (is_array($value)) {
+            if (isset($value['province_name'], $value['city_name'], $value['dataset_version'])) {
+                return IranLocations::display($value);
+            }
+
             if ($value === []) {
                 return '—';
             }

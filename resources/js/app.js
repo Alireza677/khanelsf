@@ -4,6 +4,7 @@ import { initHeaderOverlays } from './components/header-overlays';
 import { initFormDatePickers } from './components/form-date-pickers';
 import { initFormNumberInputs } from './components/form-number-inputs';
 import { initFormPages } from './components/form-page';
+import { initIranLocations, normalizePersianSearch } from './components/form-iran-locations';
 import { initProjectGalleryFilters } from './components/project-gallery-filters';
 import { initFeatureGridVideos } from './components/feature-grid-videos';
 
@@ -945,7 +946,10 @@ const initFormSelects = () => {
         const trigger = root.querySelector('[data-form-select-trigger]');
         const value = root.querySelector('[data-form-select-value]');
         const listbox = root.querySelector('[data-form-select-listbox]');
-        const options = Array.from(root.querySelectorAll('[data-form-select-option]'));
+        let options = Array.from(root.querySelectorAll('[data-form-select-option]'));
+        const search = root.querySelector('[data-form-select-search]');
+        const empty = root.querySelector('[data-form-select-empty]');
+        let visibleOptions = options;
 
         if (! native || ! trigger || ! value || ! listbox || options.length === 0) {
             return;
@@ -956,16 +960,23 @@ const initFormSelects = () => {
         let activeIndex = Math.max(0, options.findIndex((option) => option.dataset.value === native.value));
 
         const setActive = (index, focus = false) => {
-            activeIndex = (index + options.length) % options.length;
-            options.forEach((option, optionIndex) => option.classList.toggle('is-active', optionIndex === activeIndex));
-            trigger.setAttribute('aria-activedescendant', options[activeIndex].id);
+            if (! visibleOptions.length) {
+                trigger.removeAttribute('aria-activedescendant');
+                search?.removeAttribute('aria-activedescendant');
+                return;
+            }
+            activeIndex = (index + visibleOptions.length) % visibleOptions.length;
+            options.forEach((option) => option.classList.toggle('is-active', option === visibleOptions[activeIndex]));
+            trigger.setAttribute('aria-activedescendant', visibleOptions[activeIndex].id);
+            search?.setAttribute('aria-activedescendant', visibleOptions[activeIndex].id);
 
             if (focus) {
-                options[activeIndex].scrollIntoView({ block: 'nearest' });
+                visibleOptions[activeIndex].scrollIntoView({ block: 'nearest' });
             }
         };
 
         const sync = () => {
+            trigger.disabled = native.disabled;
             const selected = options.find((option) => option.dataset.value === native.value) || options[0];
             value.textContent = selected.textContent;
             trigger.classList.toggle('is-placeholder', native.value === '');
@@ -979,6 +990,7 @@ const initFormSelects = () => {
             root.classList.remove('is-open-up');
             trigger.setAttribute('aria-expanded', 'false');
             trigger.removeAttribute('aria-activedescendant');
+            search?.removeAttribute('aria-activedescendant');
 
             if (restoreFocus) {
                 trigger.focus();
@@ -998,15 +1010,19 @@ const initFormSelects = () => {
         };
 
         const open = () => {
+            if (native.disabled) return;
             window.dispatchEvent(new CustomEvent('form-select:opening', { detail: { root } }));
             listbox.hidden = false;
             root.classList.add('is-open');
             trigger.setAttribute('aria-expanded', 'true');
             positionPanel();
-            setActive(Math.max(0, options.findIndex((option) => option.dataset.value === native.value)), true);
+            if (search) { search.value = ''; filter(); }
+            setActive(Math.max(0, visibleOptions.findIndex((option) => option.dataset.value === native.value)), true);
+            search?.focus({ preventScroll: true });
         };
 
         const choose = (option) => {
+            if (! option || native.disabled) return;
             native.value = option.dataset.value || '';
             native.dispatchEvent(new Event('input', { bubbles: true }));
             native.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1028,7 +1044,7 @@ const initFormSelects = () => {
                 else setActive(activeIndex - 1, true);
             } else if (event.key === 'Enter' || event.key === ' ') {
                 if (listbox.hidden) open();
-                else choose(options[activeIndex]);
+                else choose(visibleOptions[activeIndex]);
             } else if (event.key === 'Escape' && ! listbox.hidden) {
                 event.preventDefault();
                 close(true);
@@ -1036,10 +1052,57 @@ const initFormSelects = () => {
                 close();
             }
         });
-        options.forEach((option, index) => {
-            option.addEventListener('click', () => choose(option));
-            option.addEventListener('pointerenter', () => setActive(index));
+        const filter = () => {
+            const query = normalizePersianSearch(search?.value || '');
+            options.forEach((option) => { option.hidden = query !== '' && ! normalizePersianSearch(option.textContent).includes(query); });
+            visibleOptions = options.filter((option) => ! option.hidden);
+            if (empty) empty.hidden = visibleOptions.length > 0;
+            setActive(0);
+        };
+        search?.addEventListener('input', filter);
+        search?.addEventListener('keydown', (event) => {
+            if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.key === 'Escape') close(true);
+                else if (event.key === 'Enter') choose(visibleOptions[activeIndex]);
+                else setActive(activeIndex + (event.key === 'ArrowDown' ? 1 : -1), true);
+            } else if (event.key === 'Tab') close();
         });
+        listbox.addEventListener('click', (event) => {
+            const option = event.target.closest('[data-form-select-option]');
+            if (option) choose(option);
+        });
+        listbox.addEventListener('pointerover', (event) => {
+            const index = visibleOptions.indexOf(event.target.closest('[data-form-select-option]'));
+            if (index >= 0) setActive(index);
+        });
+        native.addEventListener('form-select:refresh', () => {
+            const container = root.querySelector('[data-form-select-options]');
+            if (! container) return;
+            container.replaceChildren(...Array.from(native.options, (item, index) => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'form-select__option';
+                option.id = `${native.id}-option-${index}`;
+                option.tabIndex = -1;
+                option.setAttribute('role', 'option');
+                option.setAttribute('data-form-select-option', '');
+                option.dataset.value = item.value;
+                option.textContent = item.textContent;
+                return option;
+            }));
+            options = Array.from(container.children);
+            visibleOptions = options;
+            if (search) search.value = '';
+            if (empty) empty.hidden = true;
+            close();
+            sync();
+        });
+        if (search) {
+            native.tabIndex = -1;
+            native.setAttribute('aria-hidden', 'true');
+        }
         native.addEventListener('change', sync);
         native.addEventListener('invalid', (event) => {
             event.preventDefault();
@@ -1135,6 +1198,7 @@ const initPublicInteractions = () => {
     initFormPages();
     initFormSubmitConfirmations();
     initFormFileInputs();
+    initIranLocations();
     initFormSelects();
     initFormDatePickers();
     initFormNumberInputs();
@@ -1146,6 +1210,7 @@ document.addEventListener('forms:rendered', () => {
     initFormPages();
     initFormSubmitConfirmations();
     initFormFileInputs();
+    initIranLocations();
     initFormSelects();
     initFormDatePickers();
     initFormNumberInputs();

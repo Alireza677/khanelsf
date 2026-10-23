@@ -108,6 +108,10 @@
         <input type="hidden" name="_context_block_id" value="{{ $attributionContext['block_id'] }}">
     @endif
 
+    @if (collect($fields)->contains('type', 'iran_province_city'))
+        <script type="application/json" data-iran-locations>{!! json_encode(app(\App\Services\IranLocations::class)->browserData(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
+    @endif
+
     <div class="form-honeypot" aria-hidden="true">
         <label for="{{ $formDomId }}-website">وب‌سایت</label>
         <input id="{{ $formDomId }}-website" name="website" type="text" tabindex="-1" autocomplete="off">
@@ -156,6 +160,8 @@
                                 <p>{{ $field['description'] }}</p>
                             @endif
                         </div>
+                    @elseif ($field['type'] === 'iran_province_city')
+                        @include('forms._iran-province-city')
                     @elseif ($field['type'] === 'date')
                         @php($canonicalDate = is_string($oldValue($field['name'])) ? $oldValue($field['name']) : '')
                         <label id="{{ $inputId }}-label" for="{{ $inputId }}">{{ $field['label'] }}</label>

@@ -1,0 +1,3 @@
+# Preserve upstream bytes so checksums are identical on Windows and Linux.
+*.json -text
+LICENSE -text
