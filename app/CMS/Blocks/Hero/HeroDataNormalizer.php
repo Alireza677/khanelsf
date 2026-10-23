@@ -36,7 +36,7 @@ final class HeroDataNormalizer implements BlockNormalizer
         $imageUrl = $this->stringOrNull($data['image'] ?? null);
         $videoUrl = $this->stringOrNull($data['hero_2_video_url'] ?? null);
         $posterUrl = $this->stringOrNull($data['hero_2_video_poster'] ?? null);
-        $kind = $template === 'hero_2' && (($data['hero_2_background_type'] ?? null) === 'video' || $videoUrl !== null)
+        $kind = $template === 'hero_2' && $this->backgroundTreatment($data, $template) === 'video'
             ? 'video'
             : 'image';
 
@@ -103,6 +103,19 @@ final class HeroDataNormalizer implements BlockNormalizer
             $normalized['settings']['background_treatment'] ?? null,
             'image',
         );
+
+        if ($normalized['template'] === 'hero_2') {
+            // Explicit V2 selection wins; older payloads fall back to their background setting.
+            $kind = data_get($data, 'content.media.kind');
+
+            if (! in_array($kind, ['image', 'video'], true)) {
+                $kind = $normalized['settings']['background_treatment'] === 'video' ? 'video' : 'image';
+            }
+
+            $normalized['content']['media']['kind'] = $kind;
+            $normalized['settings']['background_treatment'] = $kind;
+        }
+
         $normalized['content']['primary_cta'] = $this->canonicalCta($data, 'primary_cta', $normalized['content']['primary_cta']);
         $normalized['content']['secondary_cta'] = $this->canonicalCta($data, 'secondary_cta', $normalized['content']['secondary_cta']);
         $normalized['content']['selector'] = $this->canonicalSelector($normalized['content']['selector']);

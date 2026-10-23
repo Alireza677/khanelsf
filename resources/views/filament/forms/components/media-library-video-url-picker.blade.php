@@ -3,12 +3,6 @@
     $videos = collect($videos ?? [])->values();
 @endphp
 
-@once
-    <script>
-        window.__mediaLibraryVideoItems = @js($videos);
-    </script>
-@endonce
-
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
@@ -22,7 +16,7 @@
             open: false,
             search: '',
             selectedUrl: $wire.entangle(@js($statePath)),
-            videos: window.__mediaLibraryVideoItems || [],
+            videos: @js($videos),
             filteredVideos() {
                 const query = this.search.trim().toLowerCase()
 
@@ -30,7 +24,8 @@
                     return this.videos
                 }
 
-                return this.videos.filter((video) => String(video.name || '').toLowerCase().includes(query))
+                return this.videos.filter((video) => [video.original_filename, video.title, video.name]
+                    .some((value) => String(value || '').toLowerCase().includes(query)))
             },
             choose(url) {
                 this.selectedUrl = url
@@ -178,7 +173,7 @@
                                     style="display: block; width: 100%; height: 9rem; object-fit: cover"
                                     class="w-full object-cover"
                                 ></video>
-                                <span class="block truncate px-3 py-2 text-sm text-gray-700 dark:text-gray-200" x-text="video.name"></span>
+                                <span class="block truncate px-3 py-2 text-sm text-gray-700 dark:text-gray-200" x-text="video.title || video.original_filename || video.name"></span>
                             </button>
                         </template>
                     </div>

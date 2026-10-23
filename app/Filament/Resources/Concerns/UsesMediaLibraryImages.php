@@ -57,6 +57,8 @@ trait UsesMediaLibraryImages
             ->map(fn (Media $media): array => [
                 'id' => $media->id,
                 'name' => $media->file_name,
+                'title' => $media->displayTitle(),
+                'original_filename' => $media->originalFilename(),
                 'url' => $media->getUrl(),
             ])
             ->values()
