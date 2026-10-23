@@ -106,6 +106,13 @@ class IranProvinceCityFieldTest extends TestCase
         $preview = view('filament.forms.components.iran-location-preview')->render();
         $this->assertStringContainsString('x-model="province"', $preview);
         $this->assertStringContainsString('x-model="city" :disabled="! province"', $preview);
+        $selectPreview = view('filament.forms.components.form-select-preview', [
+            'uuid' => 'sample', 'label' => 'نوع متقاضی',
+            'itemState' => ['options' => [['value' => 'person', 'label' => 'حقیقی']]],
+        ])->render();
+        $this->assertStringContainsString('data-form-select-native', $selectPreview);
+        $this->assertStringContainsString('<option value="person">حقیقی</option>', $selectPreview);
+        $this->assertStringNotContainsString('name=', $selectPreview);
     }
 
     private function form(bool $required = true): Form

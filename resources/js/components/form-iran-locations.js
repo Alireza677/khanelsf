@@ -1,6 +1,4 @@
-export const normalizePersianSearch = (value) => String(value).normalize('NFKC')
-    .replace(/ي|ى/g, 'ی').replace(/ك/g, 'ک').replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-    .replace(/[\s\u200c\u200d]+/g, '').toLocaleLowerCase('fa');
+export { normalizePersianSearch } from './form-selects.js';
 
 export const initIranLocations = () => {
     document.querySelectorAll('form:has([data-iran-location])').forEach((form) => {

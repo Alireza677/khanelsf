@@ -210,6 +210,8 @@
 
                                 @if ($type === 'iran_province_city')
                                     @include('filament.forms.components.iran-location-preview')
+                                @elseif ($type === 'select')
+                                    @include('filament.forms.components.form-select-preview')
                                 @endif
                             @endif
 

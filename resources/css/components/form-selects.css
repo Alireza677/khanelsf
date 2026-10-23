@@ -1,0 +1,209 @@
+/* Shared by public forms and the Form Builder preview. */
+.form-select {
+    box-sizing: border-box;
+    display: block;
+    margin-top: .25rem;
+    max-width: 100%;
+    min-width: 0;
+    position: relative;
+    width: 100%;
+    justify-self: stretch;
+}
+
+.form-select > .form-select__native,
+.form-select > .form-select__trigger,
+.form-select__overlay .form-select__search {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--theme-button-radius, 10px);
+    box-sizing: border-box;
+    color: var(--theme-text, #1f2937);
+    font: inherit;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    padding: .5rem .75rem;
+    text-align: start;
+    width: 100%;
+}
+
+.form-select > .form-select__trigger,
+.form-select > .form-select__panel { display: none; }
+.form-select.is-enhanced > .form-select__native {
+    border: 0;
+    clip-path: inset(50%);
+    height: 1px;
+    min-height: 0;
+    inset: 0 auto auto 0;
+    opacity: 0;
+    padding: 0;
+    pointer-events: none;
+    position: absolute;
+    width: 1px;
+}
+
+.form-select.is-enhanced > .form-select__trigger {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: .75rem;
+    justify-content: space-between;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.form-select__trigger [data-form-select-value] {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-align: start;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.form-select > .form-select__trigger.is-placeholder { color: #64748b; }
+.form-select > .form-select__trigger:hover:not(:disabled) { border-color: var(--theme-primary, #2563eb); }
+.form-select > .form-select__trigger:focus-visible,
+.form-select.is-open > .form-select__trigger,
+.form-select__overlay .form-select__search:focus-visible {
+    border-color: var(--theme-primary, #2563eb);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary, #2563eb) 18%, transparent);
+    outline: 0;
+}
+.form-select > .form-select__trigger[aria-invalid="true"] { border-color: #dc2626; }
+.form-select > .form-select__trigger:disabled { background: #f8fafc; cursor: default; opacity: .6; }
+.form-select__chevron {
+    border-bottom: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    flex: 0 0 auto;
+    height: .45rem;
+    transform: rotate(45deg) translateY(-2px);
+    width: .45rem;
+}
+.form-select.is-open .form-select__chevron { transform: rotate(225deg) translate(-2px, -2px); }
+
+.form-select__overlay {
+    background: transparent;
+    border: 0;
+    color: var(--theme-text, #1f2937);
+    height: 100%;
+    inset: 0;
+    margin: 0;
+    max-height: none;
+    max-width: none;
+    overflow: visible;
+    padding: 0;
+    pointer-events: none;
+    position: fixed;
+    width: 100%;
+    z-index: 2147483000;
+}
+.form-select__overlay::backdrop { background: transparent; pointer-events: none; }
+.form-select__backdrop { display: none; }
+.form-select__overlay.is-centered > .form-select__backdrop {
+    background: rgb(15 23 42 / 35%);
+    display: block;
+    inset: 0;
+    pointer-events: auto;
+    position: absolute;
+    touch-action: none;
+}
+.form-select__overlay > .form-select__panel {
+    background: #fff;
+    border: 1px solid #dbe1e8;
+    border-radius: var(--theme-button-radius, 10px);
+    box-shadow: 0 16px 36px rgb(15 23 42 / 20%);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin: 0;
+    max-height: calc(100dvh - 24px);
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    padding: .5rem;
+    pointer-events: auto;
+    position: fixed;
+    width: 100%;
+}
+.form-select__panel[hidden],
+.form-select__panel .form-select__option[hidden],
+.form-select__panel .form-select__empty[hidden] { display: none !important; }
+.form-select__panel .form-select__search { flex: 0 0 auto; }
+.form-select__panel .form-select__options {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+}
+.form-select__panel .form-select__option {
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    box-sizing: border-box;
+    color: inherit;
+    cursor: pointer;
+    display: block;
+    font: inherit;
+    margin: 0;
+    min-height: 2.75rem;
+    overflow-wrap: anywhere;
+    padding: .6rem .75rem;
+    text-align: start;
+    white-space: normal;
+    width: 100%;
+}
+.form-select__option:hover:not(:disabled),
+.form-select__option.is-active { background: color-mix(in srgb, var(--theme-primary, #2563eb) 9%, #fff); }
+.form-select__panel .form-select__option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--theme-primary, #2563eb) 14%, #fff);
+    color: var(--theme-primary, #2563eb);
+    font-weight: 700;
+}
+.form-select__option:disabled { cursor: default; opacity: .5; }
+.form-select__empty { color: #64748b; margin: 0; padding: .5rem; }
+.form-select__heading { display: none; }
+.is-centered > .form-select__panel > .form-select__heading {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    font-weight: 700;
+    gap: .75rem;
+    justify-content: space-between;
+}
+.form-select__heading > .form-select__dismiss {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-size: 1.5em;
+    height: 2.5rem;
+    margin: 0;
+    padding: 0;
+    width: 2.5rem;
+}
+.form-select__dismiss:focus-visible { outline: 2px solid var(--theme-primary, #2563eb); outline-offset: 2px; }
+
+.form-iran-location { border: 0; box-sizing: border-box; margin: 0; min-width: 0; padding: 0; width: 100%; }
+.form-iran-location__grid,
+.form-builder-location-preview {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+}
+.form-iran-location__grid > div,
+.form-builder-location-preview > div { min-width: 0; }
+.form-builder-location-preview { box-sizing: border-box; padding: .75rem; }
+.form-builder-location-preview label { display: block; font: inherit; font-weight: 700; }
+.form-builder-select-preview { min-width: 0; padding: .75rem; }
+@media (max-width: 640px) {
+    .form-iran-location__grid,
+    .form-builder-location-preview { grid-template-columns: minmax(0, 1fr); }
+}

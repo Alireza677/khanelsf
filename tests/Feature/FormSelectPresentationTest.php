@@ -76,25 +76,25 @@ class FormSelectPresentationTest extends TestCase
 
     public function test_javascript_contract_covers_keyboard_outside_close_and_dynamic_modal_initialization(): void
     {
-        $source = file_get_contents(resource_path('js/app.js'));
+        $source = file_get_contents(resource_path('js/components/form-selects.js'));
 
-        foreach (['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab', "event.key === ' '"] as $contract) {
+        foreach (['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab', "' '"] as $contract) {
             $this->assertStringContainsString($contract, $source);
         }
 
-        $this->assertStringContainsString('if (! root.contains(event.target)) close()', $source);
+        $this->assertStringContainsString('active.panel.contains(event.target) || active.root.contains(event.target)', $source);
         $this->assertStringContainsString('form-select:opening', $source);
-        $this->assertStringContainsString("document.addEventListener('forms:rendered'", $source);
+        $this->assertStringContainsString("document.addEventListener('forms:rendered'", file_get_contents(resource_path('js/app.js')));
         $this->assertStringContainsString('root.dataset.formSelectReady', $source);
     }
 
     public function test_custom_select_css_defines_closed_open_selected_focus_and_invalid_states(): void
     {
-        $css = file_get_contents(resource_path('css/app.css'));
+        $css = file_get_contents(resource_path('css/components/form-selects.css'));
 
         foreach ([
             '.form-select__trigger',
-            '.form-select.is-open .form-select__trigger',
+            '.form-select.is-open > .form-select__trigger',
             '.form-select__panel',
             '.form-select__option.is-active',
             '.form-select__option[aria-selected="true"]',
@@ -103,17 +103,17 @@ class FormSelectPresentationTest extends TestCase
             $this->assertStringContainsString($selector, $css);
         }
 
-        $this->assertStringContainsString('max-height: min(16rem, calc(100dvh - 8rem));', $css);
+        $this->assertStringContainsString('max-height: calc(100dvh - 24px);', $css);
         $this->assertStringContainsString('overflow-y: auto;', $css);
         $this->assertStringContainsString('overscroll-behavior-y: contain;', $css);
         $this->assertStringContainsString('touch-action: pan-y;', $css);
         $this->assertStringContainsString('-webkit-overflow-scrolling: touch;', $css);
 
-        $script = file_get_contents(resource_path('js/app.js'));
-        $this->assertStringContainsString('const positionPanel = () =>', $script);
-        $this->assertStringContainsString('window.visualViewport?.height', $script);
-        $this->assertStringContainsString("root.classList.toggle('is-open-up'", $script);
-        $this->assertStringContainsString("scrollIntoView({ block: 'nearest' })", $script);
+        $script = file_get_contents(resource_path('js/components/form-selects.js'));
+        $this->assertStringContainsString('calculateFormSelectPosition', $script);
+        $this->assertStringContainsString('window.visualViewport', $script);
+        $this->assertStringContainsString('host.showPopover()', $script);
+        $this->assertStringContainsString('results.scrollTop', $script);
     }
 
     public function test_selects_fill_every_supported_grid_span(): void
@@ -132,9 +132,9 @@ class FormSelectPresentationTest extends TestCase
             );
         }
 
-        $css = file_get_contents(resource_path('css/app.css'));
+        $css = file_get_contents(resource_path('css/components/form-selects.css'));
         $this->assertMatchesRegularExpression('/\.form-select\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/s', $css);
-        $this->assertMatchesRegularExpression('/\.form-select__trigger\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/s', $css);
+        $this->assertMatchesRegularExpression('/\.form-select > \.form-select__trigger,[^{]*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/s', $css);
         $this->assertMatchesRegularExpression('/\.form-select__panel\s*\{[^}]*width:\s*100%;/s', $css);
     }
 
