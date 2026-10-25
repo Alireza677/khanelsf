@@ -2,12 +2,12 @@
 
 namespace App\CMS\Blocks\Form;
 
+use App\CMS\Actions\Filament\ReferenceTargetPicker;
 use App\CMS\Blocks\Contracts\BlockNormalizer;
 use App\CMS\Blocks\Support\AbstractBlock;
 use App\CMS\Blocks\Support\BlockTemplate;
 use App\CMS\Blocks\Support\HeadingLevel;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
-use App\Models\Form;
 use Filament\Forms;
 use Filament\Forms\Get;
 
@@ -59,11 +59,9 @@ final class FormBlock extends AbstractBlock implements BlockNormalizer
                 ->default($this->defaultTemplate())
                 ->required()
                 ->live(),
-            Forms\Components\Select::make('content.form_id')
+            ReferenceTargetPicker::make('content.form_id')
                 ->label('فرم')
-                ->options(fn (): array => Form::query()->published()->orderBy('name')->pluck('name', 'id')->all())
-                ->searchable()
-                ->preload()
+                ->targetType('form')
                 ->required(),
             Forms\Components\TextInput::make('content.eyebrow')
                 ->label('برچسب بالای عنوان')

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\CMS\Actions\Filament\ActionPickerService;
+use App\CMS\Actions\Filament\ReferenceTargetPicker;
 use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Form\FormBlock;
 use App\CMS\Blocks\Form\FormBlockRuntime;
@@ -16,7 +18,6 @@ use App\Services\FormSchema;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -41,7 +42,7 @@ class FormBlockTest extends TestCase
         $this->assertSame(['default', 'split'], array_keys($block->templates()));
     }
 
-    public function test_page_and_template_editors_offer_only_published_form_names(): void
+    public function test_page_and_template_editors_share_the_form_browser_and_only_published_forms_are_selectable(): void
     {
         $this->actingAs(User::factory()->admin()->create());
         $published = $this->form('فرم منتشرشده', 'published-form');
@@ -66,11 +67,13 @@ class FormBlockTest extends TestCase
                 ->keyBy(fn (Component $component): string => $component->getName());
             $select = $fields->get('content.form_id');
 
-            $this->assertInstanceOf(Select::class, $select);
+            $this->assertInstanceOf(ReferenceTargetPicker::class, $select);
             $this->assertTrue($select->isRequired());
-            $this->assertSame([$published->getKey() => $published->name], $select->getOptions());
-            $this->assertArrayNotHasKey($draft->getKey(), $select->getOptions());
-            $this->assertNotContains($published->slug, $select->getOptions());
+            $this->assertSame('form', $select->getTargetType());
+            $rows = collect(app(ActionPickerService::class)->browseTargets('form')->items())->keyBy('reference_id');
+            $this->assertSame($published->name, $rows[$published->id]['title']);
+            $this->assertTrue($rows[$published->id]['selectable']);
+            $this->assertFalse($rows[$draft->id]['selectable']);
             $this->assertSame(
                 [
                     'block_id',

@@ -3,6 +3,7 @@
 namespace App\CMS\InternalLinks\Sources;
 
 use App\CMS\Actions\Enums\CoreActionType;
+use App\CMS\InternalLinks\Contracts\BrowsesInternalLinkTargets;
 use App\CMS\InternalLinks\Contracts\InternalLinkSearchSource;
 use App\CMS\InternalLinks\Contracts\ResolvesInternalLinkReference;
 use App\CMS\InternalLinks\Data\InternalLinkSearchResult;
@@ -10,9 +11,10 @@ use App\CMS\InternalLinks\Support\InternalLinkSourceSupport;
 use App\Models\Product;
 use App\Services\ModuleService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
-final class ProductInternalLinkSource implements InternalLinkSearchSource, ResolvesInternalLinkReference
+final class ProductInternalLinkSource implements BrowsesInternalLinkTargets, InternalLinkSearchSource, ResolvesInternalLinkReference
 {
     use InternalLinkSourceSupport;
 
@@ -31,6 +33,14 @@ final class ProductInternalLinkSource implements InternalLinkSearchSource, Resol
     public function isAvailable(): bool
     {
         return $this->modules->shopEnabled() && Route::has('shop.show');
+    }
+
+    public function browse(string $query, int $page = 1, int $perPage = 20, array $filters = []): LengthAwarePaginator
+    {
+        return $this->paginateTargets(Product::query()->published(), 'title', $query, $page, $perPage, ['sku'])
+            ->through(fn (Product $record): array => $this->browserRow(
+                $record, $record->title, $record->resolveNavigationUrl(), ['details' => $record->sku ? 'SKU: '.$record->sku : ''],
+            ));
     }
 
     public function search(string $query, int $limit): array

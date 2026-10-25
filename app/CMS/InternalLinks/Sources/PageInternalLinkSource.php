@@ -3,15 +3,17 @@
 namespace App\CMS\InternalLinks\Sources;
 
 use App\CMS\Actions\Enums\CoreActionType;
+use App\CMS\InternalLinks\Contracts\BrowsesInternalLinkTargets;
 use App\CMS\InternalLinks\Contracts\InternalLinkSearchSource;
 use App\CMS\InternalLinks\Contracts\ResolvesInternalLinkReference;
 use App\CMS\InternalLinks\Data\InternalLinkSearchResult;
 use App\CMS\InternalLinks\Support\InternalLinkSourceSupport;
 use App\Models\Page;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
-final class PageInternalLinkSource implements InternalLinkSearchSource, ResolvesInternalLinkReference
+final class PageInternalLinkSource implements BrowsesInternalLinkTargets, InternalLinkSearchSource, ResolvesInternalLinkReference
 {
     use InternalLinkSourceSupport;
 
@@ -28,6 +30,16 @@ final class PageInternalLinkSource implements InternalLinkSearchSource, Resolves
     public function isAvailable(): bool
     {
         return Route::has('pages.show');
+    }
+
+    public function browse(string $query, int $page = 1, int $perPage = 20, array $filters = []): LengthAwarePaginator
+    {
+        return $this->paginateTargets(Page::query()->published(), 'title', $query, $page, $perPage)
+            ->through(fn (Page $record): array => $this->browserRow(
+                $record, $record->title, Route::has(match ($record->slug) {
+                    'home' => 'home', 'contact' => 'contact.create', default => 'pages.show'
+                }) ? $record->resolveNavigationUrl() : null,
+            ));
     }
 
     public function search(string $query, int $limit): array

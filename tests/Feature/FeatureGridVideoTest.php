@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\CMS\Actions\Filament\ActionPickerService;
 use App\CMS\Blocks\BlockEditorSaveManager;
 use App\CMS\Blocks\FeatureGrid\FeatureGridBlock;
 use App\CMS\Blocks\FeatureGrid\FeatureGridDataNormalizer;
@@ -212,12 +213,13 @@ class FeatureGridVideoTest extends TestCase
         $rules = ['video_id' => $picker->getValidationRules()];
         $this->assertTrue(Validator::make(['video_id' => $public->id], $rules)->passes());
         $this->assertTrue(Validator::make(['video_id' => $draft->id], $rules)->fails());
-        $labels = $picker->getSearchResults('Search');
-        $this->assertSame([$public->id], array_keys($labels));
-        $this->assertStringContainsString('&lt;b&gt;', $labels[$public->id]);
-        $this->assertStringNotContainsString('<b>Search', $labels[$public->id]);
+        $rows = app(ActionPickerService::class)->browseTargets('video', 'Search')->items();
+        $this->assertSame([$public->id], array_column($rows, 'reference_id'));
+        // Labels are plain text; the shared browser renders them with x-text, never HTML.
+        $this->assertSame('<b>Search title</b>', $rows[0]['title']);
+        $this->assertSame('video', $picker->getTargetType());
         app(SettingsService::class)->set('video_library_enabled', false);
-        $this->assertSame([], $picker->getSearchResults('Search'));
+        $this->assertSame([], app(ActionPickerService::class)->browseTargets('video')->items());
         $this->assertTrue(Validator::make(['video_id' => $public->id], $rules)->fails());
     }
 

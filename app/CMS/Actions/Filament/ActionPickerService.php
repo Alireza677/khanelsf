@@ -7,10 +7,16 @@ use App\CMS\Actions\Enums\CoreActionType;
 use App\CMS\Actions\Filament\Exceptions\InvalidActionPickerState;
 use App\CMS\Actions\Normalizers\ActionDestinationNormalizer;
 use App\CMS\Actions\Validation\ActionDestinationValidator;
+use App\CMS\InternalLinks\Contracts\BrowsesInternalLinkTargets;
 use App\CMS\InternalLinks\Contracts\ResolvesInternalLinkReference;
 use App\CMS\InternalLinks\Registry\InternalLinkSearchRegistry;
 use App\Models\Form;
+use App\Models\ProjectCategory;
+use App\Models\Video;
+use App\Services\VideoLibrarySettings;
+use App\Services\VideoQueryService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -189,6 +195,12 @@ final class ActionPickerService
             return 'مقصد در دسترس نیست';
         }
 
+        if ($targetKey === 'video') {
+            return app(VideoLibrarySettings::class)->enabled()
+                ? (app(VideoQueryService::class)->archiveQuery()->whereKey($referenceId)->value('title') ?? 'ویدئو در دسترس نیست')
+                : 'ویدئو در دسترس نیست';
+        }
+
         if ($targetKey === CoreActionType::Form->value) {
             return Form::query()
                 ->published()
@@ -258,10 +270,15 @@ final class ActionPickerService
         };
     }
 
-    private function referenceIsAvailable(string $targetKey, ?int $referenceId): bool
+    public function referenceIsAvailable(string $targetKey, ?int $referenceId): bool
     {
         if ($referenceId === null) {
             return false;
+        }
+
+        if ($targetKey === 'video') {
+            return app(VideoLibrarySettings::class)->enabled()
+                && app(VideoQueryService::class)->archiveQuery()->whereKey($referenceId)->exists();
         }
 
         if ($targetKey === CoreActionType::Form->value) {
@@ -284,6 +301,70 @@ final class ActionPickerService
 
             return false;
         }
+    }
+
+    /** Admin-only paginated browsing. Titles and URLs here are presentation, never Action state. */
+    public function browseTargets(string $targetKey, string $query = '', int $page = 1, array $filters = []): LengthAwarePaginator
+    {
+        $query = mb_substr(trim(Str::squish($query)), 0, 100);
+        $page = max(1, $page);
+        $empty = fn () => new LengthAwarePaginator([], 0, self::MAX_SEARCH_RESULTS, $page);
+
+        try {
+            if ($targetKey === 'form' || $targetKey === 'video') {
+                if ($targetKey === 'video' && ! app(VideoLibrarySettings::class)->enabled()) {
+                    return $empty();
+                }
+
+                $builder = $targetKey === 'form'
+                    ? Form::query()->select(['id', 'name', 'slug', 'status'])
+                    : app(VideoQueryService::class)->archiveQuery();
+                $titleColumn = $targetKey === 'form' ? 'name' : 'title';
+
+                if ($query !== '') {
+                    $builder->where(function (Builder $builder) use ($titleColumn, $query): void {
+                        $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $query).'%';
+                        $builder->whereRaw($titleColumn." LIKE ? ESCAPE '!'", [$pattern])
+                            ->orWhereRaw("slug LIKE ? ESCAPE '!'", [$pattern]);
+
+                        if (ctype_digit($query)) {
+                            $builder->orWhere('id', (int) $query);
+                        }
+                    });
+                }
+
+                return $builder->orderBy($titleColumn)->orderBy('id')
+                    ->paginate(self::MAX_SEARCH_RESULTS, ['*'], 'page', $page)
+                    ->through(fn (Form|Video $record): array => [
+                        'reference_id' => (int) $record->getKey(),
+                        'title' => (string) $record->getAttribute($titleColumn),
+                        'subtitle' => $record->slug,
+                        'status' => $record->status === 'published' ? 'منتشرشده' : 'منتشرنشده — غیرقابل انتخاب',
+                        'selectable' => $record->status === 'published',
+                        'url' => null,
+                    ]);
+            }
+
+            $source = $this->internalLinks->get($targetKey);
+
+            return $source instanceof BrowsesInternalLinkTargets && $source->isAvailable()
+                ? $source->browse($query, $page, self::MAX_SEARCH_RESULTS, $filters)
+                : $empty();
+        } catch (Throwable $exception) {
+            $this->logFailure($targetKey, $exception);
+
+            // Let the UI distinguish a failed request from a genuinely empty list.
+            throw $exception;
+        }
+    }
+
+    public function browseFilters(string $targetKey): array
+    {
+        if ($targetKey !== 'project' || ! $this->internalLinks->get('project')?->isAvailable()) {
+            return [];
+        }
+
+        return ProjectCategory::query()->active()->orderBy('name')->get(['id', 'name'])->toArray();
     }
 
     /** @return array<int|string, string> */

@@ -95,7 +95,7 @@ final class ActionPicker extends Fieldset
         return $this->service()->typeOptions($this->allowedActionTypes);
     }
 
-    /** @return array<int, Hidden|Select|TextInput|Toggle> */
+    /** @return array<int, Hidden|Select|ReferenceTargetPicker|TextInput|Toggle> */
     private function pickerSchema(): array
     {
         return [
@@ -134,25 +134,9 @@ final class ActionPicker extends Fieldset
                         }
                     }
                 }),
-            Select::make('reference_id')
-                ->label(fn (Get $get): string => $get('type') === 'form'
-                    ? 'فرم'
-                    : 'مقصد داخلی')
-                ->placeholder('حداقل دو حرف برای جست‌وجو وارد کنید')
-                ->searchable()
-                ->native(false)
-                ->searchDebounce(300)
-                ->searchPrompt('حداقل دو حرف از عنوان یا شناسه را وارد کنید.')
-                ->loadingMessage('در حال جست‌وجو...')
-                ->noSearchResultsMessage('نتیجه‌ای پیدا نشد.')
-                ->getSearchResultsUsing(
-                    fn (string $search, Get $get): array => $this->service()
-                        ->searchOptions((string) $get('type'), $search),
-                )
-                ->getOptionLabelUsing(
-                    fn (mixed $value, Get $get): string => $this->service()
-                        ->selectedOptionLabel((string) $get('type'), $value),
-                )
+            ReferenceTargetPicker::make('reference_id')
+                ->label(fn (Get $get): string => $get('type') === 'form' ? 'فرم' : 'مقصد داخلی')
+                ->targetType(fn (Get $get): string => (string) $get('type'))
                 ->required(fn (Get $get): bool => in_array(
                     $get('type'),
                     ['page', 'project', 'product', 'service', 'form'],

@@ -3,6 +3,7 @@
 namespace App\CMS\InternalLinks\Sources;
 
 use App\CMS\Actions\Enums\CoreActionType;
+use App\CMS\InternalLinks\Contracts\BrowsesInternalLinkTargets;
 use App\CMS\InternalLinks\Contracts\InternalLinkSearchSource;
 use App\CMS\InternalLinks\Contracts\ResolvesInternalLinkReference;
 use App\CMS\InternalLinks\Data\InternalLinkSearchResult;
@@ -10,9 +11,10 @@ use App\CMS\InternalLinks\Support\InternalLinkSourceSupport;
 use App\Models\Project;
 use App\Services\ModuleService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
-final class ProjectInternalLinkSource implements InternalLinkSearchSource, ResolvesInternalLinkReference
+final class ProjectInternalLinkSource implements BrowsesInternalLinkTargets, InternalLinkSearchSource, ResolvesInternalLinkReference
 {
     use InternalLinkSourceSupport;
 
@@ -31,6 +33,17 @@ final class ProjectInternalLinkSource implements InternalLinkSearchSource, Resol
     public function isAvailable(): bool
     {
         return $this->modules->projectsEnabled() && Route::has('projects.show');
+    }
+
+    public function browse(string $query, int $page = 1, int $perPage = 20, array $filters = []): LengthAwarePaginator
+    {
+        $builder = Project::query()->published()
+            ->when($filters['category_id'] ?? null, fn (Builder $builder, $category) => $builder->where('project_category_id', $category));
+
+        return $this->paginateTargets($builder, 'title', $query, $page, $perPage)
+            ->through(fn (Project $record): array => $this->browserRow(
+                $record, $record->title, $record->resolveNavigationUrl(), ['details' => trim($record->client_name.' / '.$record->location, ' /')],
+            ));
     }
 
     public function search(string $query, int $limit): array

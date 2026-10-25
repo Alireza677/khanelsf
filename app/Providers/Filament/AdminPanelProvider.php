@@ -14,6 +14,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentAsset;
@@ -34,6 +35,7 @@ class AdminPanelProvider extends PanelProvider
     public function boot(): void
     {
         FilamentAsset::register([
+            AlpineComponent::make('destination-target-picker', resource_path('js/filament/destination-picker.js')),
             Js::make(
                 'form-builder-select-overlays',
                 resource_path('js/filament/form-builder-select-overlays.js'),

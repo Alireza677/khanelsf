@@ -1878,176 +1878,48 @@
     }
 </style>
 
+<style>
+    dialog[data-destination-browser]::backdrop { background: rgb(0 0 0 / .55); }
+    html:has(dialog[data-destination-browser][open]) { overflow: hidden; }
+    dialog[data-destination-browser] button[aria-pressed="true"] { outline: 2px solid #2563eb; }
+</style>
+<template id="king-rich-text-destination-browser">
+    @include('filament.forms.components.destination-browser', [
+        'configuration' => '{ mode: "url", endpoint: '.\Illuminate\Support\Js::from(route('admin.internal-links.search')).' }',
+    ])
+</template>
 <script>
     (() => {
-        if (window.__internalLinkSearchBound) {
-            return;
-        }
-
+        if (window.__internalLinkSearchBound) return;
         window.__internalLinkSearchBound = true;
 
-        const endpoint = @json(\Illuminate\Support\Facades\Route::has('admin.internal-links.search') ? route('admin.internal-links.search') : url('/admin/internal-links/search'));
-        const strings = {
-            label: 'جستجوی لینک داخلی',
-            placeholder: 'جستجوی نوشته، برگه، محصول...',
-            loading: 'در حال جستجو...',
-            empty: 'نتیجه‌ای پیدا نشد',
-            minLength: 'برای جستجو حداقل ۲ حرف وارد کنید.',
-            error: 'خطا در جستجو. دوباره تلاش کنید.',
-        };
-
-        const debounce = (callback, delay = 300) => {
-            let timeout;
-
-            return (...args) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => callback(...args), delay);
-            };
-        };
-
-        const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;',
-        })[character]);
-
-        const enhanceDialog = (dialog) => {
-            if (! dialog || dialog.dataset.internalLinkSearchEnhanced === 'true') {
-                return;
-            }
-
-            dialog.dataset.internalLinkSearchEnhanced = 'true';
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'internal-link-search';
-            wrapper.dir = 'rtl';
-            wrapper.innerHTML = `
-                <label class="internal-link-search__label">${strings.label}</label>
-                <input class="internal-link-search__input" type="search" autocomplete="off" placeholder="${strings.placeholder}">
-                <div class="internal-link-search__status" hidden></div>
-                <div class="internal-link-search__results" hidden></div>
-            `;
-
-            dialog.appendChild(wrapper);
-
-            const searchInput = wrapper.querySelector('.internal-link-search__input');
-            const status = wrapper.querySelector('.internal-link-search__status');
-            const results = wrapper.querySelector('.internal-link-search__results');
-            let abortController = null;
-
-            const setStatus = (message) => {
-                status.textContent = message;
-                status.hidden = ! message;
-            };
-
-            const clearResults = () => {
-                results.innerHTML = '';
-                results.hidden = true;
-            };
-
-            const setHref = (url, apply = false) => {
-                const hrefInput = dialog.querySelector('input[name="href"][data-trix-input]');
-
-                if (! hrefInput) {
-                    return;
-                }
-
-                hrefInput.value = url;
-                hrefInput.dispatchEvent(new Event('input', { bubbles: true }));
-                hrefInput.dispatchEvent(new Event('change', { bubbles: true }));
-                hrefInput.focus();
-
-                if (apply) {
-                    dialog.querySelector('[data-trix-method="setAttribute"]')?.click();
-                }
-            };
-
-            const renderResults = (items) => {
-                clearResults();
-
-                if (! items.length) {
-                    setStatus(strings.empty);
-                    return;
-                }
-
-                setStatus('');
-                results.hidden = false;
-                results.innerHTML = items.map((item) => `
-                    <button class="internal-link-search__result" type="button" data-url="${escapeHtml(item.url)}">
-                        <span class="internal-link-search__result-title">${escapeHtml(item.title)} <small>(${escapeHtml(item.type)})</small></span>
-                        <span class="internal-link-search__result-meta">${escapeHtml(item.subtitle)}</span>
-                    </button>
-                `).join('');
-            };
-
-            const runSearch = debounce(async () => {
-                const query = searchInput.value.trim();
-
-                clearResults();
-
-                if (query.length < 2) {
-                    setStatus(query.length ? strings.minLength : '');
-                    return;
-                }
-
-                abortController?.abort();
-                abortController = new AbortController();
-                setStatus(strings.loading);
-
-                try {
-                    const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`, {
-                        headers: {
-                            Accept: 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        credentials: 'same-origin',
-                        signal: abortController.signal,
-                    });
-
-                    if (! response.ok) {
-                        throw new Error(`Search failed with status ${response.status}`);
-                    }
-
-                    renderResults(await response.json());
-                } catch (error) {
-                    if (error.name !== 'AbortError') {
-                        clearResults();
-                        setStatus(strings.error);
-                    }
-                }
-            }, 300);
-
-            searchInput.addEventListener('input', runSearch);
-
-            results.addEventListener('mousedown', (event) => {
-                event.preventDefault();
-            });
-
-            results.addEventListener('click', (event) => {
-                const result = event.target.closest('.internal-link-search__result');
-
-                if (! result) {
-                    return;
-                }
-
-                setHref(result.dataset.url, true);
-            });
-        };
-
         const enhanceAllDialogs = () => {
-            document
-                .querySelectorAll('.post-content-scroll-editor trix-toolbar .trix-dialog--link')
-                .forEach(enhanceDialog);
+            const template = document.getElementById('king-rich-text-destination-browser');
+            if (!template) return;
+            document.querySelectorAll('trix-toolbar .trix-dialog--link').forEach((dialog) => {
+                if (dialog.dataset.internalLinkSearchEnhanced) return;
+                dialog.dataset.internalLinkSearchEnhanced = 'true';
+                const browser = template.content.firstElementChild.cloneNode(true);
+                browser.style.marginTop = '.75rem';
+                browser.addEventListener('destination-picked', (event) => {
+                    const href = dialog.querySelector('input[name="href"][data-trix-input]');
+                    if (!href || !event.detail.url) return;
+                    href.value = event.detail.url;
+                    href.dispatchEvent(new Event('input', { bubbles: true }));
+                    href.dispatchEvent(new Event('change', { bubbles: true }));
+                    dialog.querySelector('[data-trix-method="setAttribute"]')?.click();
+                });
+                browser.addEventListener('destination-picker-closed', () => {
+                    if (dialog.getClientRects().length) return;
+                    const toolbar = dialog.closest('trix-toolbar');
+                    Array.from(document.querySelectorAll('trix-editor'))
+                        .find(editor => editor.toolbarElement === toolbar)?.focus();
+                });
+                dialog.appendChild(browser);
+            });
         };
-
         document.addEventListener('DOMContentLoaded', enhanceAllDialogs);
         document.addEventListener('trix-initialize', enhanceAllDialogs);
-
-        new MutationObserver(enhanceAllDialogs).observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-        });
+        new MutationObserver(enhanceAllDialogs).observe(document.documentElement, { childList: true, subtree: true });
     })();
 </script>

@@ -3,6 +3,7 @@
 namespace App\CMS\InternalLinks\Sources;
 
 use App\CMS\Actions\Enums\CoreActionType;
+use App\CMS\InternalLinks\Contracts\BrowsesInternalLinkTargets;
 use App\CMS\InternalLinks\Contracts\InternalLinkSearchSource;
 use App\CMS\InternalLinks\Contracts\ResolvesInternalLinkReference;
 use App\CMS\InternalLinks\Data\InternalLinkSearchResult;
@@ -10,9 +11,10 @@ use App\CMS\InternalLinks\Support\InternalLinkSourceSupport;
 use App\Models\Service;
 use App\Services\ServiceSettings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
-final class ServiceInternalLinkSource implements InternalLinkSearchSource, ResolvesInternalLinkReference
+final class ServiceInternalLinkSource implements BrowsesInternalLinkTargets, InternalLinkSearchSource, ResolvesInternalLinkReference
 {
     use InternalLinkSourceSupport;
 
@@ -31,6 +33,36 @@ final class ServiceInternalLinkSource implements InternalLinkSearchSource, Resol
     public function isAvailable(): bool
     {
         return $this->settings->publicEnabled() && Route::has('services.show');
+    }
+
+    public function browse(string $query, int $page = 1, int $perPage = 20, array $filters = []): LengthAwarePaginator
+    {
+        $results = $this->paginateTargets(Service::query()->published(), 'name', $query, $page, $perPage);
+        $ancestors = $results->getCollection()->keyBy('id');
+        $frontier = $ancestors;
+
+        // Only ancestors of this page are loaded, in batches; malformed legacy cycles terminate.
+        while ($frontier->isNotEmpty()) {
+            $parentIds = $frontier->pluck('parent_id')->filter()->unique()->diff($ancestors->keys());
+            if ($parentIds->isEmpty()) {
+                break;
+            }
+            $frontier = Service::query()->whereKey($parentIds)->get(['id', 'name', 'parent_id'])->keyBy('id');
+            $ancestors = $ancestors->union($frontier);
+        }
+
+        return $results->through(function (Service $record) use ($ancestors): array {
+            $names = [];
+            $seen = [$record->getKey() => true];
+            $parent = $ancestors->get($record->parent_id);
+            while ($parent && ! isset($seen[$parent->getKey()])) {
+                $seen[$parent->getKey()] = true;
+                array_unshift($names, $parent->name);
+                $parent = $ancestors->get($parent->parent_id);
+            }
+
+            return $this->browserRow($record, $record->name, $record->resolveNavigationUrl(), ['details' => implode(' / ', $names)]);
+        });
     }
 
     public function search(string $query, int $limit): array
