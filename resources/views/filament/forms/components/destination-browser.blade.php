@@ -14,57 +14,75 @@
     </div>
     <dialog x-ref="dialog" data-destination-browser aria-label="انتخاب مقصد" dir="rtl"
         x-on:cancel.prevent="close()" x-on:keydown.stop x-on:keydown.escape.prevent="close()"
-        style="width:min(44rem,calc(100vw - 2rem));max-height:85dvh;padding:1.25rem;border-radius:.75rem;overflow:auto;overscroll-behavior:contain;color:inherit"
-        class="bg-white dark:bg-gray-900 dark:text-white"
+        class="destination-picker bg-white dark:bg-gray-900 dark:text-white"
     >
-        <div class="flex items-center justify-between gap-3" style="margin-bottom:1rem">
-            <h2 class="text-lg font-bold">انتخاب مقصد</h2>
-            <x-filament::button type="button" color="gray" x-on:click="close()">بستن</x-filament::button>
+        <header class="destination-picker__header">
+            <h2>انتخاب مقصد</h2>
+            <x-filament::icon-button type="button" color="gray" size="sm" icon="heroicon-m-x-mark" label="بستن" x-on:click="close()" />
+        </header>
+        <div class="destination-picker__controls">
+            <div class="destination-picker__filters">
+                <label x-show="mode === 'url'">
+                    <span>نوع مقصد</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select x-model="target" x-on:change="query = ''; category = ''; load(1)">
+                            <option value="page">برگه</option><option value="project">پروژه</option>
+                            <option value="product">محصول</option><option value="service">خدمت</option>
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </label>
+                <label x-show="target === 'project' && categories.length">
+                    <span>دسته پروژه</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select x-model="category" x-on:change="load(1)">
+                            <option value="">همه دسته‌ها</option>
+                            <template x-for="categoryOption in categories" :key="categoryOption.id"><option :value="categoryOption.id" x-text="categoryOption.name"></option></template>
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </label>
+            </div>
+            <x-filament::input.wrapper prefix-icon="heroicon-m-magnifying-glass">
+                <x-filament::input type="search" x-ref="search" x-model="query" maxlength="100" autocomplete="off"
+                    x-on:input="invalidate()" x-on:input.debounce.300ms="load(1)"
+                    aria-label="جست‌وجوی مقصد" placeholder="جست‌وجو در مقصدها…" />
+            </x-filament::input.wrapper>
+            <p class="destination-picker__current" x-show="state && mode === 'reference'">انتخاب فعلی: <span x-text="label"></span></p>
+            <div class="destination-picker__summary" aria-live="polite">
+                <span x-show="loading">در حال دریافت فهرست…</span>
+                <span x-show="!loading && !error" x-text="`${total} نتیجه`"></span>
+            </div>
         </div>
-        <label x-show="mode === 'url'" class="block text-sm">
-            نوع مقصد
-            <select x-model="target" x-on:change="query = ''; category = ''; load(1)" class="w-full rounded-lg border-gray-300 dark:bg-gray-800">
-                <option value="page">برگه</option><option value="project">پروژه</option>
-                <option value="product">محصول</option><option value="service">خدمت</option>
-            </select>
-        </label>
-        <label x-show="target === 'project' && categories.length" class="block text-sm">
-            دسته پروژه
-            <select x-model="category" x-on:change="load(1)" class="w-full rounded-lg border-gray-300 dark:bg-gray-800">
-                <option value="">همه دسته‌ها</option>
-                <template x-for="categoryOption in categories" :key="categoryOption.id"><option :value="categoryOption.id" x-text="categoryOption.name"></option></template>
-            </select>
-        </label>
-        <label class="block text-sm" style="margin-top:.75rem">
-            جست‌وجوی عنوان، مسیر یا شناسه
-            <input type="search" x-ref="search" x-model="query" maxlength="100" autocomplete="off"
-                x-on:input="invalidate()" x-on:input.debounce.300ms="load(1)"
-                class="w-full rounded-lg border-gray-300 dark:bg-gray-800" placeholder="همه موارد از ابتدا نمایش داده می‌شوند">
-        </label>
-        <p class="text-sm" x-show="state && mode === 'reference'" style="margin-top:.75rem">انتخاب فعلی: <span x-text="label"></span> — <span x-text="state"></span></p>
-        <div aria-live="polite" class="text-sm" style="margin:.75rem 0">
-            <span x-show="loading">در حال دریافت فهرست…</span>
-            <span x-show="!loading && !error" x-text="`${total} نتیجه — صفحه ${page} از ${lastPage}`"></span>
-            <span x-show="error" x-text="error" role="alert"></span>
+        <div class="destination-picker__list" x-bind:aria-busy="loading">
+            <div class="destination-picker__empty" x-show="loading">
+                <x-filament::loading-indicator class="h-5 w-5" />
+            </div>
+            <div class="destination-picker__empty" x-show="error" role="alert">
+                <span x-text="error"></span>
+                <x-filament::button type="button" color="gray" size="sm" x-on:click="load(page)">تلاش مجدد</x-filament::button>
+            </div>
+            <div class="destination-picker__empty" x-show="!loading && !error && items.length === 0">
+                <x-filament::icon icon="heroicon-o-magnifying-glass" class="h-6 w-6" />
+                <span>موردی یافت نشد.</span>
+                <small>عبارت دیگری را جست‌وجو کنید.</small>
+            </div>
+            <div class="destination-picker__rows">
+                <template x-for="item in items" :key="item.reference_id">
+                    <button type="button" x-on:click="choose(item)" x-bind:disabled="!item.selectable || disabled || loading"
+                        x-bind:aria-pressed="mode === 'reference' && String(state) === String(item.reference_id)"
+                        class="destination-picker__row">
+                        <span class="destination-picker__title">
+                            <span class="destination-picker__selection" aria-hidden="true"><x-filament::icon icon="heroicon-m-check" class="h-3 w-3" /></span>
+                            <span x-text="item.title" x-bind:title="item.title"></span>
+                        </span>
+                        <span class="destination-picker__badge" x-bind:data-selectable="item.selectable" x-text="item.status.split(' — ')[0]"></span>
+                    </button>
+                </template>
+            </div>
         </div>
-        <x-filament::button type="button" color="gray" x-show="error" x-on:click="load(page)">تلاش مجدد</x-filament::button>
-        <p x-show="!loading && !error && items.length === 0">موردی یافت نشد.</p>
-        <div class="grid gap-2" x-bind:aria-busy="loading">
-            <template x-for="item in items" :key="item.reference_id">
-                <button type="button" x-on:click="choose(item)" x-bind:disabled="!item.selectable || disabled || loading"
-                    x-bind:aria-pressed="mode === 'reference' && String(state) === String(item.reference_id)"
-                    class="w-full rounded-lg border border-gray-200 p-3 text-start dark:border-gray-700"
-                    x-bind:style="!item.selectable ? 'opacity:.55;cursor:not-allowed' : ''">
-                    <span class="block font-bold" x-text="item.title"></span>
-                    <span class="block text-sm" style="overflow-wrap:anywhere" x-text="item.subtitle"></span>
-                    <span class="block text-sm" x-text="item.details || ''"></span>
-                    <span class="block text-sm"><span x-text="`شناسه ${item.reference_id} — ${item.status}`"></span><span x-show="mode === 'reference' && String(state) === String(item.reference_id)"> — انتخاب فعلی ✓</span></span>
-                </button>
-            </template>
-        </div>
-        <div class="flex items-center justify-between gap-3" style="margin-top:1rem">
-            <x-filament::button type="button" color="gray" x-on:click="load(page - 1)" x-bind:disabled="loading || page <= 1">صفحه قبل</x-filament::button>
-            <x-filament::button type="button" color="gray" x-on:click="load(page + 1)" x-bind:disabled="loading || page >= lastPage">صفحه بعد</x-filament::button>
-        </div>
+        <footer class="destination-picker__pagination">
+            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-m-chevron-right" x-on:click="load(page - 1)" x-bind:disabled="loading || page <= 1">قبلی</x-filament::button>
+            <span x-text="`صفحه ${page} از ${lastPage}`"></span>
+            <x-filament::button type="button" color="gray" size="sm" icon="heroicon-m-chevron-left" icon-position="after" x-on:click="load(page + 1)" x-bind:disabled="loading || page >= lastPage">بعدی</x-filament::button>
+        </footer>
     </dialog>
 </div>

@@ -2,6 +2,7 @@
 
 namespace Tests\Browser;
 
+use Filament\Support\Colors\Color;
 use HeadlessChromium\BrowserFactory;
 use Illuminate\Support\Facades\Blade;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -91,12 +92,24 @@ const nativeFetch = window.fetch.bind(window);
 window.fetch = async (url, options) => {
     if (!String(url).startsWith('https://cms.test/browse')) return nativeFetch(url, options);
     window.requests.push(String(url));
-    return { ok: true, json: async () => ({ label: 'Selected', items: [{ reference_id: 42, title: '<b>Safe text</b>', subtitle: '/destination', selectable: true, status: 'published' }], page: 1, last_page: 1, total: 1 }) };
+    return { ok: true, json: async () => ({ label: 'Selected', items: Array.from({ length: 20 }, (_, index) => ({
+        reference_id: index === 1 ? 12 : 42 + index,
+        title: index === 0 ? '<b>Safe text</b>' : `عنوان مقصد نمونه برای بررسی چیدمان شماره ${index}`,
+        subtitle: '/hidden-destination-slug', details: 'Hidden metadata',
+        selectable: index !== 19, status: index !== 19 ? 'منتشرشده' : 'منتشرنشده — غیرقابل انتخاب',
+    })), page: 1, last_page: 1, total: 20 }) };
 };
 JS;
+            $palette = '';
+            foreach (['gray' => Color::Gray, 'primary' => Color::Blue, 'success' => Color::Green] as $name => $shades) {
+                foreach ($shades as $shade => $rgb) {
+                    $palette .= "--{$name}-{$shade}:{$rgb};";
+                }
+            }
             $html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
                 .'<style>'.file_get_contents(public_path('css/filament/filament/app.css')).'</style>'
                 .($dialogStyles[0] ?? '')
+                .'<style>:root{'.$palette.'}</style>'
                 .'<style>body{margin:0}dialog{box-sizing:border-box}dialog::backdrop{background:#0008}</style></head><body>'
                 .'<div x-data="{ active: true }" x-trap="active" style="overflow:hidden;height:600px;width:100%;transform:translateZ(0)">'
                 .$field.'</div><script>'.$setup.'</script><script>'.$support.'</script><script>'.$livewire.'</script><script>Livewire.start()</script></body></html>';
@@ -111,6 +124,12 @@ JS;
             $this->assertTrue($page->evaluate('document.querySelector("dialog").getBoundingClientRect().width <= innerWidth')->getReturnValue());
             $this->assertSame('', $page->evaluate('new URL(window.requests.find(url => new URL(url).searchParams.has("q"))).searchParams.get("q")')->getReturnValue());
             $this->assertSame(0, $page->evaluate('document.querySelectorAll("dialog b").length')->getReturnValue());
+            $this->assertFalse($page->evaluate('document.querySelector("dialog").innerText.includes("/hidden-destination-slug") || document.querySelector("dialog").innerText.includes("Hidden metadata") || document.querySelector("dialog").innerText.includes("شناسه")')->getReturnValue());
+            $this->assertTrue($page->evaluate('(() => { const row = document.querySelector(".destination-picker__row"); return row.getBoundingClientRect().height <= 46 && row.querySelector(".destination-picker__title").getBoundingClientRect().right > row.querySelector(".destination-picker__badge").getBoundingClientRect().right; })()')->getReturnValue());
+            $this->assertTrue($page->evaluate('(() => { const list = document.querySelector(".destination-picker__list"); return list.scrollHeight > list.clientHeight && getComputedStyle(list).overflowY === "auto"; })()')->getReturnValue());
+            $this->assertTrue($page->evaluate('getComputedStyle(document.querySelector(".destination-picker__row[aria-pressed=true]")).backgroundColor !== getComputedStyle(document.querySelector(".destination-picker__row[aria-pressed=false]")).backgroundColor')->getReturnValue());
+            $this->assertTrue($page->evaluate('document.querySelector("dialog").scrollWidth <= document.querySelector("dialog").clientWidth')->getReturnValue());
+            $page->screenshot()->saveToFile(storage_path('framework/testing/destination-ui-'.$viewport[0].'.png'));
             for ($tab = 0; $tab < 6; $tab++) {
                 $page->keyboard()->typeRawKey('Tab');
                 $this->assertTrue($page->evaluate('document.querySelector("dialog").contains(document.activeElement)')->getReturnValue());

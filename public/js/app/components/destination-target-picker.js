@@ -29,7 +29,7 @@ export default function destinationTargetPicker({ state = null, target = 'page',
                 const data = await response.json();
                 if (current === labelSequence) this.label = data.label;
             } catch (error) {
-                if (current === labelSequence && error.name !== 'AbortError') this.label = `شناسه ${this.state} — دریافت عنوان ناموفق بود`;
+                if (current === labelSequence && error.name !== 'AbortError') this.label = 'دریافت عنوان مقصد ناموفق بود';
             }
         },
 

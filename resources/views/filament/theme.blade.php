@@ -1881,7 +1881,92 @@
 <style>
     dialog[data-destination-browser]::backdrop { background: rgb(0 0 0 / .55); }
     html:has(dialog[data-destination-browser][open]) { overflow: hidden; }
-    dialog[data-destination-browser] button[aria-pressed="true"] { outline: 2px solid #2563eb; }
+    dialog[data-destination-browser] {
+        width: min(40rem, calc(100vw - 2rem));
+        height: min(42rem, calc(100dvh - 3rem));
+        max-height: calc(100dvh - 3rem);
+        margin: auto;
+        padding: 0;
+        border: 1px solid rgb(var(--gray-200));
+        border-radius: .875rem;
+        overflow: hidden;
+        color: rgb(var(--gray-950));
+        box-shadow: 0 24px 64px rgb(0 0 0 / .2);
+        font-size: .8125rem;
+        line-height: 1.5;
+    }
+    dialog[data-destination-browser][open] { display: flex; flex-direction: column; }
+    .destination-picker__header,
+    .destination-picker__pagination {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .875rem 1.125rem;
+    }
+    .destination-picker__header { border-bottom: 1px solid rgb(var(--gray-200)); }
+    .destination-picker__header h2 { margin: 0; font-size: .9375rem; font-weight: 600; }
+    .destination-picker__controls { flex: none; padding: .875rem 1.125rem .5rem; }
+    .destination-picker__filters { display: flex; flex-wrap: wrap; gap: .75rem; }
+    .destination-picker__filters label { flex: 1 1 10rem; min-width: 0; margin-bottom: .75rem; }
+    .destination-picker__filters label > span { display: block; margin-bottom: .375rem; color: rgb(var(--gray-600)); font-size: .75rem; }
+    .destination-picker__controls .fi-input,
+    .destination-picker__controls .fi-select-input { font-size: .8125rem; }
+    .destination-picker__current { margin-top: .625rem; color: rgb(var(--gray-500)); font-size: .75rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .destination-picker__current span { color: rgb(var(--gray-700)); }
+    .destination-picker__summary { min-height: 1.25rem; margin-top: .625rem; color: rgb(var(--gray-500)); font-size: .75rem; }
+    .destination-picker__list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: .25rem .875rem .75rem; }
+    .destination-picker__rows { display: grid; gap: .25rem; }
+    .destination-picker__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        width: 100%;
+        min-height: 2.625rem;
+        padding: .5rem .625rem;
+        border: 1px solid transparent;
+        border-radius: .5rem;
+        background: transparent;
+        color: inherit;
+        text-align: start;
+        font: inherit;
+        cursor: pointer;
+        transition: background-color .15s, border-color .15s;
+    }
+    .destination-picker__row:hover:not(:disabled) { background: rgb(var(--gray-50)); }
+    .destination-picker__row:focus-visible { outline: 2px solid rgb(var(--primary-500)); outline-offset: -2px; }
+    .destination-picker__row[aria-pressed="true"] { background: rgb(var(--primary-50)); border-color: rgb(var(--primary-300)); }
+    .destination-picker__row:disabled { opacity: .6; cursor: not-allowed; }
+    .destination-picker__title { display: flex; min-width: 0; align-items: center; gap: .5rem; font-weight: 500; }
+    .destination-picker__title > span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .destination-picker__selection { display: flex; flex: none; align-items: center; justify-content: center; width: 1rem; height: 1rem; border: 1px solid rgb(var(--gray-300)); border-radius: 50%; color: transparent; }
+    .destination-picker__selection svg { width: .75rem; height: .75rem; }
+    .destination-picker__row[aria-pressed="true"] .destination-picker__selection { border-color: rgb(var(--primary-600)); background: rgb(var(--primary-600)); color: white; }
+    .destination-picker__badge { flex: none; border-radius: .375rem; padding: .125rem .375rem; font-size: .6875rem; font-weight: 500; line-height: 1.5; white-space: nowrap; color: rgb(var(--gray-600)); background: rgb(var(--gray-100)); }
+    .destination-picker__badge[data-selectable="true"] { color: rgb(var(--success-700)); background: rgb(var(--success-50)); }
+    .destination-picker__empty { display: flex; min-height: 10rem; flex-direction: column; align-items: center; justify-content: center; gap: .625rem; color: rgb(var(--gray-500)); text-align: center; }
+    .destination-picker__empty small { font-size: .75rem; }
+    .destination-picker__pagination { border-top: 1px solid rgb(var(--gray-200)); padding-block: .75rem; }
+    .destination-picker__pagination > span { color: rgb(var(--gray-500)); font-size: .75rem; white-space: nowrap; }
+    .dark dialog[data-destination-browser] { color: rgb(var(--gray-100)); border-color: rgb(var(--gray-700)); }
+    .dark .destination-picker__header,
+    .dark .destination-picker__pagination { border-color: rgb(var(--gray-800)); }
+    .dark .destination-picker__current span { color: rgb(var(--gray-300)); }
+    .dark .destination-picker__row:hover:not(:disabled) { background: rgb(var(--gray-800)); }
+    .dark .destination-picker__row[aria-pressed="true"] { background: rgb(var(--primary-500) / .12); border-color: rgb(var(--primary-500) / .6); }
+    .dark .destination-picker__selection { border-color: rgb(var(--gray-600)); }
+    .dark .destination-picker__badge { color: rgb(var(--gray-400)); background: rgb(var(--gray-800)); }
+    .dark .destination-picker__badge[data-selectable="true"] { color: rgb(var(--success-400)); background: rgb(var(--success-500) / .12); }
+    @media (max-width: 639px) {
+        dialog[data-destination-browser] { width: calc(100vw - 1.5rem); height: min(42rem, calc(100dvh - 1.5rem)); max-height: calc(100dvh - 1.5rem); }
+        .destination-picker__header,
+        .destination-picker__pagination { padding-inline: .875rem; }
+        .destination-picker__controls { padding-inline: .875rem; }
+        .destination-picker__list { padding-inline: .625rem; }
+        .destination-picker__row { min-height: 2.75rem; gap: .5rem; }
+    }
 </style>
 <template id="king-rich-text-destination-browser">
     @include('filament.forms.components.destination-browser', [
