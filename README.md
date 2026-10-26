@@ -215,12 +215,17 @@ Admin-only draft preview routes live under `/admin/preview/...` and require auth
 
 ## Homepage Strategy
 
-The homepage is managed as a normal `Page` record with the reserved slug `home`.
+The homepage is managed as a normal `Page` record selected in Site Settings using
+the `homepage_page_id` key in the existing `settings` table. Only published pages
+are offered by the selector. The selected page uses the same `page` view and block
+renderer as its direct URL, including trusted Custom HTML / CSS / JS. Its canonical
+URL at `/` is the home route. A missing, draft, inactive, or future-dated selected
+page returns 404 under the existing publication scope.
 
-This keeps the CMS simple:
+Sites without an explicit selection keep the previous behavior:
 
 - Editors update homepage title, content, SEO fields, status, and featured image from the Pages admin resource.
-- `HomeController` loads the published page where `slug = home`.
+- `HomeController` loads the published page where `slug = home` using the legacy `home` view.
 - No separate homepage settings table, page builder, API, or custom content layer is needed.
 
 Seed data creates the initial homepage:
@@ -237,7 +242,14 @@ Page::query()->firstOrCreate(
 );
 ```
 
-For future client projects, keep this convention unless the homepage genuinely needs structured blocks. Add fields or a simple template-specific view only when the design requires it.
+No migration or data seeding is required to select an existing published page.
+
+The site-wide `header_menu_id` selection takes precedence in both the default
+header and the industrial Site Header block. When it is unset, the industrial
+block retains its own `settings.menu_id`, then the legacy `main` menu location.
+An explicitly selected missing or inactive menu produces no navigation items;
+it does not silently display another menu. Menu items still resolve through the
+existing MenuService and Navigation Source Registry.
 
 ## Simple SEO
 

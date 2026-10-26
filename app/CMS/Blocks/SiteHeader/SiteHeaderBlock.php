@@ -97,7 +97,7 @@ final class SiteHeaderBlock extends AbstractBlock implements BlockNormalizer
                 ->preload()
                 ->native(false)
                 ->placeholder('استفاده از منوی اصلی تنظیمات سایت')
-                ->helperText('آیتم‌ها و مقصدها همچنان توسط Menu Builder و Navigation Source Registry مدیریت می‌شوند.'),
+                ->helperText('انتخاب منوی هدر در تنظیمات سایت اولویت دارد. این منو زمانی استفاده می‌شود که در تنظیمات سایت منویی انتخاب نشده باشد. آیتم‌ها و مقصدها از Menu Builder مدیریت می‌شوند.'),
             Forms\Components\Toggle::make('settings.search_enabled')
                 ->label('نمایش جستجو')
                 ->default(true),

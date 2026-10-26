@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\ServiceUnit;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Models\Menu;
+use App\Models\Page as CmsPage;
 use App\Models\Template;
 use App\Services\ModuleCleanupService;
 use App\Services\ModuleRedirectSuggestionService;
@@ -60,6 +61,7 @@ class ManageSiteSettings extends Page implements HasForms
         'admin_login_path' => ['general', 'text'],
         'site_name' => ['general', 'text'],
         'site_description' => ['general', 'textarea'],
+        'homepage_page_id' => ['general', 'select'],
         'image_placeholder' => ['general', 'image'],
         'health_check_enabled' => ['general', 'boolean'],
         'site_logo' => ['branding', 'image'],
@@ -226,6 +228,19 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->label('توضیح کوتاه سایت')
                                     ->placeholder('توضیحی کوتاه درباره سایت وارد کنید')
                                     ->rows(3),
+                                Forms\Components\Select::make('homepage_page_id')
+                                    ->label('برگه صفحه اصلی')
+                                    ->options(fn (): array => CmsPage::query()
+                                        ->published()
+                                        ->orderBy('title')
+                                        ->pluck('title', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->native(false)
+                                    ->placeholder('استفاده از برگه با نامک home')
+                                    ->helperText('برگه منتشرشده انتخابی با محتوای ذخیره‌شده در مسیر / نمایش داده می‌شود. بدون انتخاب، رفتار قبلی نامک home حفظ می‌شود.')
+                                    ->rules(['nullable', 'integer', 'exists:pages,id']),
                                 Forms\Components\ViewField::make('image_placeholder')
                                     ->label('تصویر پیش‌فرض سایت')
                                     ->view('filament.forms.components.media-library-url-picker')

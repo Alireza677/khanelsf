@@ -62,7 +62,7 @@ class PageResource extends Resource
                                 ->label('نامک')
                                 ->required()
                                 ->maxLength(255)
-                                ->helperText('برای صفحه اصلی قابل ویرایش از "home" استفاده کنید.')
+                                ->helperText('برگه صفحه اصلی را از تنظیمات سایت انتخاب کنید. نامک home برای سازگاری با سایت‌های قبلی حفظ شده است.')
                                 ->unique(ignoreRecord: true),
                             Forms\Components\Select::make('template')
                                 ->label('قالب')

@@ -38,7 +38,7 @@ final class SiteHeaderRuntime
     public function prepare(array $data, array $context = [], bool $preview = false): array
     {
         $header = $this->normalizer->normalize($data);
-        $menuId = $header['settings']['menu_id'];
+        $menuId = $this->settings->headerMenuId() ?? $header['settings']['menu_id'];
         $menu = $menuId
             ? $this->menus->byId($menuId)
             : $this->menus->header();

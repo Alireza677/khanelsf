@@ -157,6 +157,11 @@ class SettingsService
         return $this->positiveInteger('header_menu_id');
     }
 
+    public function homepagePageId(): ?int
+    {
+        return $this->positiveInteger('homepage_page_id');
+    }
+
     public function headerTemplateId(): ?int
     {
         return $this->positiveInteger('header_template_id');
