@@ -13,11 +13,13 @@ use App\Services\SettingsService;
 use App\Services\VideoLibrarySettings;
 use App\Support\AdminLoginPath;
 use App\Support\TemporaryDebugLogger;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Str;
 
 class ManageSiteSettings extends Page implements HasForms
 {
@@ -131,8 +133,10 @@ class ManageSiteSettings extends Page implements HasForms
         'shop_order_admin_email' => ['shop', 'text'],
         'shop_manual_payment_message' => ['shop', 'textarea'],
         'payment_gateway' => ['payment', 'select'],
-        'zarinpal_access_token' => ['payment', 'password'],
-        'zarinpal_graphql_endpoint' => ['payment', 'text'],
+        'zarinpal_enabled' => ['payment', 'boolean'],
+        'zarinpal_environment' => ['payment', 'select'],
+        'zarinpal_sandbox_merchant_id' => ['payment', 'password'],
+        'zarinpal_merchant_id' => ['payment', 'password'],
         'zarinpal_callback_url' => ['payment', 'text'],
         'primary_color' => ['theme', 'color'],
         'secondary_color' => ['theme', 'color'],
@@ -165,6 +169,8 @@ class ManageSiteSettings extends Page implements HasForms
     public function mount(SettingsService $settings): void
     {
         $state = $settings->many(array_keys($this->settingsMeta))->all();
+        $state['zarinpal_enabled'] ??= config('payments.zarinpal.enabled', false);
+        $state['zarinpal_environment'] ??= config('payments.zarinpal.environment', 'sandbox');
         $state['admin_login_path'] = app(AdminLoginPath::class)->current();
         $state['public_services_enabled'] ??= true;
         $state['video_library_enabled'] ??= false;
@@ -203,8 +209,11 @@ class ManageSiteSettings extends Page implements HasForms
         return $form
             ->schema([
                 Forms\Components\Tabs::make('تنظیمات')
+                    ->id('site-settings')
+                    ->persistTabInQueryString()
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('عمومی')
+                            ->id('general')
                             ->schema([
                                 Forms\Components\TextInput::make('admin_login_path')
                                     ->label('آدرس ورود مدیریت')
@@ -240,6 +249,7 @@ class ManageSiteSettings extends Page implements HasForms
                                     ->native(false)
                                     ->placeholder('استفاده از برگه با نامک home')
                                     ->helperText('برگه منتشرشده انتخابی با محتوای ذخیره‌شده در مسیر / نمایش داده می‌شود. بدون انتخاب، رفتار قبلی نامک home حفظ می‌شود.')
+                                    ->in(fn (Forms\Components\Select $component): array => array_keys($component->getOptions()))
                                     ->rules(['nullable', 'integer', 'exists:pages,id']),
                                 Forms\Components\ViewField::make('image_placeholder')
                                     ->label('تصویر پیش‌فرض سایت')
@@ -685,29 +695,31 @@ class ManageSiteSettings extends Page implements HasForms
                                         ->label('درگاه پرداخت')
                                         ->options([
                                             'manual' => 'پرداخت دستی',
-                                            'zarinpal' => 'زرین‌پال (فقط ساختار)',
+                                            'zarinpal' => 'زرین‌پال',
                                         ])
                                         ->default('manual')
-                                        ->helperText('پرداخت دستی گزینه پیش‌فرض امن است. زرین‌پال قبل از پرداخت واقعی به جزئیات رسمی اتصال نیاز دارد.'),
-                                    Forms\Components\TextInput::make('zarinpal_access_token')
-                                        ->label('توکن دسترسی زرین‌پال')
-                                        ->placeholder('توکن دریافتی از زرین‌پال')
-                                        ->password()
-                                        ->revealable()
-                                        ->maxLength(1000)
-                                        ->helperText('در تنظیمات ذخیره می‌شود. این مقدار را به‌صورت عمومی نمایش ندهید.'),
-                                    Forms\Components\TextInput::make('zarinpal_graphql_endpoint')
-                                        ->label('آدرس گراف‌کیوال زرین‌پال')
-                                        ->placeholder('https://next.zarinpal.com/api/v4/graphql/')
-                                        ->url()
-                                        ->maxLength(255)
-                                        ->default('https://next.zarinpal.com/api/v4/graphql/'),
+                                        ->helperText('انتخاب درگاه به‌تنهایی آن را فعال نمی‌کند. پرداخت دستی مستقل باقی می‌ماند.'),
+                                    Forms\Components\Toggle::make('zarinpal_enabled')
+                                        ->label('فعال‌سازی اتصال زرین‌پال')->default(false),
+                                    Forms\Components\Select::make('zarinpal_environment')
+                                        ->label('محیط زرین‌پال')->options(['sandbox' => 'آزمایشی (Sandbox)', 'production' => 'واقعی (Production)'])
+                                        ->default('sandbox')->required()->in(['sandbox', 'production'])
+                                        ->helperText('محیط واقعی علاوه بر مرچنت معتبر، نیازمند فعال‌سازی مستقل در پیکربندی استقرار است.'),
+                                    Forms\Components\TextInput::make('zarinpal_sandbox_merchant_id')
+                                        ->label('شناسه پذیرنده آزمایشی')->password()->revealable()->nullable()->uuid()->maxLength(36)
+                                        ->suffixAction(Forms\Components\Actions\Action::make('generateSandboxMerchant')
+                                            ->label('ساخت UUID آزمایشی')->icon('heroicon-o-arrow-path')
+                                            ->action(fn (Forms\Set $set) => $set('zarinpal_sandbox_merchant_id', (string) Str::uuid())))
+                                        ->helperText('برای Sandbox یک UUID آزمایشی کافی است. خالی بودن فیلد از تنظیم محیط استقرار استفاده می‌کند.'),
+                                    Forms\Components\TextInput::make('zarinpal_merchant_id')
+                                        ->label('شناسه پذیرنده واقعی')->password()->revealable()->nullable()->uuid()->maxLength(36)
+                                        ->helperText('فقط مرچنت فعال سایت خود را وارد کنید. این شناسه برای Sandbox استفاده نمی‌شود.'),
                                     Forms\Components\TextInput::make('zarinpal_callback_url')
                                         ->label('آدرس بازگشت زرین‌پال')
-                                        ->placeholder('مثلا /payments/zarinpal/callback')
+                                        ->placeholder('https://example.com/payments/zarinpal/callback')
                                         ->url()
                                         ->maxLength(255)
-                                        ->helperText('اختیاری است. مقدار پیش‌فرض /payments/zarinpal/callback است.'),
+                                        ->helperText('اختیاری؛ باید نشانی HTTPS همین سایت و مسیر بازگشت زرین‌پال باشد. پیش‌فرض از نشانی رسمی سایت ساخته می‌شود.'),
                                 ])
                                     ->hidden(fn (Forms\Get $get): bool => ! (bool) $get('shop_enabled'))
                                     ->columns(2)
@@ -977,6 +989,57 @@ class ManageSiteSettings extends Page implements HasForms
     public function save(SettingsService $settings): void
     {
         $state = $this->form->getState();
+
+        if ($this->homepageToReplace($settings, $state) !== null) {
+            $this->mountAction('confirmHomepageReplacement');
+
+            return;
+        }
+
+        $this->persistSettings($settings, $state);
+    }
+
+    public function confirmHomepageReplacementAction(): Action
+    {
+        return Action::make('confirmHomepageReplacement')
+            ->requiresConfirmation()
+            ->modalHeading('تأیید تغییر صفحه اصلی')
+            ->modalDescription(function (SettingsService $settings): string {
+                $state = $this->form->getRawState();
+                $previous = $this->homepageToReplace($settings, $state);
+                $next = filled($state['homepage_page_id'] ?? null)
+                    ? CmsPage::query()->find($state['homepage_page_id'])
+                    : null;
+
+                return $next
+                    ? 'برگه «'.$next->title.'» جایگزین برگه «'.$previous?->title.'» به‌عنوان صفحه اصلی سایت می‌شود. تنظیمات ذخیره شود؟'
+                    : 'انتخاب برگه «'.$previous?->title.'» به‌عنوان صفحه اصلی لغو و رفتار قبلی سایت فعال می‌شود. تنظیمات ذخیره شود؟';
+            })
+            ->modalSubmitActionLabel('تأیید و ذخیره تنظیمات')
+            ->modalCancelActionLabel('انصراف')
+            ->action(fn (SettingsService $settings) => $this->persistSettings($settings, $this->form->getState()));
+    }
+
+    private function homepageToReplace(SettingsService $settings, array $state): ?CmsPage
+    {
+        $currentId = $settings->homepagePageId();
+        $nextId = filled($state['homepage_page_id'] ?? null) ? (int) $state['homepage_page_id'] : null;
+
+        if ($nextId === $currentId) {
+            return null;
+        }
+
+        $previous = $currentId !== null
+            ? CmsPage::query()->find($currentId)
+            : (blank($settings->get('homepage_page_id'))
+                ? CmsPage::query()->published()->where('slug', 'home')->first()
+                : null);
+
+        return $previous !== null && $nextId !== (int) $previous->getKey() ? $previous : null;
+    }
+
+    private function persistSettings(SettingsService $settings, array $state): void
+    {
         $state['admin_login_path'] = app(AdminLoginPath::class)->validate($state['admin_login_path'] ?? null);
 
         // TEMP DEBUG - remove after production save issue is fixed.
@@ -990,7 +1053,15 @@ class ManageSiteSettings extends Page implements HasForms
                     ? $this->normalizeGoogleSiteVerification($state[$key] ?? null)
                     : $this->normalizeValue($state[$key] ?? null));
 
-                $settings->set($key, $value, $group, $type);
+                try {
+                    $settings->set($key, $value, $group, $type);
+                } catch (\Throwable $exception) {
+                    // DB exception strings can contain bound credentials; omit the original chain.
+                    if ($type === 'password' && str_starts_with($key, 'zarinpal_')) {
+                        throw new \RuntimeException('ذخیره اطلاعات محرمانه درگاه انجام نشد.');
+                    }
+                    throw $exception;
+                }
             }
 
             // TEMP DEBUG - remove after production save issue is fixed.

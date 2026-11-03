@@ -1,0 +1,68 @@
+{
+  "block_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "site_name": "Legacy Site",
+  "year": 2026,
+  "menu_columns": [
+    {
+      "title": "Legacy Menu",
+      "items": [
+        {
+          "label": "Home",
+          "url": "/",
+          "target": "_self"
+        },
+        {
+          "label": "External",
+          "url": "https://example.com",
+          "target": "_blank"
+        }
+      ]
+    }
+  ],
+  "contact_title": "Contact",
+  "contacts": [
+    {
+      "type": "phone",
+      "label": "Phone",
+      "value": "021 12345678",
+      "href": "tel:02112345678"
+    },
+    {
+      "type": "address",
+      "label": "Address",
+      "value": "Legacy address",
+      "href": null
+    }
+  ],
+  "about_title": "About",
+  "about_text": "Legacy introduction",
+  "badges_title": "Trust",
+  "badges": [
+    {
+      "media_id": 1,
+      "title": "Badge",
+      "url": "https://example.com/verify",
+      "image_url": "/legacy-badge.png",
+      "alt": "Legacy badge"
+    },
+    {
+      "media_id": 2,
+      "title": "Image",
+      "url": null,
+      "image_url": "/legacy-image.png",
+      "alt": "Legacy image"
+    }
+  ],
+  "legal_links": [
+    {
+      "label": "Privacy",
+      "presentation": {
+        "kind": "link",
+        "href": "/privacy",
+        "target": "_self",
+        "rel": null,
+        "prevent_default": false
+      }
+    }
+  ]
+}

@@ -81,10 +81,13 @@ final class SiteFooterBlock extends AbstractBlock implements BlockNormalizer
             throw new InvalidArgumentException('Site Footer is only available in the Template editor.');
         }
 
+        return SiteFooterCompositionEditor::schema($this->legacySchema(), $this->version(), $this->defaultTemplate());
+    }
+
+    /** Kept independently editable until an administrator explicitly converts it. */
+    private function legacySchema(): array
+    {
         return [
-            Forms\Components\Hidden::make('block_id'),
-            Forms\Components\Hidden::make('schema_version')->default($this->version()),
-            Forms\Components\Hidden::make('template')->default($this->defaultTemplate()),
             Forms\Components\Repeater::make('content.menu_columns')
                 ->label('ستون‌های منو')
                 ->schema([
@@ -102,9 +105,9 @@ final class SiteFooterBlock extends AbstractBlock implements BlockNormalizer
                         ->preload()
                         ->native(false),
                 ])
-                ->defaultItems(3)
-                ->minItems(3)
+                ->defaultItems(0)
                 ->maxItems(3)
+                ->reorderableWithButtons()
                 ->columns(2)
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('content.contact_title')

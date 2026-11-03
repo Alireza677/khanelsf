@@ -40,8 +40,8 @@
                                 @else
                                     <strong>{{ $item['title'] }}</strong>
                                 @endif
-                                <span>{{ $item['quantity'] }} × {{ number_format($item['unit_price']) }} تومان</span>
-                                <small>{{ number_format($item['total']) }} تومان</small>
+                                <span>{{ $item['quantity'] }} × {{ app(\App\Services\ProductPricingService::class)->formatAmount($item['unit_price']) }} تومان</span>
+                                <small>{{ app(\App\Services\ProductPricingService::class)->formatAmount($item['total']) }} تومان</small>
                             </div>
                             @if ($cart['remove_url'])
                                 <form
@@ -70,7 +70,7 @@
 
         <footer class="header-cart-drawer__footer" data-cart-footer @if ($cart['items'] === []) hidden @endif>
             @if ($cart['items'] !== [])
-                <div data-cart-subtotal-block><span>جمع کل</span><strong data-cart-subtotal>{{ number_format($cart['subtotal']) }} تومان</strong></div>
+                <div data-cart-subtotal-block><span>جمع کل</span><strong data-cart-subtotal>{{ app(\App\Services\ProductPricingService::class)->formatAmount($cart['subtotal']) }} تومان</strong></div>
                 <div class="header-cart-drawer__actions" data-cart-actions>
                     <a class="button button-secondary" href="{{ $cart['url'] }}">مشاهده سبد خرید</a>
                     @if ($cart['checkout_url'])

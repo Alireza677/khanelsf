@@ -7,6 +7,7 @@ use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\Support\HeadingLevel;
 use App\Filament\Forms\Components\BlockBuilder;
+use App\Filament\Pages\ManageSiteSettings;
 use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
@@ -17,6 +18,7 @@ use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Services\ModuleService;
+use App\Services\SettingsService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -25,6 +27,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class PageResource extends Resource
@@ -50,6 +53,15 @@ class PageResource extends Resource
                 ->tabs([
                     Forms\Components\Tabs\Tab::make('محتوا')
                         ->schema([
+                            Forms\Components\Placeholder::make('homepage_notice')
+                                ->label('صفحه اصلی سایت')
+                                ->content(fn (): HtmlString => new HtmlString(
+                                    'این برگه به‌عنوان صفحه اصلی سایت انتخاب شده است. '
+                                    .'<a class="text-primary-600 underline" href="'.e(ManageSiteSettings::getUrl(['tab' => 'site-settings-general-tab'])).'">مدیریت انتخاب صفحه اصلی</a>',
+                                ))
+                                ->visible(fn (?Page $record): bool => $record !== null
+                                    && app(SettingsService::class)->homepagePageId() === (int) $record->getKey())
+                                ->columnSpanFull(),
                             Forms\Components\TextInput::make('title')
                                 ->label('عنوان')
                                 ->required()
@@ -67,11 +79,16 @@ class PageResource extends Resource
                             Forms\Components\Select::make('template')
                                 ->label('قالب')
                                 ->required()
-                                ->options([
+                                ->options(fn (?Page $record): array => [
                                     'default' => 'پیش‌فرض',
-                                    'home' => 'صفحه اصلی',
                                     'landing' => 'لندینگ',
+                                    ...($record?->template === 'home' ? ['home' => 'قالب قدیمی (home)'] : []),
                                 ])
+                                ->disableOptionWhen(fn (string $value): bool => $value === 'home')
+                                ->in(fn (?Page $record): array => $record?->template === 'home'
+                                    ? ['default', 'landing', 'home']
+                                    : ['default', 'landing'])
+                                ->helperText('قالب برگه، صفحه اصلی سایت را تعیین نمی‌کند. این انتخاب فقط از تنظیمات عمومی سایت انجام می‌شود.')
                                 ->default('default'),
                         ])
                         ->columns(2),
@@ -520,7 +537,7 @@ class PageResource extends Resource
                     ->label('قالب')
                     ->formatStateUsing(fn (string $state): string => [
                         'default' => 'پیش‌فرض',
-                        'home' => 'صفحه اصلی',
+                        'home' => 'قالب قدیمی (home)',
                         'landing' => 'لندینگ',
                     ][$state] ?? $state)
                     ->badge(),
@@ -556,7 +573,7 @@ class PageResource extends Resource
                     ->label('قالب')
                     ->options([
                         'default' => 'پیش‌فرض',
-                        'home' => 'صفحه اصلی',
+                        'home' => 'قالب قدیمی (home)',
                         'landing' => 'لندینگ',
                     ]),
             ])

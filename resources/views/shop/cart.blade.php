@@ -1,12 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
+    @php($pricing = app(\App\Services\ProductPricingService::class))
     <section class="cart-page">
         <h1>سبد خرید</h1>
 
         @if (session('success'))
             <p class="form-status" role="status">{{ session('success') }}</p>
         @endif
+
+        @if ($cartError || $errors->has('cart'))
+            <p class="form-error" role="alert">{{ $cartError ?? $errors->first('cart') }}</p>
+        @endif
+        @foreach ($errors->get('quantities.*') as $messages)
+            @foreach ($messages as $message)
+                <p class="form-error" role="alert">{{ $message }}</p>
+            @endforeach
+        @endforeach
 
         @if ($cartItems->isEmpty())
             <p class="empty-state">سبد خرید شما خالی است.</p>
@@ -25,12 +35,13 @@
                                     <span>شناسه محصول: {{ $item['sku'] }}</span>
                                 @endif
                             </div>
-                            <div>{{ number_format($item['unit_price']) }} تومان</div>
+                            <div>{{ $item['error'] ? 'قیمت نامعتبر' : $pricing->formatAmount($item['unit_price']).' تومان' }}</div>
                             <div>
                                 <label for="quantity-{{ $item['product_id'] }}">تعداد</label>
-                                <input id="quantity-{{ $item['product_id'] }}" name="quantities[{{ $item['product_id'] }}]" type="number" min="0" max="99" value="{{ $item['quantity'] }}">
+                                <input id="quantity-{{ $item['product_id'] }}" name="quantities[{{ $item['product_id'] }}]" type="number" min="1" max="99" value="{{ $item['quantity'] }}">
+                                @if ($item['error']) <p class="form-error">{{ $item['error'] }}</p> @endif
                             </div>
-                            <div>{{ number_format($item['total']) }} تومان</div>
+                            <div>{{ $item['error'] ? '—' : $pricing->formatAmount($item['total']).' تومان' }}</div>
                             <div>
                                 <button class="button button-secondary" type="submit" form="remove-{{ $item['product_id'] }}">حذف</button>
                             </div>
@@ -39,10 +50,14 @@
                 </div>
 
                 <div class="cart-summary">
-                    <strong>جمع کل: {{ number_format($subtotal) }} تومان</strong>
+                    @unless ($cartError)
+                        <strong>جمع کل: {{ $pricing->formatAmount($subtotal) }} تومان</strong>
+                    @endunless
                     <div class="block-actions">
                         <button class="button button-secondary" type="submit">به‌روزرسانی سبد</button>
-                        <a class="button" href="{{ route('checkout.create') }}">تسویه حساب</a>
+                        @unless ($cartError)
+                            <a class="button" href="{{ route('checkout.create') }}">تسویه حساب</a>
+                        @endunless
                     </div>
                 </div>
             </form>

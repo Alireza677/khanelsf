@@ -5,19 +5,39 @@ namespace App\CMS\Blocks\SiteFooter;
 use App\CMS\Actions\Normalizers\ActionDestinationNormalizer;
 use App\CMS\Actions\Validation\ActionDestinationValidator;
 use App\CMS\Blocks\Contracts\BlockNormalizer;
+use Illuminate\Validation\ValidationException;
 
 final class SiteFooterDataNormalizer implements BlockNormalizer
 {
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     public function __construct(
         private readonly ActionDestinationNormalizer $actions,
         private readonly ActionDestinationValidator $validator,
+        private readonly SiteFooterCompositionNormalizer $compositions,
     ) {}
 
     public function normalize(array $data): array
     {
+        // Reject unsupported contracts before the shared editor can dehydrate them.
+        $version = $data['schema_version'] ?? 1;
+        if (! in_array($version, [1, '1', self::SCHEMA_VERSION, (string) self::SCHEMA_VERSION], true)) {
+            throw ValidationException::withMessages([
+                'schema_version' => 'Unsupported footer schema version. The footer was not converted or saved.',
+            ]);
+        }
+
+        if (filled($data['template'] ?? null) && $data['template'] !== 'corporate-dark-v1') {
+            throw ValidationException::withMessages(['template' => 'Unsupported footer renderer template.']);
+        }
+
         $content = is_array($data['content'] ?? null) ? $data['content'] : [];
+        $composition = $content['composition'] ?? null;
+        if ($composition !== null && (int) $version !== self::SCHEMA_VERSION) {
+            throw ValidationException::withMessages([
+                'content.composition' => 'Footer composition requires schema version 2. Legacy content is never converted automatically.',
+            ]);
+        }
 
         return [
             'block_id' => $this->stringOrNull($data['block_id'] ?? null),
@@ -39,6 +59,7 @@ final class SiteFooterDataNormalizer implements BlockNormalizer
                 'badges_title' => $this->stringOrNull($content['badges_title'] ?? null) ?? 'مجوزها و نمادهای اعتماد',
                 'badges' => collect($content['badges'] ?? [])
                     ->filter(fn (mixed $badge): bool => is_array($badge))
+                    ->values()
                     ->map(fn (array $badge, int $index): array => [
                         'title' => $this->stringOrNull($badge['title'] ?? null),
                         'media_id' => $this->positiveIntegerOrNull($badge['media_id'] ?? null),
@@ -54,7 +75,9 @@ final class SiteFooterDataNormalizer implements BlockNormalizer
                 'privacy_action' => $this->validAction($content['privacy_action'] ?? null),
                 'terms_label' => $this->stringOrNull($content['terms_label'] ?? null) ?? 'قوانین و مقررات',
                 'terms_action' => $this->validAction($content['terms_action'] ?? null),
+                'composition' => $composition === null ? null : $this->compositions->normalize($composition),
             ],
+            'settings' => $this->compositions->settings($data['settings'] ?? []),
         ];
     }
 

@@ -1,0 +1,24 @@
+{
+  "block_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "schema_version": 1,
+  "template": "corporate-dark-v1",
+  "content": {
+    "menu_columns": [
+      {"title": "شرکت", "menu_id": 101},
+      {"title": "خدمات", "menu_id": 102},
+      {"title": "پیوندها", "menu_id": 103}
+    ],
+    "contact_title": "تماس با ما",
+    "about_title": "معرفی",
+    "about_text": "معرفی اختصاصی قدیمی\nخط دوم",
+    "badges_title": "مجوزها",
+    "badges": [
+      {"title": "نشان اول", "media_id": 201, "url": "/verify", "alt": "نماد قدیمی", "sort_order": 1, "enabled": true},
+      {"title": "نشان غیرفعال", "media_id": 202, "url": null, "alt": null, "sort_order": 2, "enabled": false}
+    ],
+    "privacy_label": "حریم خصوصی",
+    "privacy_action": {"schema_version": 1, "type": "custom_url", "value": "/privacy", "open_in_new_tab": false},
+    "terms_label": "قوانین",
+    "terms_action": {"schema_version": 1, "type": "page", "reference_id": 301, "open_in_new_tab": false}
+  }
+}

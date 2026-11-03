@@ -99,10 +99,11 @@ class OrderOperationsTest extends TestCase
 
     public function test_order_status_helpers_still_work(): void
     {
+        $this->actingAs(User::factory()->admin()->create());
         $order = $this->createOrder();
 
         $this->assertTrue($order->isPending());
-        $this->assertTrue($order->markPaid());
+        $this->assertTrue($order->markPaid(reason: 'Manual receipt checked'));
         $this->assertTrue($order->refresh()->isPaid());
         $this->assertTrue($order->markCompleted());
         $this->assertFalse($order->refresh()->canBeCancelled());

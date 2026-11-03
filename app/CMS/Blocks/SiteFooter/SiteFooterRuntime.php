@@ -11,6 +11,7 @@ use App\Models\Media;
 use App\Models\Menu;
 use App\Services\MenuService;
 use App\Services\SettingsService;
+use Illuminate\Validation\ValidationException;
 
 final class SiteFooterRuntime
 {
@@ -20,6 +21,7 @@ final class SiteFooterRuntime
         private readonly ActionPresentation $presentation,
         private readonly SettingsService $settings,
         private readonly MenuService $menus,
+        private readonly SiteFooterCompositionRuntime $compositions,
     ) {}
 
     /**
@@ -28,7 +30,16 @@ final class SiteFooterRuntime
      */
     public function prepare(array $data, array $context = [], bool $preview = false): array
     {
-        $footer = $this->normalizer->normalize($data);
+        try {
+            $footer = $this->normalizer->normalize($data);
+        } catch (ValidationException) {
+            // Reading an unsupported contract must neither rewrite it nor break the page.
+            // Editor/save normalization remains strict and still reports the validation error.
+            return ['composition' => ['main' => ['columns' => []], 'bottom' => ['elements' => []]]];
+        }
+        if ($footer['content']['composition'] !== null) {
+            return $this->compositions->prepare($footer, $context, $preview);
+        }
         $content = $footer['content'];
         $menuColumns = [];
 

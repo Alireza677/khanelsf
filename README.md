@@ -153,6 +153,10 @@ What this creates:
 - A default admin user: `admin@example.com` / `password`.
 - A published `home` page.
 
+On a fresh database, the same `DatabaseSeeder` also installs the standard King Composition v2 footer: Published, Default for `site_footer`, and selected through `footer_template_id`. Its four initial columns contain editable Branding, introduction, Social, Navigation, Contact, static Map and Image/Trust Badge elements; Copyright and Legal Links occupy the bottom region. Site data is read dynamically from Settings. Missing media, contact details and destinations stay configurable without producing placeholder content in public output.
+
+Fresh-footer intent is recorded before any starter data is created, only when every table except migration history is empty. The internal `king_footer_bootstrap` setting survives an interrupted installation and is completed atomically with the footer. Existing sites without that intent are left alone; deleting or emptying a footer, menu or selection never resets the marker. Calling `CorporateFooterTemplateSeeder` directly without pending installation intent is a no-op, including on an existing Legacy site. This preservation guarantee applies to the footer bootstrap; the other starter/demo seeders keep their existing behavior.
+
 Change the admin password immediately in any real environment.
 
 ## 6. Run The App
@@ -221,6 +225,17 @@ are offered by the selector. The selected page uses the same `page` view and blo
 renderer as its direct URL, including trusted Custom HTML / CSS / JS. Its canonical
 URL at `/` is the home route. A missing, draft, inactive, or future-dated selected
 page returns 404 under the existing publication scope.
+
+The Page editor's template selector offers `default` and `landing`; it does not
+assign the homepage. Existing `template=home` records retain that legacy value
+when edited, with a disabled legacy option and a distinct label in the page list.
+The explicitly selected page shows a homepage notice linking to General Site
+Settings. Replacing an existing homepage asks for confirmation before saving any
+settings. Cancelling leaves stored settings unchanged.
+
+Only an absent or blank `homepage_page_id` permits the legacy fallback. A nonblank
+malformed value (such as `0` or a non-numeric value) returns 404 instead of selecting
+another page. Choosing a homepage does not modify its slug, template or content.
 
 Sites without an explicit selection keep the previous behavior:
 
@@ -445,38 +460,35 @@ Replace the binding in `ShopServiceProvider` with a real gateway implementation 
 
 ### Zarinpal Readiness
 
-The starter includes a safe Zarinpal structure, but it does not process real payments yet.
+Commerce uses the documented Zarinpal REST v4 payment API with durable PaymentAttempts, server-side verification, inquiry recovery and idempotent settlement. Manual payment remains the default. Production payments are disabled by default.
 
 Settings in `Site Settings > Shop`:
 
 - `payment_gateway`: `manual` or `zarinpal`
-- `zarinpal_access_token`
-- `zarinpal_graphql_endpoint`
+- `zarinpal_enabled`
+- `zarinpal_environment`: `sandbox` or `production`
+- `zarinpal_sandbox_merchant_id`: generate a test UUID in the panel; no production merchant is needed
+- `zarinpal_merchant_id`: production merchant for this website
 - `zarinpal_callback_url`
 
-Default GraphQL endpoint:
+Environment-backed configuration is documented in `.env.example`. Production also requires the separate deployment gate `ZARINPAL_PRODUCTION_ENABLED=true`; selecting it in the panel alone cannot enable live payments. Credentials must never be committed, logged or exposed publicly.
 
-```text
-https://next.zarinpal.com/api/v4/graphql/
-```
+Hosts are fixed to `https://sandbox.zarinpal.com` and `https://payment.zarinpal.com`, using `/pg/v4/payment/request.json`, `verify.json` and `inquiry.json`. GraphQL access tokens are not payment credentials; legacy stored values are preserved but unused by Commerce.
 
-The GraphQL client sends:
+Amounts use explicit IRT integer tomans. Supported gateway range is 1,000 to 100,000,000 tomans; fractional amounts are rejected without rounding. Verification sends the exact stored request amount. The callback must be the canonical HTTPS `/payments/zarinpal/callback` endpoint of this website.
 
-- `POST`
-- `Accept: application/json`
-- `Authorization: Bearer {ACCESS_TOKEN}`
+An unknown initiation outcome is never automatically retried. Keep its active attempt and reconcile through the signed receipt or the authorized OrderResource action. Missing authority after an initiation timeout requires provider-side investigation; knowing the Order number is insufficient to recover or restart a payment.
 
-The access token is stored as a setting and must not be exposed in public views, logs, frontend JavaScript, or committed files.
+See [P3 completion report](docs/commerce-extension-p3-zarinpal-integration-2026-10-27.md) for official references, tests, recovery limits and rollout acceptance.
 
 Current Zarinpal behavior:
 
-- Manual payment remains the default.
-- If `payment_gateway = zarinpal` but no token exists, checkout returns a safe validation error and keeps the cart.
-- The callback route exists at `/payments/zarinpal/callback` and does not require auth.
-- Callback verification is a placeholder until real mutation details are completed.
-- Orders are not marked paid automatically.
+- Missing/disabled configuration fails closed and keeps Checkout recoverable.
+- Only verified provider codes 100/101 with a correlated attempt and unique reference settle an Order.
+- Callback status and inquiry alone do not prove payment; uncertain attempts retain their active slot.
+- Sandbox receipts are explicitly labeled test payments. They do not prove real money was received.
 
-Before enabling live Zarinpal payments, complete and verify the official GraphQL request and verification mutations, required variables, callback payload shape, authority/reference fields, amount currency rules, sandbox/live behavior, and failure-code handling.
+Live merchant activation still requires validated credentials, HTTPS/proxy and CA configuration, additive migrations and production acceptance under explicit authorization. A successful Sandbox test is not production acceptance.
 
 ### What The Shop Intentionally Does Not Include
 
@@ -766,7 +778,7 @@ Configure these in `Site Settings`:
 ### Payment Checklist
 
 - Keep `payment_gateway = manual` until a real gateway is completed and tested.
-- For Zarinpal, add the access token only in settings or secure environment-backed deployment flow.
+- For Zarinpal, configure the correct environment-specific Merchant ID through settings or secure deployment configuration; keep the production gate disabled until acceptance.
 - Confirm the official request and verify GraphQL mutations before enabling live payment.
 - Test callback behavior with sandbox credentials before production.
 - Never commit payment credentials.
@@ -849,7 +861,7 @@ Launch checklist shows:
 - health check setting
 - mail configuration presence
 - shop payment mode
-- Zarinpal token requirement only when Zarinpal is selected
+- Zarinpal configuration and Merchant ID requirements only when Zarinpal is selected
 - active redirects count
 - draft pages, posts, projects, galleries, and products count
 - module enable/disable decisions
@@ -958,7 +970,7 @@ Before launch:
 - test cart add/update/remove
 - test checkout validation
 - keep `payment_gateway=manual` unless a real gateway has been completed and tested
-- do not enable live Zarinpal until request and verify mutations are implemented with official credentials
+- do not enable live Zarinpal until the production Merchant ID, callback, TLS and end-to-end acceptance are explicitly verified
 
 ### Backups
 

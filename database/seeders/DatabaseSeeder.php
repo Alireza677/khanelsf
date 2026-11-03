@@ -15,11 +15,45 @@ use App\Models\Setting;
 use App\Models\Template;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
+    /** Establish fresh-install intent before any starter/demo data is created. */
+    private function prepareFooterBootstrap(): void
+    {
+        DB::transaction(function (): void {
+            if (Setting::query()->where('key', CorporateFooterTemplateSeeder::INSTALLATION_STATE_KEY)->exists()) {
+                return;
+            }
+
+            $prefix = DB::connection()->getTablePrefix();
+            $migrationsTable = (string) config('database.migrations.table', 'migrations');
+            foreach (Schema::getTableListing() as $physicalTable) {
+                $table = $prefix !== '' && str_starts_with($physicalTable, $prefix)
+                    ? substr($physicalTable, strlen($prefix)) : $physicalTable;
+                if ($table === $migrationsTable || str_starts_with($table, 'sqlite_')) {
+                    continue;
+                }
+                // An existing installation is never inferred from footer-only state.
+                if (DB::table($table)->exists()) {
+                    return;
+                }
+            }
+
+            // Persists through an interrupted install; only footer completion consumes it.
+            Setting::query()->firstOrCreate(
+                ['key' => CorporateFooterTemplateSeeder::INSTALLATION_STATE_KEY],
+                ['value' => 'pending', 'group' => 'system', 'type' => 'text'],
+            );
+        });
+    }
+
     public function run(): void
     {
+        $this->prepareFooterBootstrap();
+
         $this->call(LsfProductSeeder::class);
 
         User::query()->firstOrCreate(
@@ -34,7 +68,7 @@ class DatabaseSeeder extends Seeder
         Setting::query()->firstOrCreate(
             ['key' => 'site_name'],
             [
-                'value' => 'Starter CMS',
+                'value' => (string) config('app.name'),
                 'group' => 'general',
                 'type' => 'text',
             ],
@@ -43,7 +77,7 @@ class DatabaseSeeder extends Seeder
         Setting::query()->firstOrCreate(
             ['key' => 'site_description'],
             [
-                'value' => 'A reusable website starter for client projects.',
+                'value' => '',
                 'group' => 'general',
                 'type' => 'textarea',
             ],
@@ -55,7 +89,7 @@ class DatabaseSeeder extends Seeder
             ['image_placeholder', '', 'general', 'image'],
             ['health_check_enabled', '1', 'general', 'boolean'],
             ['default_og_image', '', 'seo', 'image'],
-            ['footer_text', 'A practical website starter for client projects.', 'footer', 'textarea'],
+            ['footer_text', '', 'footer', 'textarea'],
             ['contact_mobile', '', 'contact', 'text'],
             ['working_hours', '', 'contact', 'text'],
             ['social_instagram_url', '', 'social', 'text'],
@@ -177,7 +211,7 @@ class DatabaseSeeder extends Seeder
         Setting::query()->firstOrCreate(
             ['key' => 'contact_email'],
             [
-                'value' => 'hello@example.com',
+                'value' => '',
                 'group' => 'contact',
                 'type' => 'text',
             ],
@@ -186,7 +220,7 @@ class DatabaseSeeder extends Seeder
         Setting::query()->firstOrCreate(
             ['key' => 'contact_phone'],
             [
-                'value' => '+1 555 123 4567',
+                'value' => '',
                 'group' => 'contact',
                 'type' => 'text',
             ],
@@ -195,7 +229,7 @@ class DatabaseSeeder extends Seeder
         Setting::query()->firstOrCreate(
             ['key' => 'contact_address'],
             [
-                'value' => '123 Main Street, Your City',
+                'value' => '',
                 'group' => 'contact',
                 'type' => 'textarea',
             ],
@@ -578,55 +612,7 @@ class DatabaseSeeder extends Seeder
         $this->call(StandardProjectTemplateSeeder::class);
         $this->call(StandardServiceTemplateSeeder::class);
 
-        $footerMenu = Menu::query()->firstOrCreate(
-            ['slug' => 'footer-menu'],
-            [
-                'title' => 'Footer Menu',
-                'location' => 'footer',
-                'status' => 'active',
-            ],
-        );
-
-        foreach ([
-            ['title' => 'About', 'url' => '/about', 'sort_order' => 1],
-            ['title' => 'Projects', 'url' => '/projects', 'sort_order' => 2],
-            ['title' => 'Galleries', 'url' => '/galleries', 'sort_order' => 3],
-            [
-                'title' => 'فروشگاه',
-                'url' => null,
-                'type' => MenuItem::TYPE_SOURCE,
-                'source_key' => 'shop.index',
-                'sort_order' => 4,
-            ],
-            ['title' => 'Blog', 'url' => '/blog', 'sort_order' => 5],
-            ['title' => 'Contact', 'url' => '/contact', 'sort_order' => 6],
-        ] as $item) {
-            MenuItem::query()->firstOrCreate(
-                [
-                    'menu_id' => $footerMenu->id,
-                    'title' => $item['title'],
-                ],
-                [
-                    'parent_id' => null,
-                    'type' => $item['type'] ?? MenuItem::TYPE_CUSTOM_URL,
-                    'source_key' => $item['source_key'] ?? null,
-                    'url' => $item['url'],
-                    'target' => '_self',
-                    'sort_order' => $item['sort_order'],
-                    'status' => 'active',
-                ],
-            );
-        }
-
-        Setting::query()->firstOrCreate(
-            ['key' => 'footer_menu_id'],
-            [
-                'value' => (string) $footerMenu->getKey(),
-                'group' => 'footer',
-                'type' => 'select',
-            ],
-        );
-
+        // Footer menus, selections and preset belong to the one-time fresh bootstrap.
         $this->call(CorporateFooterTemplateSeeder::class);
 
         foreach ([

@@ -6,6 +6,7 @@ use App\CMS\Blocks\BlockRegistry;
 use App\CMS\Blocks\Contracts\BlockNormalizer;
 use App\CMS\Blocks\CTA\CTADataNormalizer;
 use App\Models\Template;
+use Illuminate\Validation\ValidationException;
 
 final class TemplatePublicationValidator
 {
@@ -20,6 +21,14 @@ final class TemplatePublicationValidator
         $errors = [];
         $target = is_string($attributes['type'] ?? null) ? $attributes['type'] : '';
         $templateBlocks = is_array($attributes['blocks'] ?? null) ? $attributes['blocks'] : [];
+
+        if ($target === 'site_footer') {
+            if (isset($attributes['blocks']) && ! is_array($attributes['blocks'])) {
+                return ['ساختار بلوک‌های قالب فوتر باید آرایه باشد.'];
+            }
+
+            return $this->validateFooter($templateBlocks);
+        }
 
         if (! array_key_exists($target, Template::TYPES)) {
             $errors[] = "Template target [{$target}] is not supported.";
@@ -93,6 +102,57 @@ final class TemplatePublicationValidator
 
             if ($normalizer && $normalizer->normalize($data) !== $data) {
                 $errors[] = "Block [{$type}] data is not canonical for the installed schema.";
+            }
+        }
+
+        return array_values(array_unique($errors));
+    }
+
+    /** Validate footer contracts without migrating Legacy or forbidding intentional emptiness. */
+    private function validateFooter(array $templateBlocks): array
+    {
+        $errors = [];
+        $ids = [];
+        foreach (array_values($templateBlocks) as $position => $block) {
+            if (! is_array($block)) {
+                $errors[] = 'ساختار بلوک فوتر معتبر نیست.';
+
+                continue;
+            }
+            // Other pre-existing template blocks retain their existing publication behavior.
+            if (($block['type'] ?? null) !== 'site_footer') {
+                continue;
+            }
+            $definition = $this->blocks->find('site_footer');
+            if (! $definition instanceof BlockNormalizer || ! is_array($block['data'] ?? null)) {
+                $errors[] = 'تعریف یا داده بلوک فوتر برای انتشار معتبر نیست.';
+
+                continue;
+            }
+            try {
+                // Accept v1 through the installed reader, without rewriting the stored document.
+                $data = $definition->normalize($block['data']);
+            } catch (ValidationException $exception) {
+                $errors[] = 'فوتر شماره '.($position + 1).': '.implode(' ', $exception->validator->errors()->all());
+
+                continue;
+            }
+
+            $id = strtoupper((string) ($data['block_id'] ?? ''));
+            if (preg_match('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/D', $id) !== 1 || isset($ids[$id])) {
+                $errors[] = 'شناسه بلوک‌های فوتر باید ULID معتبر و یکتا باشد.';
+            }
+            $ids[$id] = true;
+            $renderer = $definition->templates()[$data['template']] ?? null;
+            if ($renderer === null || ! view()->exists($renderer->view)) {
+                $errors[] = 'نمایشگر فوتر برای انتشار در دسترس نیست.';
+            }
+            foreach ($data['content']['composition']['main']['columns'] ?? [] as $column) {
+                foreach ($column['elements'] as $element) {
+                    if ($element['enabled'] && $element['type'] === 'form') {
+                        $errors[] = 'نمایش فرم در Footer Composition آماده نیست؛ پیش از انتشار این عنصر را غیرفعال کنید.';
+                    }
+                }
             }
         }
 

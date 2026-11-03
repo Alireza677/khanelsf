@@ -1,0 +1,17 @@
+{
+  "block_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "schema_version": 1,
+  "template": "corporate-dark-v1",
+  "content": {
+    "menu_columns": [],
+    "contact_title": "ارتباط با ما",
+    "about_title": "درباره ما",
+    "about_text": null,
+    "badges_title": "مجوزها و نمادهای اعتماد",
+    "badges": [],
+    "privacy_label": "حریم خصوصی",
+    "privacy_action": null,
+    "terms_label": "قوانین و مقررات",
+    "terms_action": null
+  }
+}

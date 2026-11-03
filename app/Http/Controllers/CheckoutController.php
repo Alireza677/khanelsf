@@ -4,21 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Contracts\PaymentGateway;
 use App\Models\Order;
+use App\Models\PaymentAttempt;
 use App\Services\CartService;
+use App\Services\CheckoutIdempotency;
+use App\Services\ManualPaymentGateway;
 use App\Services\ModuleService;
 use App\Services\OrderConfirmationUrl;
+use App\Services\ProductPricingService;
 use App\Services\SettingsService;
 use App\Services\ZarinpalPaymentGateway;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
-    public function create(CartService $cart, ModuleService $modules): View|RedirectResponse
+    public function create(Request $request, CartService $cart, ModuleService $modules): View|RedirectResponse
     {
         $this->abortIfShopDisabled($modules);
 
@@ -26,9 +31,18 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('success', 'سبد خرید شما خالی است.');
         }
 
+        try {
+            $items = $cart->refresh();
+        } catch (ValidationException $exception) {
+            return redirect()->route('cart.index')->withErrors($exception->errors())
+                ->withInput($request->session()->getOldInput());
+        }
+
         return view('shop.checkout', [
-            'cartItems' => $cart->items(),
-            'subtotal' => $cart->subtotal(),
+            'cartItems' => $items,
+            'subtotal' => $cart->totalFor($items),
+            'cartReview' => $cart->reviewToken($items),
+            'checkoutIntent' => app(CheckoutIdempotency::class)->issue($request, $this->publicOwnerId()),
         ]);
     }
 
@@ -36,7 +50,7 @@ class CheckoutController extends Controller
     {
         $this->abortIfShopDisabled($modules);
 
-        if ($cart->isEmpty()) {
+        if ($cart->isEmpty() && ! $request->filled('_checkout_intent')) {
             return redirect()->route('cart.index')->with('success', 'سبد خرید شما خالی است.');
         }
 
@@ -46,6 +60,8 @@ class CheckoutController extends Controller
             'customer_email' => ['nullable', 'email:rfc', 'max:255'],
             'customer_address' => ['nullable', 'string', 'max:1000'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            '_cart_review' => ['nullable', 'string', 'size:40'],
+            '_checkout_intent' => ['nullable', 'string', 'size:64', 'regex:/^[a-zA-Z0-9]+$/D'],
         ], [
             'customer_name.required' => 'لطفا نام خود را وارد کنید.',
             'customer_name.min' => 'نام باید حداقل ۲ کاراکتر باشد.',
@@ -64,55 +80,88 @@ class CheckoutController extends Controller
                 ]);
         }
 
-        $publicUser = Auth::guard('client')->user();
-        $publicUser = $publicUser && ! $publicUser->is_admin && $publicUser->status === 'active'
-            ? $publicUser
-            : null;
+        $ownerId = $this->publicOwnerId();
+        $customer = collect($validated)->except(['_cart_review', '_checkout_intent'])->all();
+        try {
+            [$order, $created] = app(CheckoutIdempotency::class)->execute($request, $ownerId, $customer, $paymentGateway->method(), function () use ($cart, $customer, $validated, $paymentGateway, $ownerId): Order {
+                $items = $cart->authoritativeItems(lock: true);
+                $cart->assertReviewed($items, $validated['_cart_review'] ?? null);
+                $subtotal = $cart->totalFor($items);
+                if ($paymentGateway instanceof ZarinpalPaymentGateway) {
+                    $paymentGateway->validateAmount($subtotal);
+                }
 
-        $order = DB::transaction(function () use ($cart, $validated, $paymentGateway, $publicUser): Order {
-            $subtotal = $cart->subtotal();
-
-            $order = Order::query()->create([
-                ...$validated,
-                'user_id' => $publicUser?->getKey(),
-                'order_number' => 'ORD-'.now()->format('YmdHis').'-'.random_int(1000, 9999),
-                'status' => 'pending',
-                'subtotal' => $subtotal,
-                'total' => $subtotal,
-                'payment_method' => $paymentGateway->method(),
-                'payment_status' => $paymentGateway->initialPaymentStatus(),
-            ]);
-
-            foreach ($cart->items() as $item) {
-                $order->items()->create([
-                    'product_id' => $item['product_id'],
-                    'product_title' => $item['title'],
-                    'product_sku' => $item['sku'],
-                    'unit_price' => $item['unit_price'],
-                    'quantity' => $item['quantity'],
-                    'total' => $item['total'],
+                $order = Order::query()->create([
+                    ...$customer,
+                    'user_id' => $ownerId,
+                    'order_number' => 'ORD-'.Str::uuid(),
+                    'status' => 'pending',
+                    'subtotal' => $subtotal,
+                    'total' => $subtotal,
+                    'payment_method' => $paymentGateway->method(),
+                    'payment_status' => $paymentGateway->initialPaymentStatus(),
                 ]);
+
+                foreach ($items as $item) {
+                    $order->items()->create([
+                        'product_id' => $item['product_id'],
+                        'product_title' => $item['title'],
+                        'product_sku' => $item['sku'],
+                        'unit_price' => $item['unit_price'],
+                        'quantity' => $item['quantity'],
+                        'total' => $item['total'],
+                    ]);
+                }
+
+                return $order;
+            });
+        } catch (ValidationException $exception) {
+            return redirect()->route('checkout.create')->withErrors($exception->errors())->withInput($customer);
+        }
+
+        // A concurrent replay can carry the pre-commit Session snapshot. Clear that
+        // consumed cart, while preserving a later purchase with a different form intent.
+        if ($created || ! $request->filled('_checkout_intent')
+            || $request->session()->get('shop_checkout_intent') === $request->input('_checkout_intent')) {
+            $cart->clear();
+            $request->session()->forget('shop_checkout_intent');
+            $request->session()->put('shop_checkout_generation', Str::random(40));
+        }
+        if ($created) {
+            $this->sendOrderEmails($order->load('items'), $settings, $paymentGateway);
+        }
+
+        $confirmations->remember($order);
+        if ($paymentGateway instanceof ZarinpalPaymentGateway) {
+            $result = $paymentGateway->createPayment($order);
+            if ($result['redirect_url']) {
+                return redirect()->away($result['redirect_url']);
             }
-
-            return $order;
-        });
-
-        $cart->clear();
-        $this->sendOrderEmails($order->load('items'), $settings, $paymentGateway);
+        }
 
         return redirect()->to($confirmations->temporary($order))->with('success', 'سفارش شما دریافت شد.');
     }
 
     public function thankYou(Order $order, PaymentGateway $paymentGateway, ModuleService $modules): View
     {
-        $this->abortIfShopDisabled($modules);
         $ownerId = Auth::guard('client')->id();
 
         abort_if($order->user_id !== null && $ownerId !== $order->user_id, 404);
 
+        $attempt = $order->paymentAttempts()->latest('id')->first();
+        $retryable = ! $order->isPaid() && $order->payment_method === 'zarinpal'
+            && $order->status !== Order::STATUS_CANCELLED
+            && (! $attempt || in_array($attempt->status, [PaymentAttempt::FAILED, PaymentAttempt::CANCELLED], true)
+                || ($attempt->status === PaymentAttempt::PENDING && $attempt->authority));
+        $confirmations = app(OrderConfirmationUrl::class);
+
         return view('shop.thank-you', [
             'order' => $order->load('items'),
-            'manualPaymentMessage' => $paymentGateway->instructions(),
+            'manualPaymentMessage' => $order->payment_method === 'manual' ? app(ManualPaymentGateway::class)->instructions() : app(ZarinpalPaymentGateway::class)->instructions(),
+            'paymentAttempt' => $attempt,
+            'paymentRetryUrl' => $retryable ? $confirmations->paymentAction($order, 'retry', $attempt && in_array($attempt->status, [PaymentAttempt::FAILED, PaymentAttempt::CANCELLED], true) ? 'retry-'.$attempt->id : 'initial') : null,
+            'paymentReconcileUrl' => ! $order->isPaid() && $attempt?->authority && $order->payment_method === 'zarinpal'
+                ? $confirmations->paymentAction($order, 'reconcile') : null,
         ]);
     }
 
@@ -179,13 +228,13 @@ class CheckoutController extends Controller
         ];
 
         foreach ($order->items as $item) {
-            $lines[] = "- {$item->product_title} × {$item->quantity}: ".number_format((float) $item->total).' تومان';
+            $lines[] = "- {$item->product_title} × {$item->quantity}: ".app(ProductPricingService::class)->formatAmount($item->total).' تومان';
         }
 
         return [
             ...$lines,
             '',
-            'مبلغ کل: '.number_format((float) $order->total).' تومان',
+            'مبلغ کل: '.app(ProductPricingService::class)->formatAmount($order->total).' تومان',
             'توضیح پرداخت: '.$paymentGateway->instructions(),
         ];
     }
@@ -193,5 +242,12 @@ class CheckoutController extends Controller
     private function abortIfShopDisabled(ModuleService $modules): void
     {
         abort_unless($modules->shopEnabled(), 404);
+    }
+
+    private function publicOwnerId(): ?int
+    {
+        $user = Auth::guard('client')->user();
+
+        return $user && ! $user->is_admin && $user->status === 'active' ? $user->getKey() : null;
     }
 }

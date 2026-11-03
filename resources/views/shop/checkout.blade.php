@@ -1,15 +1,32 @@
 @extends('layouts.app')
 
 @section('content')
+    @php($pricing = app(\App\Services\ProductPricingService::class))
     <section class="checkout-page">
         <h1>تسویه حساب</h1>
 
+        @error('cart') <p class="form-error" role="alert">{{ $message }}</p> @enderror
+        @error('checkout') <p class="form-error" role="alert">{{ $message }}</p> @enderror
+        @error('payment') <p class="form-error" role="alert">{{ $message }}</p> @enderror
+
+        <div class="cart-table">
+            @foreach ($cartItems as $item)
+                <div class="cart-row">
+                    <strong>{{ $item['title'] }}</strong>
+                    <span>{{ $item['quantity'] }} × {{ $pricing->formatAmount($item['unit_price']) }} تومان</span>
+                    <span>{{ $pricing->formatAmount($item['total']) }} تومان</span>
+                </div>
+            @endforeach
+        </div>
+
         <div class="cart-summary">
-            <strong>جمع کل: {{ number_format($subtotal) }} تومان</strong>
+            <strong>جمع کل: {{ $pricing->formatAmount($subtotal) }} تومان</strong>
         </div>
 
         <form class="form-card" method="post" action="{{ route('checkout.store') }}">
             @csrf
+            <input type="hidden" name="_cart_review" value="{{ $cartReview }}">
+            <input type="hidden" name="_checkout_intent" value="{{ $checkoutIntent }}">
 
             <div>
                 <label for="customer_name">نام</label>

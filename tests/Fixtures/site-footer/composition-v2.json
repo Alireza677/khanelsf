@@ -1,0 +1,201 @@
+{
+  "block_id": "01K8Z000000000000000000001",
+  "schema_version": 2,
+  "template": "corporate-dark-v1",
+  "content": {
+    "menu_columns": [],
+    "contact_title": "ارتباط با ما",
+    "about_title": "درباره ما",
+    "about_text": null,
+    "badges_title": "مجوزها و نمادهای اعتماد",
+    "badges": [],
+    "privacy_label": "حریم خصوصی",
+    "privacy_action": null,
+    "terms_label": "قوانین و مقررات",
+    "terms_action": null,
+    "composition": {
+      "main": {
+        "columns": [
+          {
+            "id": "01K8Z000000000000000000010",
+            "title": null,
+            "settings": {
+              "span": 1
+            },
+            "elements": [
+              {
+                "id": "01K8Z000000000000000000011",
+                "type": "branding",
+                "enabled": true,
+                "content": {
+                  "source": "site",
+                  "name": null,
+                  "logo_media_id": null,
+                  "logo_alt": null
+                }
+              },
+              {
+                "id": "01K8Z000000000000000000012",
+                "type": "rich_text",
+                "enabled": true,
+                "content": {
+                  "title": "درباره ما",
+                  "source": "site",
+                  "text": null
+                }
+              },
+              {
+                "id": "01K8Z000000000000000000013",
+                "type": "social_links",
+                "enabled": true,
+                "content": {
+                  "source": "site",
+                  "items": []
+                }
+              }
+            ]
+          },
+          {
+            "id": "01K8Z000000000000000000020",
+            "title": null,
+            "settings": {
+              "span": 1
+            },
+            "elements": [
+              {
+                "id": "01K8Z000000000000000000021",
+                "type": "navigation",
+                "enabled": true,
+                "content": {
+                  "title": "دسترسی سریع",
+                  "menu_id": 10,
+                  "depth": 1
+                }
+              },
+              {
+                "id": "01K8Z000000000000000000022",
+                "type": "contact",
+                "enabled": true,
+                "content": {
+                  "title": "ارتباط با ما",
+                  "source": "override",
+                  "fields": [
+                    "phone",
+                    "mobile",
+                    "email",
+                    "address",
+                    "working_hours"
+                  ],
+                  "overrides": {
+                    "phone": "02112345678"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "01K8Z000000000000000000030",
+            "title": null,
+            "settings": {
+              "span": 1
+            },
+            "elements": [
+              {
+                "id": "01K8Z000000000000000000031",
+                "type": "map",
+                "enabled": true,
+                "content": {
+                  "mode": "static",
+                  "title": "موقعیت دفتر",
+                  "media_id": 20,
+                  "alt": "موقعیت دفتر مرکزی",
+                  "directions_action": {
+                    "schema_version": 1,
+                    "type": "custom_url",
+                    "value": "https://example.com/directions",
+                    "open_in_new_tab": true
+                  }
+                }
+              },
+              {
+                "id": "01K8Z000000000000000000032",
+                "type": "image",
+                "enabled": true,
+                "content": {
+                  "title": "نشان اعتماد",
+                  "media_id": 21,
+                  "alt": null,
+                  "action": {
+                    "schema_version": 1,
+                    "type": "custom_url",
+                    "value": "https://example.com/verify",
+                    "open_in_new_tab": true
+                  }
+                }
+              },
+              {
+                "id": "01K8Z000000000000000000033",
+                "type": "form",
+                "enabled": false,
+                "content": {
+                  "title": "خبرنامه",
+                  "form_id": 40
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "elements": [
+          {
+            "id": "01K8Z000000000000000000040",
+            "type": "copyright",
+            "enabled": true,
+            "content": {
+              "source": "site",
+              "text": null,
+              "show_year": true
+            }
+          },
+          {
+            "id": "01K8Z000000000000000000041",
+            "type": "legal_links",
+            "enabled": true,
+            "content": {
+              "items": [
+                {
+                  "label": "حریم خصوصی",
+                  "action": {
+                    "schema_version": 1,
+                    "type": "page",
+                    "reference_id": 30,
+                    "open_in_new_tab": false
+                  }
+                },
+                {
+                  "label": "قوانین",
+                  "action": {
+                    "schema_version": 1,
+                    "type": "page",
+                    "reference_id": 31,
+                    "open_in_new_tab": false
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "settings": {
+    "container": "default",
+    "spacing": "comfortable",
+    "grid": {
+      "desktop": "auto",
+      "tablet": 2,
+      "mobile": 1
+    }
+  }
+}

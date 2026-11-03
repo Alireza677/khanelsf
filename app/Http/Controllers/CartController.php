@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Services\CartService;
 use App\Services\ModuleService;
+use App\Services\ProductPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
@@ -16,9 +18,17 @@ class CartController extends Controller
     {
         $this->abortIfShopDisabled($modules);
 
+        $cartError = null;
+        try {
+            $cart->refresh();
+        } catch (ValidationException $exception) {
+            $cartError = collect($exception->errors())->flatten()->first();
+        }
+
         return view('shop.cart', [
             'cartItems' => $cart->items(),
             'subtotal' => $cart->subtotal(),
+            'cartError' => $cartError,
         ]);
     }
 
@@ -32,10 +42,14 @@ class CartController extends Controller
         );
 
         $validated = $request->validate([
-            'quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:'.CartService::MAX_QUANTITY],
+        ], [
+            'quantity.integer' => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.',
+            'quantity.min' => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.',
+            'quantity.max' => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.',
         ]);
 
-        $cart->add($product, (int) ($validated['quantity'] ?? 1));
+        $cart->add($product, $validated['quantity'] ?? 1);
 
         return redirect()->route('cart.index')->with('success', 'محصول به سبد خرید اضافه شد.');
     }
@@ -46,7 +60,12 @@ class CartController extends Controller
 
         $validated = $request->validate([
             'quantities' => ['array'],
-            'quantities.*' => ['integer', 'min:0', 'max:99'],
+            'quantities.*' => ['integer', 'min:1', 'max:'.CartService::MAX_QUANTITY],
+        ], [
+            'quantities.array' => 'ساختار تعدادهای سبد خرید معتبر نیست.',
+            'quantities.*.integer' => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.',
+            'quantities.*.min' => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.',
+            'quantities.*.max' => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.',
         ]);
 
         $cart->update($validated['quantities'] ?? []);
@@ -74,7 +93,7 @@ class CartController extends Controller
                 'count' => $count,
                 'display_count' => $count > 99 ? '99+' : (string) $count,
                 'subtotal' => $subtotal,
-                'subtotal_formatted' => number_format($subtotal).' تومان',
+                'subtotal_formatted' => app(ProductPricingService::class)->formatAmount($subtotal).' تومان',
                 'is_empty' => $cart->isEmpty(),
             ]);
         }

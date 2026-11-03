@@ -101,10 +101,10 @@ class ZarinpalPaymentGatewayTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('نتیجه پرداخت')
-            ->assertSee('سفارش برای تایید پرداخت پیدا نشد.');
+            ->assertSee('رسید امضاشده سفارش');
     }
 
-    public function test_zarinpal_placeholder_methods_are_safe(): void
+    public function test_disabled_zarinpal_methods_are_safe(): void
     {
         $order = Order::query()->create([
             'order_number' => 'ORD-ZARINPAL',

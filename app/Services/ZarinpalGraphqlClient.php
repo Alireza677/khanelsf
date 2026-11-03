@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/** Legacy non-payment API compatibility. Commerce payments use ZarinpalApiClient REST v4. */
 class ZarinpalGraphqlClient
 {
     public const DEFAULT_ENDPOINT = 'https://next.zarinpal.com/api/v4/graphql/';
@@ -27,6 +28,7 @@ class ZarinpalGraphqlClient
         try {
             $response = Http::acceptJson()
                 ->withToken($token)
+                ->connectTimeout(5)->timeout(15)->withOptions(['allow_redirects' => false])
                 ->post($this->endpoint(), [
                     'query' => $query,
                     'variables' => $variables,
@@ -52,7 +54,6 @@ class ZarinpalGraphqlClient
         } catch (Throwable $exception) {
             Log::warning('Zarinpal GraphQL request exception.', [
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
             ]);
 
             return [

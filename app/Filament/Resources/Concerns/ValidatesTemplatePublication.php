@@ -26,7 +26,7 @@ trait ValidatesTemplatePublication
             return $data;
         }
 
-        if (! in_array($data['type'] ?? null, ['service_single', 'service_index', 'blog_index', 'projects_index'], true)) {
+        if (! in_array($data['type'] ?? null, ['service_single', 'service_index', 'blog_index', 'projects_index', 'site_footer'], true)) {
             return $data;
         }
 

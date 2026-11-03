@@ -100,7 +100,7 @@ final class SiteHeaderRuntime
                         ? route('shop.show', $item['slug'], absolute: false)
                         : null,
                 ])->all(),
-                'subtotal' => (float) $cartItems->sum('total'),
+                'subtotal' => $this->cart->subtotal(),
                 'label' => $cartCount > 0
                     ? "سبد خرید، {$cartCount} کالا"
                     : 'سبد خرید',

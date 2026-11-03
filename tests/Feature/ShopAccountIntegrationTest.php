@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\CustomerMembershipManager;
 use App\Services\OrderConfirmationUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -73,6 +74,8 @@ class ShopAccountIntegrationTest extends TestCase
         $this->assertNull($guestOrder->user_id);
         $this->assertSignedConfirmationRedirect($response, $guestOrder);
 
+        // Fixture cleanup: durable checkout evidence deliberately prevents deleting its Order.
+        DB::table('checkout_intents')->delete();
         Order::query()->delete();
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin, 'web')->checkout(['customer_name' => 'Admin browser guest order']);

@@ -1,3 +1,6 @@
+@if (isset($footer['composition']))
+@include('partials.blocks.site-footer.composition')
+@else
 <footer class="site-footer corporate-footer" data-site-footer>
     <div class="container corporate-footer__inner">
         @if ($footer['menu_columns'] !== [] || $footer['contacts'] !== [])
@@ -106,3 +109,4 @@
         </div>
     </div>
 </footer>
+@endif

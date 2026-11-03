@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\CartService;
 use App\Services\OrderConfirmationUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -123,19 +124,19 @@ class ShopTest extends TestCase
             ->delete(route('cart.remove'), ['product_id' => $first->id])
             ->assertRedirect(route('home'));
 
-        $items = app(\App\Services\CartService::class)->items();
+        $items = app(CartService::class)->items();
         $this->assertCount(1, $items);
         $this->assertSame($second->id, $items->first()['product_id']);
-        $this->assertSame(1, app(\App\Services\CartService::class)->count());
-        $this->assertSame(250.0, app(\App\Services\CartService::class)->subtotal());
+        $this->assertSame(1, app(CartService::class)->count());
+        $this->assertSame('250.00', app(CartService::class)->subtotal());
 
         $this->from(route('home'))
             ->delete(route('cart.remove'), ['product_id' => $second->id])
             ->assertRedirect(route('home'));
 
-        $this->assertTrue(app(\App\Services\CartService::class)->isEmpty());
-        $this->assertSame(0, app(\App\Services\CartService::class)->count());
-        $this->assertSame(0.0, app(\App\Services\CartService::class)->subtotal());
+        $this->assertTrue(app(CartService::class)->isEmpty());
+        $this->assertSame(0, app(CartService::class)->count());
+        $this->assertSame('0.00', app(CartService::class)->subtotal());
     }
 
     public function test_removing_unknown_product_id_is_safe(): void
@@ -147,7 +148,7 @@ class ShopTest extends TestCase
             ->delete(route('cart.remove'), ['product_id' => 999999])
             ->assertRedirect(route('home'));
 
-        $this->assertSame(1, app(\App\Services\CartService::class)->count());
+        $this->assertSame(1, app(CartService::class)->count());
     }
 
     public function test_ajax_remove_returns_authoritative_remaining_cart_state(): void
@@ -169,7 +170,7 @@ class ShopTest extends TestCase
                 'is_empty' => false,
             ]);
 
-        $this->assertSame([$second->id], app(\App\Services\CartService::class)
+        $this->assertSame([$second->id], app(CartService::class)
             ->items()
             ->pluck('product_id')
             ->all());
@@ -192,7 +193,7 @@ class ShopTest extends TestCase
                 'is_empty' => true,
             ]);
 
-        $this->assertTrue(app(\App\Services\CartService::class)->isEmpty());
+        $this->assertTrue(app(CartService::class)->isEmpty());
     }
 
     public function test_checkout_page_requires_cart_and_loads_when_cart_has_items(): void
@@ -291,6 +292,7 @@ class ShopTest extends TestCase
 
     public function test_order_status_helpers_work(): void
     {
+        $this->actingAs(User::factory()->admin()->create());
         $order = Order::query()->create([
             'order_number' => 'ORD-HELPERS',
             'customer_name' => 'Helper Customer',
@@ -306,7 +308,7 @@ class ShopTest extends TestCase
         $this->assertFalse($order->isPaid());
         $this->assertTrue($order->canBeCancelled());
 
-        $order->markPaid();
+        $order->markPaid(reason: 'Manual receipt checked');
         $order->refresh();
 
         $this->assertTrue($order->isPaid());

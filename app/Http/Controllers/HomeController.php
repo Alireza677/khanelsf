@@ -12,6 +12,7 @@ class HomeController extends Controller
     public function __invoke(SeoService $seoService, SettingsService $settings): View
     {
         $homepageId = $settings->homepagePageId();
+        abort_if(filled($settings->get('homepage_page_id')) && $homepageId === null, 404);
         $query = Page::query()->published();
         $page = $homepageId !== null
             ? $query->whereKey($homepageId)->firstOrFail()

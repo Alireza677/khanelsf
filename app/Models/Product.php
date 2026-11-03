@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\CMS\Navigation\Contracts\ResolvesNavigationUrl;
 use App\Models\Concerns\HasFeaturedImage;
+use App\Services\ProductPricingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -152,12 +153,12 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
 
     public function currentPrice(): float
     {
-        return (float) ($this->sale_price ?: $this->price);
+        return app(ProductPricingService::class)->effectivePrice($this);
     }
 
     public function hasSalePrice(): bool
     {
-        return filled($this->sale_price) && (float) $this->sale_price < (float) $this->price;
+        return app(ProductPricingService::class)->salePrice($this) !== null;
     }
 
     public function isPurchasable(): bool

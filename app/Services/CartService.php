@@ -4,81 +4,213 @@ namespace App\Services;
 
 use App\Models\Product;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class CartService
 {
-    private const SESSION_KEY = 'shop_cart';
+    public const SESSION_KEY = 'shop_cart';
 
+    private const REVIEWS_KEY = 'shop_checkout_reviews';
+
+    private const REVIEW_REQUIRED_KEY = 'shop_checkout_review_required';
+
+    public const MAX_QUANTITY = 99;
+
+    public function __construct(private readonly ProductPricingService $pricing) {}
+
+    /** Safe presentation of stored rows, including rows needing repair/removal. */
     public function items(): Collection
     {
-        return collect(session(self::SESSION_KEY, []))
-            ->map(fn (array $item): array => [
-                ...$item,
-                'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
-                'unit_price' => (float) ($item['unit_price'] ?? 0),
-                'total' => max(1, (int) ($item['quantity'] ?? 1)) * (float) ($item['unit_price'] ?? 0),
-            ])
-            ->values();
+        return collect($this->rawItems())->filter(fn ($item): bool => is_array($item))->map(function (array $item): array {
+            $error = null;
+            $quantity = 0;
+            $price = $total = '0.00';
+            try {
+                $quantity = $this->quantity($item['quantity'] ?? null);
+                $price = $this->pricing->amount($item['unit_price'] ?? null);
+                $total = $this->pricing->lineTotal($price, $quantity);
+            } catch (ValidationException|InvalidArgumentException) {
+                $error = 'اطلاعات این قلم معتبر نیست؛ تعداد را اصلاح یا قلم را حذف کنید.';
+            }
+
+            return [
+                'product_id' => filter_var($item['product_id'] ?? null, FILTER_VALIDATE_INT) ?: 0,
+                'title' => is_string($item['title'] ?? null) ? $item['title'] : 'محصول نامعتبر',
+                'slug' => is_string($item['slug'] ?? null) ? $item['slug'] : '',
+                'sku' => is_string($item['sku'] ?? null) ? $item['sku'] : null,
+                'image' => is_string($item['image'] ?? null) ? $item['image'] : null,
+                'quantity' => $quantity, 'unit_price' => $price, 'total' => $total, 'error' => $error,
+            ];
+        })->values();
     }
 
-    public function add(Product $product, int $quantity = 1): void
+    public function quantity(mixed $value, string $field = 'quantity'): int
     {
-        $items = $this->items()->keyBy('product_id');
-        $quantity = max(1, $quantity);
-        $existing = $items->get($product->id);
+        if ((! is_int($value) && ! is_string($value)) || ! preg_match('/^[0-9]{1,2}$/D', (string) $value)
+            || (int) $value < 1 || (int) $value > self::MAX_QUANTITY) {
+            throw ValidationException::withMessages([$field => 'تعداد باید عدد صحیح بین ۱ تا ۹۹ باشد.']);
+        }
 
-        $items->put($product->id, [
-            'product_id' => $product->id,
-            'title' => $product->title,
-            'slug' => $product->slug,
-            'sku' => $product->sku,
-            'unit_price' => $product->currentPrice(),
-            'quantity' => ($existing['quantity'] ?? 0) + $quantity,
-            'image' => $product->featuredImageUrl('thumb'),
-        ]);
+        return (int) $value;
+    }
 
-        session([self::SESSION_KEY => $items->values()->all()]);
+    /** Must be called inside the order transaction when $lock is true. */
+    public function authoritativeItems(bool $lock = false): Collection
+    {
+        $requested = [];
+        foreach ($this->rawItems() as $item) {
+            $id = is_array($item) ? ($item['product_id'] ?? null) : null;
+            if ((! is_int($id) && ! is_string($id)) || ! filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                || isset($requested[(int) $id])) {
+                throw ValidationException::withMessages(['cart' => 'ساختار سبد خرید معتبر نیست.']);
+            }
+            $requested[(int) $id] = $this->quantity($item['quantity'] ?? null, 'cart');
+        }
+
+        $query = Product::query()->published()->whereIn('id', array_keys($requested))->orderBy('id');
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+        $products = $query->get()->keyBy('id');
+        $items = collect();
+        try {
+            foreach ($requested as $id => $quantity) {
+                $product = $products->get($id);
+                if (! $product || ! app(ProductAvailabilityService::class)->isPurchasable($product)) {
+                    throw ValidationException::withMessages(['cart' => 'یک یا چند محصول دیگر منتشرشده یا قابل خرید نیستند؛ سبد خرید را بررسی و قلم نامعتبر را حذف کنید.']);
+                }
+                $price = $this->pricing->exactPrice($product);
+                $items->push([
+                    'product_id' => $id, 'title' => $product->title, 'slug' => $product->slug, 'sku' => $product->sku,
+                    'quantity' => $quantity, 'unit_price' => $price, 'total' => $this->pricing->lineTotal($price, $quantity),
+                ]);
+            }
+            $this->totalFor($items);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['cart' => $exception->getMessage().' امکان ثبت سفارش با این مبلغ وجود ندارد.']);
+        }
+
+        return $items;
+    }
+
+    public function totalFor(Collection $items): string
+    {
+        return $items->reduce(fn (string $sum, array $item): string => $this->pricing->addAmounts($sum, $item['total']), '0.00');
+    }
+
+    public function refresh(): Collection
+    {
+        $items = $this->authoritativeItems();
+        // Old images are presentation only; financial snapshots never consume them.
+        $images = $this->items()->pluck('image', 'product_id');
+        $stored = $items->map(fn (array $item): array => [...$item, 'image' => $images->get($item['product_id'])]);
+        if ($this->fingerprint($this->items()) !== $this->fingerprint($items)) {
+            session([self::REVIEW_REQUIRED_KEY => true]);
+        }
+        session([self::SESSION_KEY => $stored->all()]);
+
+        return $stored;
+    }
+
+    public function reviewToken(Collection $items): string
+    {
+        $token = Str::random(40);
+        $reviews = (array) session(self::REVIEWS_KEY, []);
+        $reviews[$token] = $this->fingerprint($items);
+        session([self::REVIEWS_KEY => array_slice($reviews, -10, null, true)]);
+
+        return $token;
+    }
+
+    public function assertReviewed(Collection $items, mixed $token): void
+    {
+        $reviews = (array) session(self::REVIEWS_KEY, []);
+        $expected = is_string($token) ? ($reviews[$token] ?? null) : null;
+        // Legacy direct POSTs are supported only before any review was issued or
+        // required. Their server-stored add snapshot must still match current DB.
+        if ($token === null && $reviews === [] && ! session(self::REVIEW_REQUIRED_KEY, false)) {
+            $stored = $this->items();
+            $expected = $stored->contains(fn (array $item): bool => $item['error'] !== null)
+                ? null : $this->fingerprint($stored);
+        }
+        if (! is_string($expected) || ! hash_equals($expected, $this->fingerprint($items))) {
+            session([self::REVIEW_REQUIRED_KEY => true]);
+            throw ValidationException::withMessages(['cart' => 'قیمت یا اقلام سبد خرید تغییر کرده است. مبلغ به‌روز را بررسی کنید و برای تأیید، دوباره ثبت سفارش را بزنید.']);
+        }
+    }
+
+    private function fingerprint(Collection $items): string
+    {
+        return hash('sha256', json_encode($items->sortBy('product_id')->map(fn (array $item): array => [
+            $item['product_id'], $item['quantity'], $item['unit_price'],
+        ])->values()->all(), JSON_THROW_ON_ERROR).ProductPricingService::CURRENCY);
+    }
+
+    public function add(Product $product, mixed $quantity = 1): void
+    {
+        $quantity = $this->quantity($quantity);
+        $items = $this->rawItems();
+        foreach ($items as $index => $item) {
+            if (is_array($item) && (int) ($item['product_id'] ?? 0) === $product->id) {
+                $quantity = $this->quantity($this->quantity($item['quantity'] ?? null) + $quantity);
+                unset($items[$index]);
+            }
+        }
+        try {
+            $price = $this->pricing->exactPrice($product);
+            $this->pricing->lineTotal($price, $quantity);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['cart' => $exception->getMessage()]);
+        }
+        $items[] = [
+            'product_id' => $product->id, 'title' => $product->title, 'slug' => $product->slug, 'sku' => $product->sku,
+            'unit_price' => $price, 'quantity' => $quantity, 'image' => $product->featuredImageUrl('thumb'),
+        ];
+        session([self::SESSION_KEY => array_values($items)]);
     }
 
     public function update(array $quantities): void
     {
-        $items = $this->items()
-            ->map(function (array $item) use ($quantities): ?array {
-                $quantity = (int) ($quantities[$item['product_id']] ?? $item['quantity']);
-
-                if ($quantity < 1) {
-                    return null;
+        foreach ($quantities as $id => $quantity) {
+            $this->quantity($quantity, 'quantities.'.$id);
+        }
+        $items = $this->rawItems();
+        foreach ($items as &$item) {
+            if (is_array($item) && array_key_exists($item['product_id'] ?? '', $quantities)) {
+                $field = 'quantities.'.$item['product_id'];
+                $item['quantity'] = $this->quantity($quantities[$item['product_id']], $field);
+                try {
+                    $this->pricing->lineTotal($this->pricing->amount($item['unit_price'] ?? null), $item['quantity']);
+                } catch (InvalidArgumentException $exception) {
+                    throw ValidationException::withMessages([$field => $exception->getMessage()]);
                 }
-
-                return [
-                    ...$item,
-                    'quantity' => $quantity,
-                ];
-            })
-            ->filter()
-            ->values();
-
-        session([self::SESSION_KEY => $items->all()]);
+            }
+        }
+        unset($item);
+        session([self::SESSION_KEY => $items]);
     }
 
     public function remove(int $productId): void
     {
-        session([
-            self::SESSION_KEY => $this->items()
-                ->reject(fn (array $item): bool => (int) $item['product_id'] === $productId)
-                ->values()
-                ->all(),
-        ]);
+        session([self::SESSION_KEY => collect($this->rawItems())
+            ->reject(fn ($item): bool => is_array($item) && (int) ($item['product_id'] ?? 0) === $productId)->values()->all()]);
     }
 
     public function clear(): void
     {
-        session()->forget(self::SESSION_KEY);
+        session()->forget([self::SESSION_KEY, self::REVIEWS_KEY, self::REVIEW_REQUIRED_KEY]);
     }
 
-    public function subtotal(): float
+    public function subtotal(): string
     {
-        return (float) $this->items()->sum('total');
+        try {
+            return $this->totalFor($this->items());
+        } catch (InvalidArgumentException) {
+            // Keep an over-limit cart removable; it can never create an order.
+            return '0.00';
+        }
     }
 
     public function count(): int
@@ -88,6 +220,13 @@ class CartService
 
     public function isEmpty(): bool
     {
-        return $this->items()->isEmpty();
+        return $this->rawItems() === [];
+    }
+
+    private function rawItems(): array
+    {
+        $items = session(self::SESSION_KEY, []);
+
+        return is_array($items) ? $items : [null];
     }
 }

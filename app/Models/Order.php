@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\OrderPaymentService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
+use LogicException;
 
 class Order extends Model
 {
@@ -47,6 +50,38 @@ class Order extends Model
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $order): void {
+            if (! $order->exists) {
+                if (($order->payment_status ?? self::PAYMENT_STATUS_UNPAID) !== self::PAYMENT_STATUS_UNPAID
+                    || ($order->status ?? self::STATUS_PENDING) !== self::STATUS_PENDING) {
+                    throw new LogicException('New orders must start pending and unpaid.');
+                }
+            } elseif ($order->isDirty(['status', 'payment_status', 'payment_method', 'total', 'subtotal', 'user_id'])) {
+                throw new LogicException('Use controlled order transitions; financial snapshots are immutable.');
+            }
+        });
+    }
+
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class);
+    }
+
+    public function paymentProvenanceLabel(): string
+    {
+        $attempt = $this->paymentAttempts()->where('settlement_order_id', $this->id)->first();
+        $source = $attempt?->source;
+
+        return match ($source) {
+            'manual_confirmed' => 'تأیید دستی مدیر',
+            'gateway_verified' => $attempt->environment === 'sandbox' ? 'تأیید آزمایشی درگاه (Sandbox)' : 'تأیید درگاه',
+            default => $this->isPaid() || $this->status === self::STATUS_PAID
+                ? 'پرداخت قدیمی؛ منشأ تأیید نامشخص' : 'بدون تأیید پرداخت',
+        };
     }
 
     public function items(): HasMany
@@ -95,30 +130,27 @@ class Order extends Model
         return ! in_array($this->status, [self::STATUS_CANCELLED, self::STATUS_COMPLETED], true);
     }
 
-    public function markPaid(): bool
+    public function markPaid(?User $actor = null, string $reason = '', ?string $reference = null): bool
     {
-        return $this->update([
-            'payment_status' => self::PAYMENT_STATUS_PAID,
-            'status' => $this->isPending() ? self::STATUS_PAID : $this->status,
-        ]);
+        app(OrderPaymentService::class)->confirmManual($this, $actor ?? Auth::guard('web')->user(), $reason, $reference);
+        $this->refresh();
+
+        return true;
     }
 
     public function markCompleted(): bool
     {
-        return $this->update([
-            'status' => self::STATUS_COMPLETED,
-            'payment_status' => self::PAYMENT_STATUS_PAID,
-        ]);
+        $result = app(OrderPaymentService::class)->complete($this, Auth::guard('web')->user());
+        $this->refresh();
+
+        return $result;
     }
 
     public function cancel(): bool
     {
-        if (! $this->canBeCancelled()) {
-            return false;
-        }
+        $result = app(OrderPaymentService::class)->cancel($this, Auth::guard('web')->user());
+        $this->refresh();
 
-        return $this->update([
-            'status' => self::STATUS_CANCELLED,
-        ]);
+        return $result;
     }
 }

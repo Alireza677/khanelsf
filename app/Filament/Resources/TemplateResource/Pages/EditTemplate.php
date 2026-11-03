@@ -34,7 +34,7 @@ class EditTemplate extends EditRecord
     {
         return [
             Actions\Action::make('preview')
-                ->label(__('Preview'))
+                ->label(fn (): string => $this->record->type === 'site_footer' ? 'پیش‌نمایش آخرین نسخه ذخیره‌شده' : __('Preview'))
                 ->icon('heroicon-o-eye')
                 ->visible(fn (): bool => ! in_array($this->record->type, Template::LEGACY_GALLERY_TYPES, true))
                 ->form(fn (): array => $this->previewForm())
@@ -57,7 +57,9 @@ class EditTemplate extends EditRecord
             return [
                 Forms\Components\Placeholder::make('preview_note')
                     ->label(__('Preview context'))
-                    ->content(__('This template type does not need a selected item.')),
+                    ->content($this->record->type === 'site_footer'
+                        ? 'این پیش‌نمایش با Runtime اصلی فوتر از آخرین نسخه ذخیره‌شده ساخته می‌شود. تغییرات ذخیره‌نشده فرم در آن نیستند؛ ابتدا ذخیره کنید. بازکردن پیش‌نمایش چیزی را ذخیره یا منتشر نمی‌کند.'
+                        : __('This template type does not need a selected item.')),
             ];
         }
 

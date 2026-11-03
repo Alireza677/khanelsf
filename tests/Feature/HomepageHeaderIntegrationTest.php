@@ -250,6 +250,9 @@ class HomepageHeaderIntegrationTest extends TestCase
             $component->set('data.'.$key, $value);
         }
         $component->call('save')->assertHasNoFormErrors();
+        if ($component->instance()->getMountedAction()) {
+            $component->callMountedAction()->assertHasNoFormErrors();
+        }
     }
 
     private function menu(string $title, ?string $location = null): Menu

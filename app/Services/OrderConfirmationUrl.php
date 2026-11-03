@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
 
 class OrderConfirmationUrl
@@ -14,5 +15,31 @@ class OrderConfirmationUrl
             now()->addDay(),
             ['order' => $order],
         );
+    }
+
+    public function remember(Order $order): void
+    {
+        $orders = session('shop_order_receipts', []);
+        $orders[$order->id] = true;
+        session(['shop_order_receipts' => array_slice($orders, -20, null, true)]);
+    }
+
+    public function canReturnToReceipt(Order $order): bool
+    {
+        $user = Auth::guard('client')->user();
+
+        return $order->user_id !== null
+            ? $user && ! $user->is_admin && $user->isActive() && $user->id === $order->user_id
+            : session('shop_order_receipts.'.$order->id) === true;
+    }
+
+    public function assertOwner(Order $order): void
+    {
+        abort_if($order->user_id !== null && Auth::guard('client')->id() !== $order->user_id, 404);
+    }
+
+    public function paymentAction(Order $order, string $action, string $intent = 'initial'): string
+    {
+        return URL::temporarySignedRoute('payments.zarinpal.'.$action, now()->addDay(), ['order' => $order, 'intent' => $intent]);
     }
 }

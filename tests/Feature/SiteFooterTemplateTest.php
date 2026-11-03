@@ -4,11 +4,11 @@ namespace Tests\Feature;
 
 use App\CMS\Actions\Filament\ActionPicker;
 use App\CMS\Blocks\BlockRegistry;
-use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\SiteFooter\SiteFooterBlock;
 use App\Filament\Pages\ManageSiteSettings;
 use App\Filament\Resources\PageResource;
 use App\Filament\Resources\TemplateResource;
+use App\Filament\Resources\TemplateResource\Pages\EditTemplate;
 use App\Models\Media;
 use App\Models\Menu;
 use App\Models\MenuItem;
@@ -36,7 +36,7 @@ class SiteFooterTemplateTest extends TestCase
     {
         Storage::fake('public');
         $this->actingAs(User::factory()->admin()->create());
-        $published = $this->template();
+        $published = $this->template(blocks: $this->blocks());
         $draft = $this->template('draft-footer', 'draft');
         $otherTarget = Template::query()->create([
             'title' => 'Page template', 'slug' => 'page-template', 'type' => 'page',
@@ -54,7 +54,9 @@ class SiteFooterTemplateTest extends TestCase
 
         $block = app(BlockRegistry::class)->find('site_footer');
         $definitions = $this->invokeBlockDefinitions('site_footer');
-        $schema = collect($block->filamentSchema(HeroBlock::CONTEXT_TEMPLATE));
+        // Resolve the mounted nested Legacy schema, including its real Filament container.
+        $editor = Livewire::test(EditTemplate::class, ['record' => $published->getRouteKey()])->assertOk();
+        $schema = collect($editor->instance()->form->getFlatComponents(withHidden: true));
         $badgeRepeater = $schema->first(fn ($field): bool => $field instanceof Repeater && str_ends_with($field->getName(), 'badges'));
         $badgePicker = collect($badgeRepeater->getChildComponents())
             ->first(fn ($field): bool => $field instanceof ViewField && $field->getName() === 'media_id');

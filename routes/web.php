@@ -39,6 +39,7 @@ use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\ZarinpalCallbackController;
+use App\Http\Controllers\ZarinpalPaymentController;
 use App\Http\Middleware\MatchAdminLoginPath;
 use Filament\Pages\Auth\Login as FilamentLogin;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -163,6 +164,10 @@ Route::get('/checkout/thank-you/{order}', [CheckoutController::class, 'thankYou'
 Route::match(['get', 'post'], '/payments/zarinpal/callback', ZarinpalCallbackController::class)
     ->withoutMiddleware(VerifyCsrfToken::class)
     ->name('payments.zarinpal.callback');
+Route::post('/payments/zarinpal/orders/{order}/retry', [ZarinpalPaymentController::class, 'retry'])
+    ->middleware(['signed', 'throttle:20,1'])->name('payments.zarinpal.retry');
+Route::post('/payments/zarinpal/orders/{order}/reconcile', [ZarinpalPaymentController::class, 'reconcile'])
+    ->middleware(['signed', 'throttle:20,1'])->name('payments.zarinpal.reconcile');
 
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsController::class)->name('robots');
