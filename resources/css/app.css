@@ -6482,13 +6482,166 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 .project-story__legacy-content { background: #f8fafc; border-inline-start: 3px solid var(--project-accent); border-radius: .8rem; grid-column: 1 / -1; line-height: 2; padding: 1.35rem; }
 .project-story__legacy-content h3 { color: var(--project-ink); margin-top: 0; }
 
-.project-achievements__grid { border-block: 1px solid var(--project-line); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.project-achievements__grid .stats-item { background: transparent; border: 0; border-inline-start: 1px solid var(--project-line); box-shadow: none; min-height: 12rem; padding: 2rem 1rem; text-align: center; }
-.project-achievements__grid .stats-item:first-child { border-inline-start: 0; }
-.project-achievements__grid .stats-item strong { color: var(--project-ink); font-size: clamp(1.8rem, 4vw, 3rem); line-height: 1.2; }
-.project-achievements__grid .stats-item > span:not(.stats-item__icon) { color: var(--project-ink); font-weight: 800; margin-top: .65rem; }
-.project-achievements__grid .stats-item__description { color: var(--project-muted); font-size: .84rem; }
-.project-achievements__grid .stats-item__icon { color: var(--project-accent); }
+/* Project statistics: theme-owned colors, content-driven cards and reserved icon overhang. */
+.project-achievements {
+    --project-stat-icon-size: 4rem;
+    --project-stat-glyph-size: 2rem;
+    --project-stat-surface: var(--theme-background);
+    --project-stat-text: var(--theme-text);
+    --project-stat-accent: var(--theme-accent);
+    --project-stat-muted: color-mix(in srgb, var(--project-stat-text) 76%, var(--project-stat-surface));
+    --project-stat-line: color-mix(in srgb, var(--project-stat-text) 14%, var(--project-stat-surface));
+}
+
+.project-section.project-achievements > .block-title {
+    color: var(--theme-heading);
+    font-size: var(--theme-h2-font-size-mobile);
+    font-weight: 800;
+    line-height: 1.5;
+    margin: 0 0 1.5rem;
+    overflow-wrap: anywhere;
+    text-align: start;
+}
+
+.project-section.project-achievements > .block-title::after {
+    background: var(--project-stat-accent);
+    border-radius: 999px;
+    content: "";
+    display: block;
+    height: 3px;
+    margin-block-start: .75rem;
+    width: 3rem;
+}
+
+.project-achievements__grid {
+    display: grid;
+    column-gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    /* Keep every floating icon inside the section, even in an overflow-clipped preview. */
+    padding: calc(var(--project-stat-icon-size) / 2 + .25rem) .25rem .5rem;
+    row-gap: calc(var(--project-stat-icon-size) / 2 + 1.5rem);
+}
+
+.project-achievements__card {
+    align-items: center;
+    background: var(--project-stat-surface);
+    border: 1px solid var(--project-stat-line);
+    border-radius: 1.125rem;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--project-stat-text) 5%, transparent);
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    min-block-size: 12.5rem;
+    min-inline-size: 0;
+    overflow: visible;
+    padding: calc(var(--project-stat-icon-size) / 2 + 1.5rem) 1.5rem 1.5rem;
+    position: relative;
+    text-align: center;
+}
+
+.project-achievements__icon {
+    align-items: center;
+    background: color-mix(in srgb, var(--project-stat-accent) 8%, var(--project-stat-surface));
+    block-size: var(--project-stat-icon-size);
+    border: 1px solid color-mix(in srgb, var(--project-stat-accent) 24%, var(--project-stat-surface));
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--project-stat-text) 6%, transparent);
+    color: var(--project-stat-accent);
+    display: flex;
+    font-size: var(--project-stat-glyph-size);
+    inline-size: var(--project-stat-icon-size);
+    inset-block-start: 0;
+    inset-inline: 0;
+    justify-content: center;
+    line-height: 1;
+    margin-inline: auto;
+    position: absolute;
+    transform: translateY(-50%);
+}
+
+.project-achievements__icon svg {
+    block-size: var(--project-stat-glyph-size);
+    inline-size: var(--project-stat-glyph-size);
+}
+
+.project-achievements__measurement {
+    align-items: baseline;
+    column-gap: .5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-inline-size: 100%;
+    row-gap: .25rem;
+    unicode-bidi: isolate;
+    white-space: nowrap;
+}
+
+.project-achievements__value {
+    color: var(--project-stat-text);
+    font-size: clamp(2.25rem, 4vw, 3rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.project-achievements__affix {
+    color: var(--project-stat-text);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.project-achievements__value,
+.project-achievements__affix {
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    /* Legacy values/units are free text: allow exceptional long content to reflow. */
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.project-achievements__label {
+    color: var(--project-stat-muted);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.75;
+    margin-block-start: .5rem;
+    max-inline-size: 100%;
+    overflow-wrap: anywhere;
+}
+
+.project-achievements__description {
+    color: var(--project-stat-muted);
+    font-size: .875rem;
+    line-height: 1.75;
+    margin: .75rem 0 0;
+    max-inline-size: 100%;
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 700px) {
+    .project-achievements {
+        --project-stat-icon-size: 4.5rem;
+        --project-stat-glyph-size: 2.25rem;
+    }
+
+    .project-section.project-achievements > .block-title {
+        font-size: var(--theme-h2-font-size);
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .project-achievements__card:hover {
+        border-color: color-mix(in srgb, var(--project-stat-accent) 28%, var(--project-stat-surface));
+        box-shadow: 0 6px 20px color-mix(in srgb, var(--project-stat-text) 8%, transparent);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .project-achievements__card {
+        transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+}
 
 .project-gallery__grid { gap: 1rem; }
 .project-gallery--spacing-compact .project-gallery__grid { gap: .65rem; }
@@ -6532,8 +6685,6 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 
 @media (max-width: 980px) {
     .project-overview { grid-template-columns: 1fr; }
-    .project-achievements__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .project-achievements__grid .stats-item:nth-child(odd) { border-inline-start: 0; }
     .project-services__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .related-projects__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -6550,8 +6701,7 @@ article:not(.blog-card):not(.post-card) :where(p, li) a:not(.button):not(.header
 }
 
 @media (max-width: 440px) {
-    .project-overview__facts, .project-achievements__grid, .project-services__list { grid-template-columns: 1fr; }
-    .project-achievements__grid .stats-item { border-inline-start: 0; border-top: 1px solid var(--project-line); }
+    .project-overview__facts, .project-services__list { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

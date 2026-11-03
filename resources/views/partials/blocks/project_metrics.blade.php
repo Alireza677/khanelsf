@@ -10,18 +10,24 @@
             @include('partials.blocks._heading', ['title' => $data['content']['title'], 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
         @endif
 
-        <div class="stats-grid project-achievements__grid">
+        <div class="project-achievements__grid">
             @foreach ($metrics as $metric)
-                <article class="stats-item">
-                    @if ($metric->icon)
-                        <span class="stats-item__icon">
-                            @include('partials.blocks._icon', ['icon' => $metric->icon])
-                        </span>
-                    @endif
-                    <strong>{{ $metric->prefix }}{{ $metric->value }}{{ $metric->suffix }}</strong>
-                    <span>{{ $metric->label }}</span>
+                <article class="project-achievements__card">
+                    <span class="project-achievements__icon" aria-hidden="true">
+                        @include('partials.blocks._icon', ['icon' => $metric->icon, 'fallback' => 'heroicon-o-chart-bar'])
+                    </span>
+                    <div class="project-achievements__measurement">
+                        @if (filled($metric->prefix))
+                            <bdi class="project-achievements__affix" dir="auto">{{ $metric->prefix }}</bdi>
+                        @endif
+                        <strong class="project-achievements__value"><bdi dir="auto">{{ $metric->value }}</bdi></strong>
+                        @if (filled($metric->suffix))
+                            <bdi class="project-achievements__affix" dir="auto">{{ $metric->suffix }}</bdi>
+                        @endif
+                    </div>
+                    <span class="project-achievements__label">{{ $metric->label }}</span>
                     @if ($metric->description)
-                        <p class="stats-item__description">{{ $metric->description }}</p>
+                        <p class="project-achievements__description">{{ $metric->description }}</p>
                     @endif
                 </article>
             @endforeach

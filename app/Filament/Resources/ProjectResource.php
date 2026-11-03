@@ -238,14 +238,36 @@ class ProjectResource extends Resource
                                     );
                                 })
                                 ->helperText('یک تصویر از کتابخانه رسانه انتخاب کنید. برای افزودن تصویر جدید، ابتدا از بخش «رسانه ← بارگذاری رسانه» استفاده کنید.'),
-                            Forms\Components\SpatieMediaLibraryFileUpload::make('gallery')
-                                ->collection('gallery')
+                            Forms\Components\ViewField::make('gallery_media_ids')
                                 ->label('گالری تصاویر پروژه')
-                                ->multiple()
-                                ->image()
-                                ->imageEditor()
-                                ->reorderable()
-                                ->helperText('تصاویر گالری صفحه جزئیات پروژه را بارگذاری و مرتب کنید.')
+                                ->view('filament.forms.components.media-library-multiple-picker')
+                                ->viewData(fn (?Project $record): array => [
+                                    'images' => $record
+                                        ? static::mediaLibraryImageItemsWithCollection($record, 'gallery')
+                                        : static::mediaLibraryImageItems(),
+                                ])
+                                ->dehydrated(false)
+                                ->afterStateHydrated(function (Set $set, ?Project $record): void {
+                                    $set('gallery_media_ids', $record
+                                        ? static::mediaLibraryCollectionState($record, 'gallery')
+                                        : []);
+                                })
+                                ->registerActions([
+                                    Forms\Components\Actions\Action::make('refreshLibrary')
+                                        ->label('تازه‌سازی کتابخانه')
+                                        ->icon('heroicon-o-arrow-path')
+                                        ->color('gray')
+                                        ->action(function (Forms\Components\ViewField $component, $livewire, ?Project $record): void {
+                                            static::$mediaLibraryImageItemsCache = null;
+                                            $livewire->dispatch('media-library-images-refreshed',
+                                                statePath: $component->getStatePath(),
+                                                images: $record
+                                                    ? static::mediaLibraryImageItemsWithCollection($record, 'gallery')
+                                                    : static::mediaLibraryImageItems(),
+                                            );
+                                        }),
+                                ])
+                                ->helperText('تصاویر موجود را از کتابخانه انتخاب کنید. برای مرتب‌سازی، دستگیرهٔ تصاویر را بکشید یا از دکمه‌های جابه‌جایی استفاده کنید.')
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('ویدئوها')

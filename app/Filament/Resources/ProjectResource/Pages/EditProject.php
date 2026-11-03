@@ -39,6 +39,11 @@ class EditProject extends EditRecord
             $this->record,
             data_get($this->form->getRawState(), 'featured_media_id'),
         );
+        ProjectResource::syncMediaLibraryCollection(
+            $this->record,
+            'gallery',
+            data_get($this->form->getRawState(), 'gallery_media_ids', []),
+        );
     }
 
     protected function getHeaderActions(): array

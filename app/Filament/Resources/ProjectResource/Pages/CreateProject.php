@@ -44,5 +44,10 @@ class CreateProject extends CreateRecord
             $this->record,
             data_get($this->form->getRawState(), 'featured_media_id'),
         );
+        ProjectResource::syncMediaLibraryCollection(
+            $this->record,
+            'gallery',
+            data_get($this->form->getRawState(), 'gallery_media_ids', []),
+        );
     }
 }

@@ -122,10 +122,14 @@ trait UsesMediaLibraryImages
     {
         $sharedIds = $record->mediaUsages()
             ->where('collection_name', $collection)
+            ->with('media')
             ->orderBy('order_column')
             ->orderBy('id')
-            ->pluck('media_id')
-            ->map(fn ($id): string => (string) $id);
+            ->get()
+            ->filter(fn ($usage): bool => $usage->media !== null)
+            ->map(fn ($usage): string => $usage->media->collection_name === 'media_library'
+                ? (string) $usage->media_id
+                : "existing:{$usage->media_id}");
 
         if ($sharedIds->isNotEmpty()) {
             return $sharedIds->all();
@@ -144,6 +148,7 @@ trait UsesMediaLibraryImages
             ->map(fn (Media $media): array => [
                 'id' => "existing:{$media->id}",
                 'name' => $media->file_name,
+                'title' => $media->displayTitle(),
                 'url' => $media->getUrl(),
             ]);
 
@@ -152,7 +157,9 @@ trait UsesMediaLibraryImages
 
     public static function syncMediaLibraryCollection(Model $record, string $collection, ?array $selection): void
     {
-        $selection = collect($selection ?? [])->map(fn ($id): string => (string) $id)->unique()->values();
+        $selection = collect($selection ?? [])
+            ->filter(fn ($id): bool => is_int($id) || is_string($id))
+            ->map(fn ($id): string => (string) $id)->unique()->values();
         $existingIds = $selection
             ->filter(fn (string $id): bool => str_starts_with($id, 'existing:'))
             ->map(fn (string $id): int => (int) str($id)->after('existing:')->toString())
@@ -171,18 +178,24 @@ trait UsesMediaLibraryImages
             ->map(fn ($id): int => (int) $id)
             ->all();
 
-        DB::transaction(function () use ($record, $collection, $selection, $existingIds, $validSourceIds): void {
+        $validExistingIds = $record->getMedia($collection)->pluck('id')->map(fn ($id): int => (int) $id)->all();
+
+        DB::transaction(function () use ($record, $collection, $selection, $existingIds, $validSourceIds, $validExistingIds): void {
             $record->mediaUsages()->where('collection_name', $collection)->delete();
 
+            $seen = [];
             foreach ($selection as $position => $selectedId) {
-                $mediaId = (int) $selectedId;
+                $legacy = str_starts_with($selectedId, 'existing:');
+                $mediaId = $legacy ? (int) substr($selectedId, strlen('existing:')) : (int) $selectedId;
 
-                if (in_array($mediaId, $validSourceIds, true)) {
+                if (! in_array($mediaId, $seen, true)
+                    && in_array($mediaId, $legacy ? $validExistingIds : $validSourceIds, true)) {
                     $record->mediaUsages()->create([
                         'media_id' => $mediaId,
                         'collection_name' => $collection,
                         'order_column' => $position,
                     ]);
+                    $seen[] = $mediaId;
                 }
             }
 
@@ -191,6 +204,8 @@ trait UsesMediaLibraryImages
                     $media->delete();
                 }
             });
+            $record->unsetRelation('mediaUsages');
+            $record->unsetRelation('media');
         });
     }
 
