@@ -76,7 +76,7 @@
                 <template x-for="(image, index) in selectedLibraryImages()" x-bind:key="String(image.id)">
                     <div x-bind:x-sortable-item="String(image.id)" class="relative min-w-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
                         <img x-bind:src="image.url" x-bind:alt="image.title || image.name" draggable="false" style="aspect-ratio: 1; width: 100%; object-fit: cover" class="w-full object-cover">
-                        <button type="button" x-on:click="remove(image.id)" x-bind:aria-label="'حذف ' + (image.title || image.name) + ' از گالری'" style="position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; background-color: rgb(var(--gray-950) / .7); color: rgb(var(--gray-50))" class="rounded-full p-2">
+                        <button type="button" x-on:click="remove(image.id)" x-bind:aria-label="'حذف ' + (image.title || image.name) + ' از گالری'" style="position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; background-color: rgba(var(--gray-950), .7); color: rgb(var(--gray-50))" class="rounded-full p-2">
                             <x-heroicon-o-x-mark class="h-4 w-4" />
                         </button>
                         <span class="block truncate px-2 py-1 text-xs" x-text="image.title || image.name"></span>
@@ -103,7 +103,7 @@
 
         <template x-teleport="body">
             <div x-cloak x-show="open" x-trap.inert.noscroll="open" style="display: none" class="cms-modal-layer flex items-center justify-center overflow-hidden p-4" dir="rtl" role="dialog" aria-modal="true" aria-labelledby="{{ $fieldId }}-gallery-heading">
-                <div x-on:click="cancel()" style="background-color: rgb(var(--gray-950) / .6)" class="cms-modal-backdrop" aria-hidden="true"></div>
+                <div x-on:click="cancel()" style="background-color: rgba(var(--gray-950), .6)" class="cms-modal-backdrop" aria-hidden="true"></div>
                 <div style="height: calc(100dvh - 2rem); max-height: calc(100dvh - 2rem)" class="cms-modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-gray-900">
                     <div style="padding: 1rem 1.25rem" class="flex items-center justify-between gap-3 border-b border-gray-200 dark:border-gray-800">
                         <div class="min-w-0">
@@ -135,7 +135,7 @@
                         <div x-show="images.length > 0 && filteredImages().length === 0" class="rounded-lg border border-dashed p-6 text-center text-sm text-gray-500">تصویری مطابق جست‌وجوی شما پیدا نشد.</div>
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr)); gap: .75rem">
                             <template x-for="image in filteredImages()" x-bind:key="String(image.id)">
-                                <button type="button" x-on:click="toggle(image.id)" x-bind:aria-pressed="isSelected(image.id)" class="relative min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white text-right shadow-sm dark:border-gray-800 dark:bg-gray-950" x-bind:style="isSelected(image.id) ? 'border-color: rgb(var(--primary-600)); box-shadow: 0 0 0 2px rgb(var(--primary-500) / .25)' : ''">
+                                <button type="button" x-on:click="toggle(image.id)" x-bind:aria-pressed="isSelected(image.id)" class="relative min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white text-right shadow-sm dark:border-gray-800 dark:bg-gray-950" x-bind:style="isSelected(image.id) ? 'border-color: rgb(var(--primary-600)); box-shadow: 0 0 0 2px rgba(var(--primary-500), .25)' : ''">
                                     <img x-bind:src="image.url" x-bind:alt="image.title || image.name" style="display: block; width: 100%; height: 8rem; object-fit: cover" draggable="false">
                                     <span class="block truncate px-3 py-2 text-sm" x-text="image.title || image.name"></span>
                                     <span x-show="isSelected(image.id)" style="position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; background-color: rgb(var(--primary-600)); color: rgb(var(--gray-50))" class="rounded-full p-1" aria-hidden="true"><x-heroicon-o-check class="h-4 w-4" /></span>

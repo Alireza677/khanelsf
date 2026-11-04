@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\ManageMediaDeletion;
+use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\MediaResource\Pages;
 use App\Filament\Resources\MediaResource\Pages\ListMedia;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class MediaResource extends Resource
 {
+    use UsesMediaLibraryImages;
     use UsesPersianResourceLabels;
 
     protected static ?string $model = Media::class;
@@ -132,19 +135,11 @@ class MediaResource extends Resource
 
                         $record->save();
                     }),
-                Tables\Actions\DeleteAction::make()
-                    ->label('حذف')
-                    ->modalHeading('حذف رسانه')
-                    ->modalSubmitActionLabel('حذف')
-                    ->modalCancelActionLabel('انصراف'),
+                ManageMediaDeletion::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('حذف گروهی')
-                        ->modalHeading('حذف رسانه‌های انتخاب‌شده')
-                        ->modalSubmitActionLabel('حذف')
-                        ->modalCancelActionLabel('انصراف'),
+                    ManageMediaDeletion::bulk(),
                 ]),
             ])
             ->emptyStateHeading('هنوز رسانه‌ای بارگذاری نشده است')
@@ -172,5 +167,4 @@ class MediaResource extends Resource
 
         return number_format($bytes / 1024 / 1024, 1).' MB';
     }
-
 }

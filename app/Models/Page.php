@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\CMS\Navigation\Contracts\ResolvesNavigationUrl;
+use App\Models\Concerns\GuardsBlockMediaReferences;
 use App\Models\Concerns\HasFeaturedImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Page extends Model implements HasMedia, ResolvesNavigationUrl
 {
+    use GuardsBlockMediaReferences;
     use HasFactory;
     use HasFeaturedImage;
     use InteractsWithMedia {

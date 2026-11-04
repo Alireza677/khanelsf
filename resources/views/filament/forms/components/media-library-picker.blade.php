@@ -16,7 +16,7 @@
         x-data="{
             open: false,
             search: '',
-            selected: $wire.entangle(@js($statePath)),
+            selected: $wire.entangle(@js($statePath)){{ $isLive() ? '.live' : '' }},
             images: @js($images),
             get selectedImage() {
                 return this.images.find((image) => String(image.id) === String(this.selected)) || null
@@ -39,7 +39,7 @@
                 this.selected = null
             },
         }"
-        x-on:keydown.escape.window="open = false"
+        x-on:keydown.escape.window.capture="if (open) { $event.preventDefault(); $event.stopImmediatePropagation(); open = false }"
         class="space-y-3"
     >
         <input type="hidden" {{ $applyStateBindingModifiers('wire:model') }}="{{ $statePath }}">
@@ -50,14 +50,15 @@
             class="group flex min-h-32 max-w-xl items-center justify-center overflow-hidden rounded-xl border border-dashed border-gray-300 bg-gray-50 text-sm text-gray-600 transition hover:border-primary-500 hover:bg-primary-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-primary-500"
         >
             <template x-if="selectedImage">
-                <div class="relative h-36 w-full">
+                <div class="relative h-36 w-full" @if (isset($previewHeight)) style="height: {{ (int) $previewHeight }}px; max-width: 100%" @endif>
                     <img
                         x-bind:src="selectedImage.url"
-                        x-bind:alt="selectedImage.name"
+                        x-bind:alt="selectedImage.title || selectedImage.name"
+                        style="width: 100%; height: 100%; object-fit: cover"
                         class="h-full w-full object-cover"
                     >
-                    <div class="absolute inset-x-0 bottom-0 bg-black/60 px-4 py-3 text-left text-white">
-                        <span class="block truncate font-medium" x-text="selectedImage.name"></span>
+                    <div class="absolute inset-x-0 bottom-0 px-4 py-3 text-left" style="inset-block-end: 0; inset-inline: 0; background-color: rgba(var(--gray-950), .7); color: rgb(var(--gray-50))">
+                        <span class="block truncate font-medium" x-text="selectedImage.title || selectedImage.name"></span>
                         <span class="text-xs opacity-80">برای انتخاب تصویر دیگر کلیک کنید</span>
                     </div>
                 </div>
@@ -76,7 +77,7 @@
 
         <div class="flex gap-2">
             <x-filament::button type="button" x-on:click="open = true" size="sm">
-                انتخاب تصویر
+                {{ $pickerButtonLabel ?? 'انتخاب تصویر' }}
             </x-filament::button>
 
             <x-filament::button
@@ -94,13 +95,17 @@
             <div
                 x-cloak
                 x-show="open"
-                x-transition.opacity
+                x-trap.inert.noscroll="open"
                 style="display: none"
                 class="cms-modal-layer flex items-center justify-center overflow-hidden p-4"
+                dir="rtl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="{{ $fieldId }}-media-heading"
             >
                 <div
                     class="cms-modal-backdrop bg-gray-950/60"
-                    style="background-color: rgba(2, 6, 23, 0.78); backdrop-filter: blur(2px)"
+                    style="background-color: rgba(var(--gray-950), .75); backdrop-filter: blur(2px)"
                     aria-hidden="true"
                 ></div>
             <div
@@ -110,7 +115,7 @@
             >
                 <div style="padding: 1rem 1.25rem" class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-950 dark:text-white">انتخاب تصویر شاخص</h3>
+                        <h3 id="{{ $fieldId }}-media-heading" class="text-lg font-semibold text-gray-950 dark:text-white">{{ $pickerHeading ?? 'انتخاب تصویر شاخص' }}</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400">یک تصویر بارگذاری‌شده را جست‌وجو و انتخاب کنید.</p>
                     </div>
 
@@ -147,7 +152,7 @@
                         </div>
                     </template>
 
-                    <div class="grid gap-3" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem">
+                    <div class="grid gap-3" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr)); gap: 0.75rem">
                         <template x-for="image in filteredImages()" x-bind:key="image.id">
                             <button
                                 type="button"

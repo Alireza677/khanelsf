@@ -5,11 +5,11 @@ namespace Tests\Feature;
 use App\Filament\Resources\PageResource;
 use App\Filament\Resources\ProjectResource;
 use App\Filament\Resources\ServiceResource;
+use App\Media\MediaInUseException;
 use App\Models\Page;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\User;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -77,7 +77,7 @@ class SharedMediaAssetTest extends TestCase
         try {
             $asset->delete();
             $this->fail('Deleting an in-use master asset should be restricted.');
-        } catch (QueryException) {
+        } catch (MediaInUseException) {
             $this->assertDatabaseHas('media', ['id' => $asset->id]);
             $this->assertNotNull($page->refresh()->featuredImage());
         }

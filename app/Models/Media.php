@@ -2,13 +2,31 @@
 
 namespace App\Models;
 
+use App\Media\MediaDependencyService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use LogicException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as SpatieMedia;
 
 class Media extends SpatieMedia
 {
+    public function delete()
+    {
+        // Instance deletions and the managed bulk action share this guard; foreign keys remain intact.
+        return DB::transaction(function () {
+            $locked = static::query()->whereKey($this->getKey())->lockForUpdate()->first();
+            if (! $locked) {
+                return false;
+            }
+            app(MediaDependencyService::class)->assertUnused($locked, includeOwned: false, lock: true);
+            // Cleanup must use the persisted file metadata, even when this instance is stale.
+            $this->setRawAttributes($locked->getAttributes(), true);
+
+            return parent::delete();
+        });
+    }
+
     protected static function booted(): void
     {
         static::updating(function (self $media): void {

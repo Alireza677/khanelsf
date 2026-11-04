@@ -1,10 +1,12 @@
 <?php
 
 use App\Media\CanonicalMediaPathGenerator;
+use App\Media\MediaObserver;
 use App\Models\Media;
 
 return [
     'media_model' => Media::class,
+    'media_observer' => MediaObserver::class,
 
     'path_generator' => CanonicalMediaPathGenerator::class,
 

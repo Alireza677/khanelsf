@@ -9,6 +9,7 @@ use App\Providers\EditorHistoryServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
 use App\Providers\FormServiceProvider;
 use App\Providers\InternalLinkServiceProvider;
+use App\Providers\MediaAssetServiceProvider;
 use App\Providers\NavigationServiceProvider;
 use App\Providers\PageServiceProvider;
 use App\Providers\PostServiceProvider;
@@ -20,6 +21,7 @@ use App\Providers\TestingDatabaseSafetyServiceProvider;
 use App\Providers\VideoLibraryServiceProvider;
 
 return [
+    MediaAssetServiceProvider::class,
     AdminLoginServiceProvider::class,
     ActionServiceProvider::class,
     InternalLinkServiceProvider::class,

@@ -22,6 +22,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ViewField;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -171,10 +172,14 @@ class SiteFooterTemplateTest extends TestCase
     public function test_missing_invalid_and_disabled_data_fail_closed_without_placeholders(): void
     {
         $this->home();
-        $template = $this->template(blocks: $this->blocks([], null, null, [
+        $legacyBlocks = $this->blocks([], null, null, [
             ['title' => 'نامعتبر', 'media_id' => 999999, 'url' => null, 'alt' => null, 'sort_order' => 1, 'enabled' => true],
             ['title' => 'غیرفعال', 'media_id' => 888888, 'url' => null, 'alt' => null, 'sort_order' => 2, 'enabled' => false],
-        ]));
+        ]);
+        $template = $this->template(blocks: []);
+        // Simulate legacy/damaged stored data; new editor writes now reject dangling media IDs.
+        DB::table('templates')->where('id', $template->id)->update(['blocks' => json_encode($legacyBlocks)]);
+        $template->refresh();
         $this->select($template);
 
         $this->get(route('home'))
