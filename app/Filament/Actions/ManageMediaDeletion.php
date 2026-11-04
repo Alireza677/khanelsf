@@ -6,6 +6,7 @@ use App\Filament\Resources\MediaResource;
 use App\Media\MediaDependencyService;
 use App\Media\MediaInUseException;
 use App\Models\Media;
+use Filament\Actions\StaticAction;
 use Filament\Forms;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
@@ -24,26 +25,50 @@ final class ManageMediaDeletion
         return Action::make('delete')
             ->label('حذف / مدیریت وابستگی‌ها')->icon('heroicon-o-trash')->color('danger')
             ->visible(fn (Media $record): bool => auth()->user()?->isAdmin() && auth()->user()?->isActive() && MediaResource::canDelete($record))
-            ->modalHeading('مدیریت استفاده و حذف رسانه')->modalWidth(MaxWidth::FiveExtraLarge)
-            ->modalSubmitActionLabel('اجرای تغییرات تأییدشده')->modalCancelActionLabel('انصراف')
-            ->fillForm(['operation' => 'replace', 'dependencies' => [], 'confirmed' => false])
+            ->modalHeading('مدیریت استفاده و حذف رسانه')->modalWidth(MaxWidth::FourExtraLarge)
+            ->extraModalWindowAttributes(['class' => 'king-media-management-modal', 'dir' => 'rtl'])
+            ->stickyModalFooter()->closeModalByClickingAway(false)
+            ->modalSubmitActionLabel('اجرای تغییرات')->modalCancelActionLabel('انصراف')
+            ->modalSubmitAction(fn (StaticAction $action, $livewire): StaticAction => $action->color('primary')
+                ->disabled(fn (): bool => ! self::readyToSubmit($livewire)))
+            ->registerModalActions([
+                Action::make('confirmDeletion')->requiresConfirmation()->color('danger')
+                    ->modalHeading('تصویر قبلی حذف شود؟')
+                    ->modalDescription('پس از بررسی دوبارهٔ وابستگی‌ها، تصویر قبلی حذف می‌شود. حذف فایل قابل بازگشت نیست.')
+                    ->modalSubmitActionLabel('تأیید و اجرا')->modalCancelActionLabel('بازگشت')
+                    ->closeModalByClickingAway(false)
+                    ->action(function ($livewire): void {
+                        $livewire->unmountTableAction(false, false);
+                        $livewire->callMountedTableAction(['confirmed' => true]);
+                    }),
+            ])
+            ->fillForm(['operation' => 'replace', 'dependencies' => []])
             ->form([
                 Forms\Components\Placeholder::make('usage_report')->label('')
                     ->content(fn (Media $record) => view('filament.media.dependencies', ['record' => $record, 'dependencies' => app(MediaDependencyService::class)->modalReport($record)])),
-                Forms\Components\ViewField::make('replacement_media_id')
-                    ->label('انتخاب تصویر جایگزین')->view('filament.forms.components.media-library-picker')->live()
-                    ->viewData(fn (Media $record): array => [
-                        'images' => self::replacementImages($record),
-                        'pickerHeading' => 'انتخاب تصویر جایگزین',
-                        'pickerButtonLabel' => 'انتخاب تصویر جایگزین',
-                        'previewHeight' => 112,
-                    ])
-                    ->visible(fn (Media $record): bool => str_starts_with((string) $record->mime_type, 'image/') && app(MediaDependencyService::class)->modalReport($record) !== [])
-                    ->required(fn (Get $get): bool => $get('operation') !== 'delete'),
-                Forms\Components\CheckboxList::make('dependencies')->label('محل‌های انتخاب‌شده برای جایگزینی')
-                    ->options(fn (Media $record): array => collect(app(MediaDependencyService::class)->modalReport($record))->where('replaceable', true)->mapWithKeys(fn ($row) => [$row['key'] => $row['title'].' — '.$row['label']])->all())
-                    ->live()->columns(1)->visible(fn (Media $record): bool => app(MediaDependencyService::class)->modalReport($record) !== []),
-                Forms\Components\Radio::make('operation')->label('عملیات موردنظر')->live()->required()
+                Forms\Components\Group::make([
+                    Forms\Components\Placeholder::make('replacement_heading')->hiddenLabel()
+                        ->content(fn () => view('filament.media.replacement-heading')),
+                    Forms\Components\Group::make([
+                        Forms\Components\CheckboxList::make('dependencies')->label('اعمال جایگزینی در')
+                            ->options(fn (Media $record): array => self::replacementOptions($record))
+                            ->live()->columns(2)->gridDirection('row')->required()->minItems(1)
+                            ->extraAttributes(['class' => 'king-media-usage-options'])
+                            ->visible(fn (Media $record): bool => self::replacementOptions($record) !== []),
+                        Forms\Components\ViewField::make('replacement_media_id')
+                            ->label('تصویر جایگزین')->hiddenLabel()->view('filament.forms.components.media-library-picker')->live()
+                            ->viewData(fn (Media $record): array => [
+                                'images' => self::replacementImages($record),
+                                'pickerHeading' => 'انتخاب تصویر جایگزین',
+                                'pickerButtonLabel' => 'انتخاب تصویر جایگزین',
+                                'compact' => true,
+                            ])
+                            ->required(fn (Get $get): bool => $get('operation') !== 'delete'),
+                    ])->extraAttributes(['class' => 'king-media-replacement-controls']),
+                ])->extraAttributes(['class' => 'king-media-replacement-section'])
+                    ->visible(fn (Media $record): bool => str_starts_with((string) $record->mime_type, 'image/') && app(MediaDependencyService::class)->modalReport($record) !== []),
+                Forms\Components\Radio::make('operation')->label('عملیات نهایی')->live()->required()->inline()->inlineLabel(false)
+                    ->extraAttributes(['class' => 'king-media-operation'])
                     ->options(fn (Media $record): array => app(MediaDependencyService::class)->modalReport($record) === []
                         ? ['delete' => 'فقط حذف رسانه بدون وابستگی']
                         : ['replace' => 'فقط جایگزینی در محل‌های انتخاب‌شده', 'replace_delete' => 'جایگزینی و حذف تصویر قبلی'])
@@ -54,29 +79,31 @@ final class ManageMediaDeletion
                             $set('operation', 'delete');
                         }
                     }),
-                Forms\Components\Placeholder::make('change_summary')->label('خلاصه پیش از اجرا')
-                    ->content(fn (Get $get, Media $record) => view('filament.media.replacement-summary', [
-                        'source' => $record, 'replacement' => self::replacementPreview($get('replacement_media_id')),
-                        'selected' => collect(app(MediaDependencyService::class)->modalReport($record))->whereIn('key', $get('dependencies') ?? [])->all(),
-                        'operation' => $get('operation'),
-                        'remaining' => count(array_diff(array_column(app(MediaDependencyService::class)->modalReport($record), 'key'), $get('dependencies') ?? [])),
-                    ])),
-                Forms\Components\Checkbox::make('confirmed')->label('خلاصه را بررسی کردم و این تغییرات را تأیید می‌کنم.')->rules(['accepted']),
             ])
-            ->action(function (Media $record, array $data): void {
+            ->action(function (Action $action, Media $record, array $data, array $arguments, $livewire): void {
+                if (! self::readyToSubmit($livewire)) {
+                    throw self::operationError($livewire, 'تصویر و محل‌های معتبر را انتخاب کنید؛ حذف فقط پس از رفع تمام وابستگی‌ها مجاز است.');
+                }
+                if ($data['operation'] !== 'replace' && ! ($arguments['confirmed'] ?? false)) {
+                    $livewire->mountTableAction('confirmDeletion');
+                    $action->halt();
+                }
                 try {
                     app(MediaDependencyService::class)->apply($record, filled($data['replacement_media_id'] ?? null) ? (int) $data['replacement_media_id'] : null, $data['dependencies'] ?? [], $data['operation']);
                 } catch (MediaInUseException) {
-                    throw ValidationException::withMessages(['operation' => 'حذف انجام نشد: هنوز ارجاع باقی مانده است. فقط جایگزینی را انتخاب کنید یا تمام وابستگی‌ها را رفع کنید.']);
+                    throw self::operationError($livewire, 'حذف انجام نشد: هنوز ارجاع باقی مانده است. فقط جایگزینی را انتخاب کنید یا تمام وابستگی‌ها را رفع کنید.');
                 } catch (QueryException $exception) {
                     report($exception);
-                    throw ValidationException::withMessages(['operation' => 'ارجاع‌ها هم‌زمان تغییر کردند یا ذخیره ناموفق بود؛ تغییرات این عملیات بازگردانده شد. مودال را دوباره باز کنید.']);
+                    throw self::operationError($livewire, 'ارجاع‌ها هم‌زمان تغییر کردند یا ذخیره ناموفق بود؛ تغییرات این عملیات بازگردانده شد. مودال را دوباره باز کنید.');
                 } catch (\Throwable $exception) {
-                    if ($exception instanceof ValidationException || $exception instanceof HttpExceptionInterface) {
+                    if ($exception instanceof ValidationException) {
+                        throw self::operationError($livewire, collect($exception->errors())->flatten()->all());
+                    }
+                    if ($exception instanceof HttpExceptionInterface) {
                         throw $exception;
                     }
                     report($exception);
-                    throw ValidationException::withMessages(['operation' => 'عملیات ناموفق بود و تغییرات بازگردانده شدند؛ دوباره تلاش کنید.']);
+                    throw self::operationError($livewire, 'عملیات ناموفق بود و تغییرات بازگردانده شدند؛ دوباره تلاش کنید.');
                 }
                 self::notify($data['operation'] === 'replace' ? 'جایگزینی انجام شد؛ تصویر قبلی حذف نشده است.' : 'حذف رسانه با موفقیت انجام شد.');
             });
@@ -120,10 +147,38 @@ final class ManageMediaDeletion
         return array_values(array_filter($items, fn ($image): bool => (int) $image['id'] !== (int) $source->id && in_array((int) $image['id'], $allowed, true)));
     }
 
-    private static function replacementPreview(int|string|null $id): ?Media
+    private static function replacementOptions(Media $source): array
     {
-        $media = Media::reusableImage($id);
+        $rows = collect(app(MediaDependencyService::class)->modalReport($source))->where('replaceable', true);
+        $singleContent = $rows->map(fn ($row) => $row['type'].':'.$row['title'])->unique()->count() === 1;
 
-        return $media && MediaResource::canView($media) ? $media : null;
+        return $rows->mapWithKeys(fn ($row) => [$row['key'] => $singleContent ? $row['label'] : $row['title'].' — '.$row['label']])->all();
+    }
+
+    private static function operationError($livewire, string|array $message): ValidationException
+    {
+        return ValidationException::withMessages([$livewire->getMountedTableActionForm()->getStatePath().'.operation' => $message]);
+    }
+
+    private static function readyToSubmit($livewire): bool
+    {
+        $source = $livewire->getMountedTableActionRecord();
+        if (! $source) {
+            return false;
+        }
+        $state = $livewire->getMountedTableActionForm()->getRawState();
+        $rows = app(MediaDependencyService::class)->modalReport($source);
+        $operation = $state['operation'] ?? null;
+        if ($operation === 'delete') {
+            return $rows === [];
+        }
+        $replacement = Media::reusableImage($state['replacement_media_id'] ?? null);
+        $selected = $state['dependencies'] ?? [];
+        $allowed = array_column(array_filter($rows, fn ($row) => $row['replaceable']), 'key');
+
+        return in_array($operation, ['replace', 'replace_delete'], true)
+            && $replacement && $replacement->id !== $source->id && MediaResource::canView($replacement)
+            && $selected !== [] && array_diff($selected, $allowed) === []
+            && ($operation === 'replace' || array_diff(array_column($rows, 'key'), $selected) === []);
     }
 }

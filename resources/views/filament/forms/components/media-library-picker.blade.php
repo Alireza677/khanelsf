@@ -40,10 +40,24 @@
             },
         }"
         x-on:keydown.escape.window.capture="if (open) { $event.preventDefault(); $event.stopImmediatePropagation(); open = false }"
-        class="space-y-3"
+        @class(['space-y-3' => ! ($compact ?? false), 'king-media-picker-compact' => $compact ?? false])
     >
         <input type="hidden" {{ $applyStateBindingModifiers('wire:model') }}="{{ $statePath }}">
 
+        @if ($compact ?? false)
+            <div class="king-media-picker-selection" aria-live="polite">
+                <template x-if="selectedImage">
+                    <div class="king-media-picker-thumbnail">
+                        <img x-bind:src="selectedImage.url" x-bind:alt="selectedImage.title || selectedImage.name">
+                        <span x-text="selectedImage.title || selectedImage.name"></span>
+                        <x-filament::icon-button icon="heroicon-o-x-mark" label="لغو انتخاب تصویر جایگزین" color="gray" size="sm" type="button" x-on:click="clear" />
+                    </div>
+                </template>
+            </div>
+            <x-filament::button type="button" x-on:click="open = true" color="primary" outlined icon="heroicon-o-photo">
+                {{ $pickerButtonLabel ?? 'انتخاب تصویر' }}
+            </x-filament::button>
+        @else
         <button
             type="button"
             x-on:click="open = true"
@@ -90,6 +104,8 @@
                 حذف
             </x-filament::button>
         </div>
+
+        @endif
 
         <template x-teleport="body">
             <div

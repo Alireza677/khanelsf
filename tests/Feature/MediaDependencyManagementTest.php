@@ -13,7 +13,6 @@ use App\Models\Page;
 use App\Models\Project;
 use App\Models\Template;
 use App\Models\User;
-use Filament\Forms\Components\Placeholder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -220,7 +219,7 @@ class MediaDependencyManagementTest extends TestCase
         DB::table('media')->where('id', $source->id)->delete();
     }
 
-    public function test_livewire_modal_requires_confirmation_and_reuses_the_shared_picker(): void
+    public function test_compact_modal_reuses_shared_picker_and_requires_a_replacement_and_location(): void
     {
         $source = $this->asset('old.jpg');
         $new = $this->asset('new.jpg');
@@ -228,13 +227,18 @@ class MediaDependencyManagementTest extends TestCase
         ProjectResource::syncFeaturedImage($project, $source->id);
         $keys = array_column($this->service()->report($source), 'key');
         $component = Livewire::test(ListMedia::class)->mountTableAction('delete', $source)
-            ->assertSee('Modal consumer')->assertSee('انتخاب تصویر جایگزین');
-        $component->setTableActionData(['operation' => 'replace', 'replacement_media_id' => $new->id, 'dependencies' => $keys, 'confirmed' => false])->callMountedTableAction()
-            ->assertHasTableActionErrors(['confirmed']);
+            ->assertSee('Modal consumer')->assertSee('انتخاب تصویر جایگزین')
+            ->assertDontSee('خلاصه پیش از اجرا')->assertDontSee('پیش‌نمایش تغییرات')->assertDontSee('خلاصه را بررسی کردم');
+        $this->assertTrue($component->instance()->getMountedTableAction()->getModalSubmitAction()->isDisabled());
+        $component->setTableActionData(['operation' => 'replace', 'replacement_media_id' => null, 'dependencies' => []])->callMountedTableAction()
+            ->assertHasTableActionErrors(['replacement_media_id', 'dependencies']);
         $this->assertSame($source->id, $project->fresh()->featuredImage()->id);
-        $component->setTableActionData(['operation' => 'replace', 'replacement_media_id' => $new->id, 'dependencies' => $keys, 'confirmed' => true])->callMountedTableAction()
+        $component->setTableActionData(['operation' => 'replace', 'replacement_media_id' => $new->id, 'dependencies' => $keys]);
+        $this->assertFalse($component->instance()->getMountedTableAction()->getModalSubmitAction()->isDisabled());
+        $component->callMountedTableAction()
             ->assertHasNoTableActionErrors();
         $this->assertSame($new->id, $project->fresh()->featuredImage()->id);
+        $this->assertDatabaseHas('media', ['id' => $source->id]);
     }
 
     public function test_stale_editor_cannot_add_a_new_id_reference_after_media_deletion(): void
@@ -245,7 +249,7 @@ class MediaDependencyManagementTest extends TestCase
         Page::factory()->create(['blocks' => [['type' => 'text_image', 'data' => ['content' => ['media_id' => $source->id]]]]]);
     }
 
-    public function test_replacement_preview_and_submission_enforce_media_view_permission(): void
+    public function test_compact_picker_and_submission_enforce_media_view_permission(): void
     {
         Gate::policy(Media::class, MediaReplacementViewTestPolicy::class);
         $source = $this->asset('old.jpg');
@@ -254,12 +258,11 @@ class MediaDependencyManagementTest extends TestCase
         ProjectResource::syncFeaturedImage($project, $source->id);
         $keys = array_column($this->service()->report($source), 'key');
         $component = Livewire::test(ListMedia::class)->mountTableAction('delete', $source)
-            ->setTableActionData(['operation' => 'replace', 'replacement_media_id' => $new->id, 'dependencies' => $keys, 'confirmed' => true]);
-        $summary = $component->instance()->getMountedTableActionForm()
-            ->getComponent(fn ($field) => $field instanceof Placeholder && $field->getName() === 'change_summary')
-            ->getContent()->render();
-        $this->assertStringNotContainsString($new->getUrl(), $summary);
-        $this->assertStringContainsString('هنوز انتخاب نشده است.', $summary);
+            ->setTableActionData(['operation' => 'replace', 'replacement_media_id' => $new->id, 'dependencies' => $keys]);
+        $picker = $component->instance()->getMountedTableActionForm()
+            ->getComponent('mountedTableActionsData.0.replacement_media_id');
+        $this->assertNotContains($new->id, array_column($picker->getViewData()['images'], 'id'));
+        $this->assertTrue($component->instance()->getMountedTableAction()->getModalSubmitAction()->isDisabled());
         try {
             $this->service()->apply($source, $new->id, $keys, 'replace');
             $this->fail('Unauthorized replacement must be denied.');
@@ -340,9 +343,76 @@ class MediaDependencyManagementTest extends TestCase
     public function test_unused_media_can_be_deleted_from_the_confirmed_table_action(): void
     {
         $source = $this->asset('unused-ui.jpg');
-        Livewire::test(ListMedia::class)->callTableAction('delete', $source, data: ['operation' => 'delete', 'confirmed' => true])
+        $component = Livewire::test(ListMedia::class)->callTableAction('delete', $source, data: ['operation' => 'delete'])
+            ->assertSet('mountedTableActions', ['delete', 'confirmDeletion']);
+        $this->assertDatabaseHas('media', ['id' => $source->id]);
+        $component->call('unmountTableAction', false)->assertSet('mountedTableActions', ['delete']);
+        $this->assertDatabaseHas('media', ['id' => $source->id]);
+        $component->callMountedTableAction()->assertSet('mountedTableActions', ['delete', 'confirmDeletion'])
+            ->callMountedTableAction()
             ->assertHasNoTableActionErrors();
         $this->assertDatabaseMissing('media', ['id' => $source->id]);
+    }
+
+    public function test_replace_delete_requires_standard_confirmation_and_cancel_preserves_parent_selection(): void
+    {
+        $source = $this->asset('confirmation-old.jpg');
+        $new = $this->asset('confirmation-new.jpg');
+        $project = Project::factory()->create();
+        ProjectResource::syncMediaLibraryCollection($project, 'gallery', [$source->id]);
+        $keys = array_column($this->service()->report($source), 'key');
+        $data = ['operation' => 'replace_delete', 'replacement_media_id' => $new->id, 'dependencies' => $keys];
+        $component = Livewire::test(ListMedia::class)->callTableAction('delete', $source, data: $data)
+            ->assertSet('mountedTableActions', ['delete', 'confirmDeletion']);
+        $this->assertSame([$source->id], $project->fresh()->galleryImages()->pluck('id')->all());
+        $component->call('unmountTableAction', false)->assertSet('mountedTableActions', ['delete'])
+            ->assertSet('mountedTableActionsData.0.replacement_media_id', $new->id)
+            ->assertSet('mountedTableActionsData.0.dependencies', $keys);
+        $component->callMountedTableAction()->assertSet('mountedTableActions', ['delete', 'confirmDeletion'])
+            ->callMountedTableAction()->assertHasNoTableActionErrors();
+        $this->assertSame([$new->id], $project->fresh()->galleryImages()->pluck('id')->all());
+        $this->assertDatabaseMissing('media', ['id' => $source->id]);
+    }
+
+    public function test_compact_modal_disables_delete_for_partial_selection_and_manual_references(): void
+    {
+        $source = $this->asset('partial-old.jpg');
+        $new = $this->asset('partial-new.jpg');
+        foreach (range(1, 2) as $index) {
+            ProjectResource::syncFeaturedImage(Project::factory()->create(['title' => 'Distinct '.$index]), $source->id);
+        }
+        $keys = array_column($this->service()->report($source), 'key');
+        $component = Livewire::test(ListMedia::class)->mountTableAction('delete', $source)
+            ->setTableActionData(['operation' => 'replace_delete', 'replacement_media_id' => $new->id, 'dependencies' => [$keys[0]]]);
+        $this->assertTrue($component->instance()->getMountedTableAction()->getModalSubmitAction()->isDisabled());
+        $component->callMountedTableAction()->assertHasTableActionErrors(['operation']);
+        $this->assertDatabaseHas('media', ['id' => $source->id]);
+
+        Page::factory()->create(['content' => '<img src="'.$source->getUrl().'">']);
+        // Livewire's test process shares the container; reopening in a new request gets a fresh scoped report.
+        app()->forgetInstance(MediaDependencyService::class);
+        $component = Livewire::test(ListMedia::class)->mountTableAction('delete', $source)->assertSee('نیازمند اصلاح دستی')
+            ->setTableActionData(['operation' => 'replace_delete', 'replacement_media_id' => $new->id, 'dependencies' => $keys]);
+        $this->assertTrue($component->instance()->getMountedTableAction()->getModalSubmitAction()->isDisabled());
+    }
+
+    public function test_compact_modal_keeps_selection_and_reports_failed_replacement_without_data_loss(): void
+    {
+        $source = $this->asset('ui-failure-old.jpg');
+        $new = $this->asset('ui-failure-new.jpg');
+        $project = Project::factory()->create();
+        ProjectResource::syncFeaturedImage($project, $source->id);
+        $keys = array_column($this->service()->report($source), 'key');
+        MediaUsage::updated(function (): void {
+            throw new \RuntimeException('Simulated modal replacement failure');
+        });
+        Livewire::test(ListMedia::class)->callTableAction('delete', $source, data: [
+            'operation' => 'replace', 'replacement_media_id' => $new->id, 'dependencies' => $keys,
+        ])->assertHasTableActionErrors(['operation'])->assertSet('mountedTableActions', ['delete'])
+            ->assertSet('mountedTableActionsData.0.replacement_media_id', $new->id)
+            ->assertSet('mountedTableActionsData.0.dependencies', $keys);
+        $this->assertSame($source->id, $project->fresh()->featuredImage()->id);
+        Storage::disk('public')->assertExists($source->getPathRelativeToRoot());
     }
 
     public function test_consumer_permissions_are_revalidated_after_mutation_before_commit(): void

@@ -4,6 +4,7 @@
 @endphp
 
 @include('partials.site-font-styles')
+@include('filament.media.management-styles')
 @vite(['resources/css/components/form-selects.css', 'resources/js/components/form-selects.js'])
 
 <style>
