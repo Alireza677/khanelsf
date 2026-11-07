@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use App\Services\OrderPaymentService;
+use App\Support\PublicOrderCode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use LogicException;
+use Illuminate\Database\QueryException;
 
 class Order extends Model
 {
@@ -54,7 +57,39 @@ class Order extends Model
 
     protected static function booted(): void
     {
+        static::created(function (self $order): void {
+            $code = null;
+
+            for ($attempt = 0; $attempt < 5; $attempt++) {
+                $candidate = PublicOrderCode::generate();
+
+                try {
+                    DB::transaction(fn () => DB::table($order->getTable())
+                        ->where('id', $order->getKey())->update(['public_order_code' => $candidate]));
+                    $code = $candidate;
+                    break;
+                } catch (QueryException $exception) {
+                    $collision = DB::table($order->getTable())->where('public_order_code', $candidate)
+                        ->where('id', '<>', $order->getKey())->exists();
+
+                    if (! $collision) {
+                        throw $exception;
+                    }
+                }
+            }
+
+            if ($code === null) {
+                throw new LogicException('Could not allocate a unique public order code.');
+            }
+
+            $order->setAttribute('public_order_code', $code);
+            $order->syncOriginalAttribute('public_order_code');
+        });
+
         static::saving(function (self $order): void {
+            if ($order->isDirty('public_order_code')) {
+                throw new LogicException('The public order code is assigned automatically and is immutable.');
+            }
             if (! $order->exists) {
                 if (($order->payment_status ?? self::PAYMENT_STATUS_UNPAID) !== self::PAYMENT_STATUS_UNPAID
                     || ($order->status ?? self::STATUS_PENDING) !== self::STATUS_PENDING) {
@@ -97,6 +132,58 @@ class Order extends Model
     public function isPaid(): bool
     {
         return $this->payment_status === self::PAYMENT_STATUS_PAID;
+    }
+
+    public function displayCode(): string
+    {
+        // Also covers legacy/imported rows with a null additive column, without a GET write.
+        return $this->public_order_code ?: PublicOrderCode::forLegacyId((int) $this->getKey());
+    }
+
+    public function paymentMethodLabel(): string
+    {
+        return match ($this->payment_method) {
+            'manual' => 'پرداخت دستی',
+            'zarinpal' => 'درگاه زرین‌پال',
+            default => 'روش پرداخت ثبت‌شده',
+        };
+    }
+
+    public function statusColor(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PAID, self::STATUS_COMPLETED => 'success',
+            self::STATUS_CANCELLED => 'danger',
+            default => 'warning',
+        };
+    }
+
+    public function paymentStatusColor(): string
+    {
+        return match ($this->payment_status) {
+            self::PAYMENT_STATUS_PAID => 'success',
+            self::PAYMENT_STATUS_FAILED => 'danger',
+            default => 'warning',
+        };
+    }
+
+    public function statusIcon(): string
+    {
+        return match ($this->status) {
+            self::STATUS_COMPLETED => 'heroicon-o-check-badge',
+            self::STATUS_PAID => 'heroicon-o-check-circle',
+            self::STATUS_CANCELLED => 'heroicon-o-x-circle',
+            default => 'heroicon-o-clock',
+        };
+    }
+
+    public function paymentStatusIcon(): string
+    {
+        return match ($this->payment_status) {
+            self::PAYMENT_STATUS_PAID => 'heroicon-o-check-circle',
+            self::PAYMENT_STATUS_FAILED => 'heroicon-o-exclamation-circle',
+            default => 'heroicon-o-clock',
+        };
     }
 
     public function isPending(): bool

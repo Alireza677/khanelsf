@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\CustomerMembershipManager;
 use App\Services\OrderConfirmationUrl;
+use App\Support\PublicOrderCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -30,6 +31,26 @@ class ShopAccountIntegrationTest extends TestCase
         $this->assertTrue($hasUserIndex);
         $this->assertNull($order->user);
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'user_id' => null]);
+    }
+
+    public function test_short_public_order_codes_are_unique_stored_and_immutable(): void
+    {
+        $first = $this->order(['order_number' => 'commerce-generated-long-internal-id']);
+        $second = $this->order(['order_number' => 'another-independent-internal-id']);
+        $codeColumn = collect(Schema::getColumns('orders'))->firstWhere('name', 'public_order_code');
+        $uniqueIndex = collect(Schema::getIndexes('orders'))->first(fn (array $index): bool => $index['unique'] && $index['columns'] === ['public_order_code']);
+
+        $this->assertNotNull($codeColumn);
+        $this->assertTrue($codeColumn['nullable']);
+        $this->assertNotNull($uniqueIndex);
+        $this->assertMatchesRegularExpression('/^K-[23456789A-HJ-NP-Z]{7}$/', $first->displayCode());
+        $this->assertLessThanOrEqual(9, strlen($first->displayCode()));
+        $this->assertNotSame($first->public_order_code, $second->public_order_code);
+        $this->assertDatabaseHas('orders', ['id' => $first->id, 'public_order_code' => $first->displayCode()]);
+
+        $this->expectException(\LogicException::class);
+        $first->public_order_code = 'K-TAMPER';
+        $first->save();
     }
 
     public function test_deleting_an_order_owner_preserves_the_snapshot_and_nulls_ownership(): void
@@ -99,14 +120,17 @@ class ShopAccountIntegrationTest extends TestCase
         $this->actingAs($owner, 'client')
             ->get('/account/orders')
             ->assertOk()
-            ->assertSee('ORD-OWNED')
+            ->assertSee($owned->displayCode())
+            ->assertDontSee('ORD-OWNED')
             ->assertDontSee('ORD-FOREIGN')
             ->assertDontSee('ORD-GUEST');
 
         $this->actingAs($owner, 'client')
             ->get(route('account.orders.show', $owned))
             ->assertOk()
-            ->assertSee('ORD-OWNED');
+            ->assertSee($owned->displayCode())
+            ->assertDontSee($owned->order_number)
+            ->assertSee('ناوبری حساب کاربری');
     }
 
     public function test_customer_membership_does_not_change_order_ownership(): void
@@ -144,7 +168,8 @@ class ShopAccountIntegrationTest extends TestCase
 
         $this->get($url)
             ->assertOk()
-            ->assertSee('ORD-SIGNED-GUEST');
+            ->assertSee($order->displayCode())
+            ->assertDontSee($order->order_number);
         $this->get(route('checkout.thank-you', $order))->assertForbidden();
         $this->get(str_replace("/{$order->id}?", "/{$other->id}?", $url))
             ->assertForbidden()
@@ -158,7 +183,8 @@ class ShopAccountIntegrationTest extends TestCase
         $order = $this->order(['user_id' => $owner->id, 'order_number' => 'ORD-OWNER-SIGNED']);
         $url = app(OrderConfirmationUrl::class)->temporary($order);
 
-        $this->actingAs($owner, 'client')->get($url)->assertOk();
+        $this->actingAs($owner, 'client')->get($url)
+            ->assertOk()->assertSee('ناوبری حساب کاربری')->assertSee($order->displayCode());
         $this->actingAs($other, 'client')->get($url)->assertNotFound();
     }
 

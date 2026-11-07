@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\PostResource\Pages;
+use App\Filament\Support\SeoIndexComponents;
 use App\Models\Post;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -122,7 +123,7 @@ class PostResource extends Resource
                                 ])
                                 ->helperText(__('Falls back to the featured image when empty.'))
                                 ->columnSpanFull(),
-                            Forms\Components\Toggle::make('robots_index')
+                            SeoIndexComponents::toggle()
                                 ->label(__('Allow search engines to index this post'))
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
@@ -173,6 +174,7 @@ class PostResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->sortable(),
+                SeoIndexComponents::column(),
                 Tables\Columns\TextColumn::make('published_at')
                     ->jalaliDateTime()
                     ->sortable(),
@@ -182,6 +184,7 @@ class PostResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SeoIndexComponents::filter(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'draft' => __('Draft'),

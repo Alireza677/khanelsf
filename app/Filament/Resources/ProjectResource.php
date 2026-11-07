@@ -6,6 +6,7 @@ use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ProjectResource\Pages;
+use App\Filament\Support\SeoIndexComponents;
 use App\Models\Project;
 use App\Models\ProjectDiscoveryVocabulary;
 use App\Services\ModuleService;
@@ -327,7 +328,7 @@ class ProjectResource extends Resource
                                 ])
                                 ->helperText('در صورت انتخاب نکردن تصویر، تصویر شاخص پروژه استفاده خواهد شد.')
                                 ->columnSpanFull(),
-                            Forms\Components\Toggle::make('robots_index')
+                            SeoIndexComponents::toggle()
                                 ->label('اجازه فهرست‌شدن پروژه در موتورهای جست‌وجو')
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
@@ -393,6 +394,7 @@ class ProjectResource extends Resource
                     })
                     ->badge()
                     ->sortable(),
+                SeoIndexComponents::column(),
                 Tables\Columns\IconColumn::make('is_featured')
                     ->boolean()
                     ->label('شاخص')
@@ -408,6 +410,7 @@ class ProjectResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SeoIndexComponents::filter(),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('وضعیت انتشار')
                     ->options([

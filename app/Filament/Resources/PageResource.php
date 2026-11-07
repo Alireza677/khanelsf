@@ -12,6 +12,7 @@ use App\Filament\Resources\Concerns\UsesIconsaxIconPicker;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\PageResource\Pages;
+use App\Filament\Support\SeoIndexComponents;
 use App\Models\GalleryCategory;
 use App\Models\Page;
 use App\Models\ProductCategory;
@@ -479,7 +480,7 @@ class PageResource extends Resource
                                 ])
                                 ->helperText('اگر خالی باشد از تصویر شاخص استفاده می‌شود.')
                                 ->columnSpanFull(),
-                            Forms\Components\Toggle::make('robots_index')
+                            SeoIndexComponents::toggle()
                                 ->label('اجازه ایندکس این برگه توسط موتورهای جستجو')
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
@@ -550,6 +551,7 @@ class PageResource extends Resource
                     ][$state] ?? $state)
                     ->badge()
                     ->sortable(),
+                SeoIndexComponents::column(),
                 Tables\Columns\TextColumn::make('published_at')
                     ->label('زمان انتشار')
                     ->jalaliDateTime()
@@ -562,6 +564,7 @@ class PageResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
+                SeoIndexComponents::filter(),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('وضعیت')
                     ->options([

@@ -17,7 +17,7 @@ class OrderOperationsTest extends TestCase
         $order = $this->createOrder();
 
         $this->get(route('admin.orders.print', $order))
-            ->assertRedirect();
+            ->assertNotFound();
     }
 
     public function test_admin_can_access_printable_order_page(): void
@@ -35,8 +35,9 @@ class OrderOperationsTest extends TestCase
             ->get(route('admin.orders.print', $order))
             ->assertOk()
             ->assertSee($order->order_number)
+            ->assertSee($order->displayCode())
             ->assertSee('Printable Item')
-            ->assertSee('پرداخت: Unpaid');
+            ->assertSee('پرداخت: پرداخت‌نشده');
     }
 
     public function test_non_admin_cannot_access_order_operations(): void

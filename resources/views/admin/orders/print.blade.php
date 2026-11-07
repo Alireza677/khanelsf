@@ -125,10 +125,11 @@
             </div>
 
             <div class="right">
-                <h1>{{ $order->order_number }}</h1>
+                <h1>{{ $order->displayCode() }}</h1>
+                <p class="muted">شناسه داخلی: {{ $order->order_number }}</p>
                 <p>تاریخ: {{ \App\Support\PersianDate::dateTime($order->created_at) }}</p>
-                <p>وضعیت: {{ ucfirst($order->status) }}</p>
-                <p>پرداخت: {{ ucfirst($order->payment_status) }}</p>
+                <p>وضعیت: {{ $order->statusLabel() }}</p>
+                <p>پرداخت: {{ $order->paymentStatusLabel() }}</p>
             </div>
         </header>
 
@@ -147,7 +148,7 @@
 
             <div>
                 <h2>سفارش</h2>
-                <p>روش پرداخت: {{ ucfirst($order->payment_method) }}</p>
+                <p>روش پرداخت: {{ $order->paymentMethodLabel() }}</p>
                 <p>جمع کل: {{ number_format((float) $order->subtotal) }} تومان</p>
                 <p>مبلغ نهایی: {{ number_format((float) $order->total) }} تومان</p>
             </div>

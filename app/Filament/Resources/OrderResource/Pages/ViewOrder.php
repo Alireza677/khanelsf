@@ -14,11 +14,14 @@ class ViewOrder extends ViewRecord
     {
         return [
             Actions\Action::make('print')
-                ->label('Print invoice')
+                ->label('چاپ فاکتور')
                 ->icon('heroicon-o-printer')
                 ->url(fn (): string => route('admin.orders.print', $this->record))
                 ->openUrlInNewTab(),
-            Actions\EditAction::make(),
+            Actions\ActionGroup::make([
+                ...OrderResource::operationActions(Actions\Action::class),
+                Actions\EditAction::make()->label('ویرایش یادداشت داخلی'),
+            ])->label('عملیات')->icon('heroicon-m-ellipsis-vertical')->button(),
         ];
     }
 }

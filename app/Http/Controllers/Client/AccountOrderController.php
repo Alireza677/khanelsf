@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Services\PublicOrderAccess;
+use App\Services\OrderReceiptPresentation;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -16,10 +17,8 @@ class AccountOrderController extends Controller
         ]);
     }
 
-    public function show(Request $request, int $order, PublicOrderAccess $orders): View
+    public function show(Request $request, int $order, PublicOrderAccess $orders, OrderReceiptPresentation $receipt): View
     {
-        return view('client.orders.show', [
-            'order' => $orders->findFor($request->user('client'), $order),
-        ]);
+        return view('client.orders.show', $receipt->forOrder($orders->findFor($request->user('client'), $order)));
     }
 }

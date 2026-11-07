@@ -351,7 +351,7 @@ class ZarinpalIntegrationTest extends TestCase
         Http::assertSentCount(1);
         $this->fakeHttp(['*' => Http::response(['data' => ['code' => 100, 'ref_id' => 123], 'errors' => []])]);
         $callback = $this->get(route('payments.zarinpal.callback', $this->callbackPayload($attempt)))->assertRedirect();
-        $this->get($callback->headers->get('Location'))->assertOk()->assertSee('پرداخت تأیید شد')->assertSee('مرجع درگاه: 123');
+        $this->get($callback->headers->get('Location'))->assertOk()->assertSee('پرداخت تأیید شد')->assertSee('مرجع درگاه')->assertSee('123');
         $this->assertDatabaseCount('order_items', 1);
     }
 

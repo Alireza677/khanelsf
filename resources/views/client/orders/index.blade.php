@@ -20,12 +20,12 @@
             <div class="account-orders__list">
                 @foreach ($orders as $order)
                     <article class="account-order-card">
-                        <div><small>شماره سفارش</small><strong>{{ $order->order_number }}</strong></div>
+                        <div><small>کد سفارش</small><strong dir="ltr">{{ $order->displayCode() }}</strong></div>
                         <div><small>تاریخ</small><x-persian-date :value="$order->created_at" /></div>
-                        <div><small>وضعیت</small><span>{{ $order->statusLabel() }}</span></div>
-                        <div><small>وضعیت پرداخت</small><span>{{ $order->paymentStatusLabel() }}</span></div>
+                        <div><small>وضعیت</small><x-order-status :order="$order" /></div>
+                        <div><small>وضعیت پرداخت</small><x-order-status :order="$order" payment /></div>
                         <div><small>تعداد اقلام</small><span>{{ $order->items_count }}</span></div>
-                        <div><small>مبلغ کل</small><strong>{{ number_format((float) $order->total) }} تومان</strong></div>
+                        <div><small>مبلغ کل</small><strong>{{ app(\App\Services\ProductPricingService::class)->formatAmount($order->total) }} تومان</strong></div>
                         <a class="button button-secondary" href="{{ route('account.orders.show', $order) }}">مشاهده جزئیات</a>
                     </article>
                 @endforeach

@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Contracts\PaymentGateway;
 use App\Models\Order;
-use App\Models\PaymentAttempt;
 use App\Services\CartService;
 use App\Services\CheckoutIdempotency;
 use App\Services\ManualPaymentGateway;
 use App\Services\ModuleService;
 use App\Services\OrderConfirmationUrl;
+use App\Services\OrderReceiptPresentation;
 use App\Services\ProductPricingService;
 use App\Services\SettingsService;
 use App\Services\ZarinpalPaymentGateway;
@@ -148,21 +148,7 @@ class CheckoutController extends Controller
 
         abort_if($order->user_id !== null && $ownerId !== $order->user_id, 404);
 
-        $attempt = $order->paymentAttempts()->latest('id')->first();
-        $retryable = ! $order->isPaid() && $order->payment_method === 'zarinpal'
-            && $order->status !== Order::STATUS_CANCELLED
-            && (! $attempt || in_array($attempt->status, [PaymentAttempt::FAILED, PaymentAttempt::CANCELLED], true)
-                || ($attempt->status === PaymentAttempt::PENDING && $attempt->authority));
-        $confirmations = app(OrderConfirmationUrl::class);
-
-        return view('shop.thank-you', [
-            'order' => $order->load('items'),
-            'manualPaymentMessage' => $order->payment_method === 'manual' ? app(ManualPaymentGateway::class)->instructions() : app(ZarinpalPaymentGateway::class)->instructions(),
-            'paymentAttempt' => $attempt,
-            'paymentRetryUrl' => $retryable ? $confirmations->paymentAction($order, 'retry', $attempt && in_array($attempt->status, [PaymentAttempt::FAILED, PaymentAttempt::CANCELLED], true) ? 'retry-'.$attempt->id : 'initial') : null,
-            'paymentReconcileUrl' => ! $order->isPaid() && $attempt?->authority && $order->payment_method === 'zarinpal'
-                ? $confirmations->paymentAction($order, 'reconcile') : null,
-        ]);
+        return view('shop.thank-you', app(OrderReceiptPresentation::class)->forOrder($order));
     }
 
     private function sendOrderEmails(Order $order, SettingsService $settings, PaymentGateway $paymentGateway): void
@@ -172,7 +158,7 @@ class CheckoutController extends Controller
         if ($adminEmail !== '') {
             $this->sendPlainOrderEmail(
                 $adminEmail,
-                "سفارش جدید {$order->order_number}",
+                "سفارش جدید {$order->displayCode()}",
                 $this->adminOrderEmailBody($order, $paymentGateway),
             );
         }
@@ -180,7 +166,7 @@ class CheckoutController extends Controller
         if (filled($order->customer_email)) {
             $this->sendPlainOrderEmail(
                 $order->customer_email,
-                "سفارش دریافت شد: {$order->order_number}",
+                "سفارش دریافت شد: {$order->displayCode()}",
                 $this->customerOrderEmailBody($order, $paymentGateway),
             );
         }
@@ -206,7 +192,7 @@ class CheckoutController extends Controller
     private function customerOrderEmailBody(Order $order, PaymentGateway $paymentGateway): string
     {
         return implode(PHP_EOL, [
-            "سپاسگزاریم. سفارش {$order->order_number} دریافت شد.",
+            "سپاسگزاریم. سفارش {$order->displayCode()} دریافت شد.",
             '',
             ...$this->orderSummaryLines($order, $paymentGateway),
             '',
@@ -217,12 +203,12 @@ class CheckoutController extends Controller
     private function orderSummaryLines(Order $order, PaymentGateway $paymentGateway): array
     {
         $lines = [
-            "شماره سفارش: {$order->order_number}",
+            "کد سفارش: {$order->displayCode()}",
             "مشتری: {$order->customer_name}",
             "تلفن: {$order->customer_phone}",
             'ایمیل: '.($order->customer_email ?: '-'),
-            "وضعیت: {$order->status}",
-            "وضعیت پرداخت: {$order->payment_status}",
+            "وضعیت: {$order->statusLabel()}",
+            "وضعیت پرداخت: {$order->paymentStatusLabel()}",
             '',
             'آیتم‌ها:',
         ];

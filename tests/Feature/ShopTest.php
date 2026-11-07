@@ -355,7 +355,8 @@ class ShopTest extends TestCase
 
         $this->get(app(OrderConfirmationUrl::class)->temporary($order))
             ->assertOk()
-            ->assertSee('ORD-TEST-100')
+            ->assertSee($order->displayCode())
+            ->assertDontSee($order->order_number)
             ->assertSee('Jane Client')
             ->assertSee('Order Item')
             ->assertSee('پرداخت فعلا به‌صورت دستی انجام می‌شود.');

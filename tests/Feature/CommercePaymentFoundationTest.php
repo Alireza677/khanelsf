@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\OrderResource\Pages\EditOrder;
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\OrderResource\Pages\ViewOrder;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\OrderPaymentService;
@@ -293,6 +294,16 @@ class CommercePaymentFoundationTest extends TestCase
         $order->items()->create(['product_title' => 'Original snapshot', 'quantity' => 1, 'unit_price' => '0.70', 'total' => '0.70']);
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin);
+        Livewire::test(ListOrders::class)
+            ->assertSee('عملیات')
+            ->assertSee($order->displayCode())
+            ->assertSee('Original snapshot');
+        Livewire::test(ViewOrder::class, ['record' => $order->id])
+            ->assertSee($order->displayCode())
+            ->assertSee('Original snapshot')
+            ->assertSee('مشتری')
+            ->assertSee('تاریخچه پرداخت')
+            ->assertSee('تکمیل سفارش');
         Livewire::test(EditOrder::class, ['record' => $order->id])
             ->set('data.payment_status', 'paid')->set('data.status', 'completed')
             ->set('data.total', '9000.00')->set('data.payment_method', 'zarinpal')

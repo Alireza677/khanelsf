@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ProductResource\Pages;
+use App\Filament\Support\SeoIndexComponents;
 use App\Models\Product;
 use App\Services\ModuleService;
 use Filament\Forms;
@@ -267,7 +268,7 @@ class ProductResource extends Resource
                                 ])
                                 ->helperText('اگر خالی باشد، تصویر شاخص استفاده می‌شود.')
                                 ->columnSpanFull(),
-                            Forms\Components\Toggle::make('robots_index')
+                            SeoIndexComponents::toggle()
                                 ->label('اجازه ایندکس این محصول به موتورهای جست‌وجو')
                                 ->default(true),
                             Forms\Components\Toggle::make('robots_follow')
@@ -325,11 +326,13 @@ class ProductResource extends Resource
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
+                SeoIndexComponents::column(),
                 Tables\Columns\TextColumn::make('stock_status')->badge()->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')->boolean()->label('ویژه')->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SeoIndexComponents::filter(),
                 Tables\Filters\SelectFilter::make('status')->options([
                     'draft' => 'پیش‌نویس',
                     'published' => 'منتشرشده',

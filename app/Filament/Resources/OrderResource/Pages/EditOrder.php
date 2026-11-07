@@ -23,11 +23,11 @@ class EditOrder extends EditRecord
     {
         return [
             Actions\Action::make('print')
-                ->label('Print invoice')
+                ->label('چاپ فاکتور')
                 ->icon('heroicon-o-printer')
                 ->url(fn (): string => route('admin.orders.print', $this->record))
                 ->openUrlInNewTab(),
-            Actions\ViewAction::make(),
+            Actions\ViewAction::make()->label('مشاهده جزئیات'),
         ];
     }
 }

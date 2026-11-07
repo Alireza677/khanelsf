@@ -14,7 +14,7 @@ class ListOrders extends ListRecords
     {
         return [
             Actions\Action::make('exportCsv')
-                ->label('Export CSV')
+                ->label('خروجی فایل CSV')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(route('admin.orders.export'))
                 ->openUrlInNewTab(),
