@@ -8,10 +8,12 @@ use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Support\SeoIndexComponents;
 use App\Models\Product;
 use App\Services\ModuleService;
+use App\Services\ProductPriceFreshness;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -87,6 +89,19 @@ class ProductResource extends Resource
                                 ->label('شناسه محصول')
                                 ->unique(ignoreRecord: true)
                                 ->maxLength(255),
+                            Forms\Components\Section::make('اعتبار قیمت')
+                                ->description('ذخیره مبلغ جدید، تأیید قبلی را پاک می‌کند. پس از ذخیره، با عملیات «بررسی شد؛ قیمت تغییری نکرد» مبلغ ثبت‌شده را آگاهانه تأیید کنید.')
+                                ->schema([
+                                    Forms\Components\Select::make('price_validity_mode')->label('روش تعیین اعتبار')
+                                        ->options(['inherit' => 'تنظیمات دسته‌بندی یا فروشگاه', 'custom' => 'مدت اختصاصی', 'unlimited' => 'نامحدود'])
+                                        ->default('inherit')->required()->in(['inherit', 'custom', 'unlimited'])->live(),
+                                    Forms\Components\TextInput::make('price_validity_days')->label('اعتبار اختصاصی (روز)')
+                                        ->integer()->minValue(1)->maxValue(36500)
+                                        ->required(fn (Get $get) => $get('price_validity_mode') === 'custom')
+                                        ->visible(fn (Get $get) => $get('price_validity_mode') === 'custom'),
+                                    Forms\Components\ViewField::make('price_freshness_summary')->label('قیمت ذخیره‌شده و سابقه')
+                                        ->view('filament.forms.components.product-price-freshness')->dehydrated(false)->columnSpanFull(),
+                                ])->columns(2)->columnSpanFull(),
                             Forms\Components\Toggle::make('has_stock')
                                 ->label('قابل خرید')
                                 ->default(true),
@@ -306,6 +321,7 @@ class ProductResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('category'))
             ->defaultSort('sort_order')
             ->columns([
                 Tables\Columns\SpatieMediaLibraryImageColumn::make('featured_image')
@@ -327,11 +343,31 @@ class ProductResource extends Resource
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 SeoIndexComponents::column(),
+                Tables\Columns\TextColumn::make('price_state')->label('وضعیت قیمت')
+                    ->state(fn (Product $record) => app(ProductPriceFreshness::class)->status($record))
+                    ->formatStateUsing(fn (string $state) => ProductPriceFreshness::LABELS[$state])->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        'valid' => 'success', 'expiring_soon' => 'warning', 'expired' => 'danger', default => 'gray'
+                    })
+                    ->icon(fn (string $state) => match ($state) {
+                        'valid' => 'heroicon-o-check-circle', 'expired' => 'heroicon-o-x-circle', 'expiring_soon' => 'heroicon-o-clock', default => 'heroicon-o-question-mark-circle'
+                    }),
+                Tables\Columns\TextColumn::make('price_verified_at')->label('آخرین تأیید قیمت')->jalaliDateTime()->placeholder('تأیید نشده')->sortable(),
+                Tables\Columns\TextColumn::make('price_changed_at')->label('آخرین تغییر قیمت')->jalaliDateTime()->placeholder('ثبت نشده')->sortable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('effective_validity')->label('اعتبار قیمت')
+                    ->state(fn (Product $record) => ($days = app(ProductPriceFreshness::class)->days($record)) === null ? 'نامحدود' : $days.' روز')->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('price_expiry')->label('انقضا')
+                    ->state(fn (Product $record) => app(ProductPriceFreshness::class)->expiresAt($record))
+                    ->jalaliDateTime()->placeholder('—')
+                    ->sortable(query: fn ($query, string $direction) => $query->orderByRaw('('.app(ProductPriceFreshness::class)->expiryExpression().') '.($direction === 'desc' ? 'desc' : 'asc')))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('stock_status')->badge()->sortable(),
                 Tables\Columns\IconColumn::make('is_featured')->boolean()->label('ویژه')->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('price_freshness')->label('وضعیت قیمت')->options(ProductPriceFreshness::LABELS)
+                    ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? app(ProductPriceFreshness::class)->filter($query, $data['value']) : $query),
                 SeoIndexComponents::filter(),
                 Tables\Filters\SelectFilter::make('status')->options([
                     'draft' => 'پیش‌نویس',
@@ -341,19 +377,35 @@ class ProductResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_featured')->label('ویژه'),
             ])
             ->actions([
-                Tables\Actions\Action::make('preview')
-                    ->label('پیش‌نمایش')
-                    ->icon('heroicon-o-eye')
-                    ->url(fn (Product $record): string => route('admin.preview.products.show', $record))
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('viewPublic')
-                    ->label('مشاهده در سایت')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (Product $record): string => static::publicUrl($record))
-                    ->openUrlInNewTab()
-                    ->visible(fn (Product $record): bool => static::isPubliclyVisible($record)),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('verifyPrice')->label('بررسی شد؛ قیمت تغییری نکرد')->icon('heroicon-o-check-badge')
+                        ->visible(fn (Product $record) => static::canEdit($record))
+                        ->requiresConfirmation()->modalHeading('تأیید قیمت ثبت‌شده')
+                        ->form([
+                            Forms\Components\Hidden::make('expected_price')->required(),
+                            Forms\Components\Hidden::make('expected_sale_price'),
+                        ])
+                        ->fillForm(fn (Product $record) => ['expected_price' => $record->price, 'expected_sale_price' => $record->sale_price])
+                        ->modalDescription(fn (Product $record) => 'قیمت اصلی: '.$record->price.' تومان؛ فروش ویژه: '.($record->sale_price ?? '—').'؛ تأیید می‌کنید این مبلغ به‌روز است؟')
+                        ->action(function (Product $record, array $data): void {
+                            abort_unless(static::canEdit($record), 403);
+                            app(ProductPriceFreshness::class)->verify($record, auth()->user(), $data);
+                            Notification::make()->title('قیمت تأیید شد')->success()->send();
+                        }),
+                    Tables\Actions\Action::make('preview')
+                        ->label('پیش‌نمایش')
+                        ->icon('heroicon-o-eye')
+                        ->url(fn (Product $record): string => route('admin.preview.products.show', $record))
+                        ->openUrlInNewTab(),
+                    Tables\Actions\Action::make('viewPublic')
+                        ->label('مشاهده در سایت')
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->url(fn (Product $record): string => static::publicUrl($record))
+                        ->openUrlInNewTab()
+                        ->visible(fn (Product $record): bool => static::isPubliclyVisible($record)),
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ])->label('عملیات')->icon('heroicon-o-ellipsis-vertical')->button(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

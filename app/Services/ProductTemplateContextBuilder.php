@@ -25,17 +25,26 @@ final class ProductTemplateContextBuilder
             'documents',
         ]);
         $media = $this->media->context($product);
+        $related = $this->products->relatedProducts($product, $relatedLimit);
+        $freshness = app(ProductPriceFreshness::class);
+        $availability = [
+            ...$this->availability->availability($product),
+            'priceFreshness' => $freshness->presentation($product),
+            'relatedPriceFreshness' => $related->mapWithKeys(fn (Product $item) => [
+                $item->id => $freshness->presentation($item, withInquiry: false),
+            ])->all(),
+        ];
 
         return [
             'product' => $product,
             'category' => $product->category,
             'effectivePrice' => $this->pricing->effectivePrice($product),
             'currency' => $this->pricing->currency(),
-            'availability' => $this->availability->availability($product),
+            'availability' => $availability,
             'specifications' => $product->specifications,
             'documents' => $product->documents,
             'media' => $media,
-            'relatedProducts' => $this->products->relatedProducts($product, $relatedLimit),
+            'relatedProducts' => $related,
             'seo' => $this->seo->forProduct($product),
         ];
     }

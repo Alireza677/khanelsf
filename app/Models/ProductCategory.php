@@ -17,6 +17,7 @@ class ProductCategory extends Model
         'description',
         'status',
         'sort_order',
+        'price_validity_days',
         'seo_title',
         'seo_description',
         'seo_image',
@@ -27,6 +28,7 @@ class ProductCategory extends Model
     protected function casts(): array
     {
         return [
+            'price_validity_days' => 'integer',
             'robots_index' => 'boolean',
             'robots_follow' => 'boolean',
         ];

@@ -19,7 +19,7 @@
                         <p>{{ $relatedProduct->excerpt }}</p>
                     @endif
 
-                    <p>{{ number_format($relatedProduct->currentPrice()) }} تومان</p>
+                    <p>@include('shop.partials.price', ['product' => $relatedProduct, 'pricePresentation' => $context['availability']['relatedPriceFreshness'][$relatedProduct->id] ?? null])</p>
                 </article>
             @endforeach
         </div>

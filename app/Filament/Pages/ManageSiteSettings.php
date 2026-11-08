@@ -9,6 +9,7 @@ use App\Models\Page as CmsPage;
 use App\Models\Template;
 use App\Services\ModuleCleanupService;
 use App\Services\ModuleRedirectSuggestionService;
+use App\Services\ProductPriceInquiry;
 use App\Services\SettingsService;
 use App\Services\VideoLibrarySettings;
 use App\Support\AdminLoginPath;
@@ -124,6 +125,11 @@ class ManageSiteSettings extends Page implements HasForms
         'galleries_seo_title' => ['galleries', 'text'],
         'galleries_seo_description' => ['galleries', 'textarea'],
         'shop_enabled' => ['shop', 'boolean'],
+        'shop_price_freshness_enabled' => ['shop', 'boolean'],
+        'shop_price_validity_days' => ['shop', 'number'],
+        'shop_price_warning_days' => ['shop', 'number'],
+        'shop_price_show_verified_at' => ['shop', 'boolean'],
+        'shop_price_inquiry_form_id' => ['shop', 'number'],
         'shop_label' => ['shop', 'text'],
         'shop_index_title' => ['shop', 'text'],
         'shop_index_description' => ['shop', 'textarea'],
@@ -169,6 +175,10 @@ class ManageSiteSettings extends Page implements HasForms
     public function mount(SettingsService $settings): void
     {
         $state = $settings->many(array_keys($this->settingsMeta))->all();
+        $state['shop_price_freshness_enabled'] ??= false;
+        $state['shop_price_validity_days'] ??= 30;
+        $state['shop_price_warning_days'] ??= 3;
+        $state['shop_price_show_verified_at'] ??= false;
         $state['zarinpal_enabled'] ??= config('payments.zarinpal.enabled', false);
         $state['zarinpal_environment'] ??= config('payments.zarinpal.environment', 'sandbox');
         $state['admin_login_path'] = app(AdminLoginPath::class)->current();
@@ -654,6 +664,23 @@ class ManageSiteSettings extends Page implements HasForms
                                         ->placeholder('مثلا فروشگاه')
                                         ->maxLength(255)
                                         ->default('فروشگاه'),
+                                    Forms\Components\Section::make('مدیریت اعتبار قیمت‌ها')
+                                        ->description('پس از فعال‌سازی، خرید قیمت‌های تأییدنشده یا منقضی مسدود می‌شود. ابتدا قیمت محصولات و مسیر استعلام را بررسی کنید.')
+                                        ->schema([
+                                            Forms\Components\Toggle::make('shop_price_freshness_enabled')->label('کنترل اعتبار قیمت‌ها')->default(false),
+                                            Forms\Components\TextInput::make('shop_price_validity_days')->label('اعتبار پیش‌فرض (روز)')->integer()->required()->minValue(1)->maxValue(36500)->default(30),
+                                            Forms\Components\TextInput::make('shop_price_warning_days')->label('بازه هشدار (روز)')->integer()->required()->minValue(0)->maxValue(36500)->default(3),
+                                            Forms\Components\Toggle::make('shop_price_show_verified_at')->label('نمایش تاریخ تأیید در صفحه محصول')->default(false),
+                                            Forms\Components\Select::make('shop_price_inquiry_form_id')->label('فرم استعلام قیمت')
+                                                ->options(fn () => \App\Models\Form::query()->published()->where('type', '!=', 'calculator')->pluck('name', 'id'))
+                                                ->searchable()->nullable()
+                                                ->helperText('فرم منتشرشده انتخاب کنید. در نبود فرم، شماره تماس سایت استفاده می‌شود.'),
+                                            Forms\Components\Placeholder::make('price_inquiry_setup')->label('وضعیت مسیر استعلام')
+                                                ->content(fn () => app(ProductPriceInquiry::class)->form()
+                                                    ? 'فرم استعلام منتشرشده متصل است.'
+                                                    : (app(ProductPriceInquiry::class)->contactUrl()
+                                                        ? 'فرم تنظیم نشده؛ تماس تلفنی سایت در دسترس است.' : 'نیازمند تنظیم: فرم استعلام یا شماره تماس سایت را مشخص کنید.')),
+                                        ])->columns(2)->columnSpanFull(),
                                     Forms\Components\TextInput::make('shop_index_title')
                                         ->label('عنوان صفحه فروشگاه')
                                         ->placeholder('مثلا محصولات')

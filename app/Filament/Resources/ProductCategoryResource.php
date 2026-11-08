@@ -55,6 +55,9 @@ class ProductCategoryResource extends Resource
                                 ->maxLength(255)
                                 ->unique(ignoreRecord: true),
                             Forms\Components\Textarea::make('description')->rows(4)->columnSpanFull(),
+                            Forms\Components\TextInput::make('price_validity_days')->label('اعتبار اختصاصی قیمت (روز)')
+                                ->integer()->minValue(1)->maxValue(36500)->nullable()
+                                ->helperText('خالی: استفاده از مدت پیش‌فرض فروشگاه. برای محصولات همین دسته اعمال می‌شود.'),
                         ])
                         ->columns(2),
                     Forms\Components\Tabs\Tab::make('SEO')

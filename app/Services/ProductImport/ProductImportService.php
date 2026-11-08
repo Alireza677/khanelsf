@@ -298,6 +298,8 @@ final class ProductImportService
                             }
                             $attributes = $this->attributes($row->payload, $category['id'], ! $product->exists);
                             $created = ! $product->exists;
+                            $product->priceChangeSource = 'import';
+                            $product->priceChangeActorId = $actor->id;
                             $product->fill($attributes)->save();
                             $this->syncSpecifications($product, $row->specifications);
                             $row->update([...$plan, 'product_id' => $product->id, 'result' => $created ? 'created' : 'updated']);

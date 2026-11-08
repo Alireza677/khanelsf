@@ -15,15 +15,10 @@
         @endif
 
         <p class="product-price">
-            @if ($product->hasSalePrice())
-                <span class="product-price__sale">${{ number_format($product->currentPrice(), 2) }}</span>
-                <span class="product-price__regular">${{ number_format((float) $product->price, 2) }}</span>
-            @else
-                <span>${{ number_format($product->currentPrice(), 2) }}</span>
-            @endif
+            @include('shop.partials.price', ['product' => $product])
         </p>
 
-        @unless ($product->isPurchasable())
+        @unless ($product->has_stock && $product->stock_status === 'in_stock')
             <span class="stock-badge">Out of stock</span>
         @endunless
 

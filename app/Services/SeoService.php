@@ -445,7 +445,7 @@ class SeoService
             'description' => $description,
             'sku' => $product->sku,
             'image' => $images ?: null,
-            'offers' => [
+            ...(app(ProductPriceFreshness::class)->allowsPurchase($product) ? ['offers' => [
                 '@type' => 'Offer',
                 'price' => number_format($this->productPricing->effectivePrice($product), 2, '.', ''),
                 'priceCurrency' => $this->productPricing->currency(),
@@ -453,7 +453,7 @@ class SeoService
                     ? 'https://schema.org/InStock'
                     : 'https://schema.org/OutOfStock',
                 'url' => route('shop.show', $product->slug),
-            ],
+            ]] : []),
         ];
     }
 

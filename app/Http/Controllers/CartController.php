@@ -37,7 +37,7 @@ class CartController extends Controller
         $this->abortIfShopDisabled($modules);
 
         abort_unless(
-            Product::query()->published()->whereKey($product->getKey())->exists() && $product->isPurchasable(),
+            Product::query()->published()->whereKey($product->getKey())->exists() && $product->has_stock && $product->stock_status === 'in_stock',
             404,
         );
 

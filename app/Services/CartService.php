@@ -23,7 +23,15 @@ class CartService
     /** Safe presentation of stored rows, including rows needing repair/removal. */
     public function items(): Collection
     {
-        return collect($this->rawItems())->filter(fn ($item): bool => is_array($item))->map(function (array $item): array {
+        $rawItems = $this->rawItems();
+        if ($rawItems === []) {
+            return collect();
+        }
+        $products = app(ProductPriceFreshness::class)->enabled()
+            ? Product::query()->with('category')->whereIn('id', collect($rawItems)->filter(fn ($item) => is_array($item))->pluck('product_id'))->get()->keyBy('id')
+            : collect();
+
+        return collect($rawItems)->filter(fn ($item): bool => is_array($item))->map(function (array $item) use ($products): array {
             $error = null;
             $quantity = 0;
             $price = $total = '0.00';
@@ -34,6 +42,10 @@ class CartService
             } catch (ValidationException|InvalidArgumentException) {
                 $error = 'اطلاعات این قلم معتبر نیست؛ تعداد را اصلاح یا قلم را حذف کنید.';
             }
+            $product = $products->get($item['product_id'] ?? 0);
+            if ($product && ! app(ProductPriceFreshness::class)->allowsPurchase($product)) {
+                $error = 'قیمت این محصول '.ProductPriceFreshness::LABELS[app(ProductPriceFreshness::class)->status($product)].' است؛ استعلام بگیرید یا آن را حذف کنید.';
+            }
 
             return [
                 'product_id' => filter_var($item['product_id'] ?? null, FILTER_VALIDATE_INT) ?: 0,
@@ -42,6 +54,7 @@ class CartService
                 'sku' => is_string($item['sku'] ?? null) ? $item['sku'] : null,
                 'image' => is_string($item['image'] ?? null) ? $item['image'] : null,
                 'quantity' => $quantity, 'unit_price' => $price, 'total' => $total, 'error' => $error,
+                'inquiry_url' => $product && $error ? app(ProductPriceInquiry::class)->url($product) : null,
             ];
         })->values();
     }
@@ -69,7 +82,7 @@ class CartService
             $requested[(int) $id] = $this->quantity($item['quantity'] ?? null, 'cart');
         }
 
-        $query = Product::query()->published()->whereIn('id', array_keys($requested))->orderBy('id');
+        $query = Product::query()->with('category')->published()->whereIn('id', array_keys($requested))->orderBy('id');
         if ($lock) {
             $query->lockForUpdate();
         }
@@ -78,6 +91,9 @@ class CartService
         try {
             foreach ($requested as $id => $quantity) {
                 $product = $products->get($id);
+                if ($product) {
+                    app(ProductPriceFreshness::class)->assertPurchasablePrice($product);
+                }
                 if (! $product || ! app(ProductAvailabilityService::class)->isPurchasable($product)) {
                     throw ValidationException::withMessages(['cart' => 'یک یا چند محصول دیگر منتشرشده یا قابل خرید نیستند؛ سبد خرید را بررسی و قلم نامعتبر را حذف کنید.']);
                 }
@@ -150,6 +166,14 @@ class CartService
 
     public function add(Product $product, mixed $quantity = 1): void
     {
+        $product = Product::query()->with('category')->published()->find($product->getKey());
+        if (! $product) {
+            throw ValidationException::withMessages(['cart' => 'این محصول منتشر نشده است.']);
+        }
+        app(ProductPriceFreshness::class)->assertPurchasablePrice($product);
+        if (! app(ProductAvailabilityService::class)->isPurchasable($product)) {
+            throw ValidationException::withMessages(['cart' => 'این محصول موجود و قابل خرید نیست.']);
+        }
         $quantity = $this->quantity($quantity);
         $items = $this->rawItems();
         foreach ($items as $index => $item) {
@@ -173,6 +197,13 @@ class CartService
 
     public function update(array $quantities): void
     {
+        $products = Product::query()->with('category')->whereIn('id', array_keys($quantities))->get()->keyBy('id');
+        foreach ($quantities as $id => $quantity) {
+            $product = $products->get($id);
+            if ($product) {
+                app(ProductPriceFreshness::class)->assertPurchasablePrice($product, 'quantities.'.$id);
+            }
+        }
         foreach ($quantities as $id => $quantity) {
             $this->quantity($quantity, 'quantities.'.$id);
         }

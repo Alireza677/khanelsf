@@ -4,13 +4,24 @@ namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\Concerns\LogsFilamentCreateDebug;
 use App\Filament\Resources\ProductResource;
+use App\Models\Product;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class CreateProduct extends CreateRecord
 {
     use LogsFilamentCreateDebug;
 
     protected static string $resource = ProductResource::class;
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        $product = new Product($data);
+        $product->priceChangeSource = 'manual';
+        $product->save();
+
+        return $product;
+    }
 
     protected function afterCreate(): void
     {

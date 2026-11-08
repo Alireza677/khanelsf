@@ -30,6 +30,7 @@ class ViewFormSubmission extends ViewRecord
 
         return [
             'submission' => $record,
+            'priceInquiry' => data_get($record->payload, '_price_inquiry'),
             'answerGroups' => $presenter->answerGroups($record),
             'files' => $presenter->files($record),
             'calculation' => (object) ['result' => data_get($record->calculation_result, 'result'), 'scores' => $presenter->calculationScores($record)],

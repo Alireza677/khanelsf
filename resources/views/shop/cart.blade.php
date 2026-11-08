@@ -40,6 +40,7 @@
                                 <label for="quantity-{{ $item['product_id'] }}">تعداد</label>
                                 <input id="quantity-{{ $item['product_id'] }}" name="quantities[{{ $item['product_id'] }}]" type="number" min="1" max="99" value="{{ $item['quantity'] }}">
                                 @if ($item['error']) <p class="form-error">{{ $item['error'] }}</p> @endif
+                                @if (!empty($item['inquiry_url'])) <a href="{{ $item['inquiry_url'] }}">استعلام قیمت</a> @endif
                             </div>
                             <div>{{ $item['error'] ? '—' : $pricing->formatAmount($item['total']).' تومان' }}</div>
                             <div>

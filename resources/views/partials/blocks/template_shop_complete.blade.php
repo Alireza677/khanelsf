@@ -375,13 +375,12 @@
                                     <h3><a href="{{ route('shop.show', $product->slug) }}">{{ $product->title }}</a></h3>
 
                                     <p class="shop-template__price">
-                                        {{ number_format($product->currentPrice()) }}
-                                        <span>تومان</span>
+                                        @include('shop.partials.price', ['product' => $product])
                                     </p>
 
-                                    <p @class(['shop-template__stock', 'is-out' => ! $product->isPurchasable()])>
+                                    <p @class(['shop-template__stock', 'is-out' => ! ($product->has_stock && $product->stock_status === 'in_stock')])>
                                         <span></span>
-                                        {{ $product->isPurchasable() ? 'موجود' : 'ناموجود' }}
+                                        {{ $product->has_stock && $product->stock_status === 'in_stock' ? 'موجود' : 'ناموجود' }}
                                     </p>
                                 </div>
                             </article>

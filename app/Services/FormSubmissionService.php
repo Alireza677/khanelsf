@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -25,6 +26,7 @@ final class FormSubmissionService
 
     public function submit(Form $form, array $payload, array $attribution = [], array $files = [], ?array $confirmationAudit = null): FormSubmission
     {
+        unset($payload['_price_inquiry']);
         $this->calculators->assertConfiguration($form);
         // Resolve labels on the server, once, before building immutable answer snapshots.
         foreach (app(FormSchema::class)->fields($form) as $field) {
@@ -41,7 +43,7 @@ final class FormSubmissionService
 
             $location = app(IranLocations::class)->pair($value);
             if ($location === null) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     $field['name'] => 'استان و شهر انتخاب‌شده معتبر نیست.',
                 ]);
             }
@@ -65,6 +67,7 @@ final class FormSubmissionService
                     'payload' => [
                         ...$payload,
                         SubmissionAnswerSnapshot::PAYLOAD_KEY => $answerSnapshot,
+                        ...(empty($attribution['price_inquiry']) ? [] : ['_price_inquiry' => $attribution['price_inquiry']]),
                         ...($confirmationAudit === null ? [] : [
                             FormSubmitConfirmation::PAYLOAD_KEY => [
                                 ...$confirmationAudit,

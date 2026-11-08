@@ -10,6 +10,9 @@
             <h1 class="form-page__title">{{ $presentation['title'] }}</h1>
         @endif
         <div class="form-page__body">
+            @if (!empty($priceInquiry))
+                <p class="empty-state">استعلام قیمت: {{ $priceInquiry['title'] }} — شناسه کالا: <bdi>{{ $priceInquiry['sku'] ?? $priceInquiry['product_id'] }}</bdi></p>
+            @endif
             @include('forms._form', ['form' => $form, 'fields' => $fields, 'instanceToken' => $instanceToken ?? null, 'pagePresentation' => $presentation])
         </div>
     </section>

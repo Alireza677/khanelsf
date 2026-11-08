@@ -17,7 +17,7 @@ final class ProductAvailabilityService
 
     public function stockStatus(Product $product): string
     {
-        return $this->isPurchasable($product)
+        return $product->has_stock && $product->stock_status === self::IN_STOCK
             ? self::IN_STOCK
             : self::OUT_OF_STOCK;
     }

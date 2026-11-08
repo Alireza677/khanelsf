@@ -8,14 +8,15 @@ use App\Services\Calculators\InvalidCalculatorConfiguration;
 use App\Services\FormAttributionSession;
 use App\Services\FormSchema;
 use App\Services\FormSubmissionService;
+use App\Services\ProductPriceInquiry;
+use App\Support\FormPagePresentation;
+use App\Support\FormSubmitConfirmation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\UploadedFile;
-use App\Support\FormSubmitConfirmation;
-use App\Support\FormPagePresentation;
 use Illuminate\Validation\ValidationException;
 
 class FormController extends Controller
@@ -27,6 +28,12 @@ class FormController extends Controller
         FormAttributionSession $attribution,
     ): View|RedirectResponse {
         $form = Form::query()->published()->where('slug', $slug)->firstOrFail();
+
+        if ($request->has('_price_product')) {
+            app(ProductPriceInquiry::class)->capture($request, $form, $attribution);
+
+            return redirect()->route('forms.show', ['slug' => $form->slug, '_form_instance' => $request->input('_form_instance')]);
+        }
 
         if ($request->hasAny(['_context_page_id', '_context_page_url', '_context_block_id'])) {
             $validated = $request->validate($this->attributionRules());
@@ -53,6 +60,7 @@ class FormController extends Controller
             'hero' => FormPagePresentation::hero($presentation),
             'fields' => $schema->fields($form),
             'instanceToken' => $instanceToken,
+            'priceInquiry' => app(ProductPriceInquiry::class)->context($request, $form, $instanceToken, required: false),
         ]);
     }
 
@@ -181,6 +189,7 @@ class FormController extends Controller
             : null;
 
         try {
+            $context['price_inquiry'] = app(ProductPriceInquiry::class)->context($request, $form, $instanceToken);
             $submission = $submissions->submit($form, $validated, $context, $files, $confirmationAudit);
         } catch (InvalidCalculatorConfiguration) {
             return back()->withErrors(['calculator' => InvalidCalculatorConfiguration::PUBLIC_MESSAGE], $this->errorBag($instanceToken))
@@ -190,6 +199,7 @@ class FormController extends Controller
                 ->withInput()->with('_form_feedback_instance', $instanceToken);
         }
         $attribution->forget($request, $form, $instanceToken);
+        app(ProductPriceInquiry::class)->forget($request, $form, $instanceToken);
 
         $redirect = $request->input('_display_mode') === 'modal'
             ? redirect()->route('forms.show', $form->slug)

@@ -35,17 +35,18 @@
                 @if ($settings['show_price'] && is_numeric($effectivePrice))
                     <div>
                         <dt>قیمت</dt>
-                        <dd>{{ number_format((float) $effectivePrice) }} تومان <small>({{ $currency }})</small></dd>
+                        <dd>@include('shop.partials.price', ['product' => $product, 'pricePresentation' => $availability['priceFreshness'] ?? null])</dd>
                     </div>
                 @endif
 
                 @if ($settings['show_availability'] && array_key_exists('purchasable', $availability))
                     <div>
                         <dt>وضعیت</dt>
-                        <dd>{{ $availability['purchasable'] ? 'موجود و قابل سفارش' : 'ناموجود' }}</dd>
+                        <dd>{{ ($availability['stockStatus'] ?? '') === 'in_stock' ? (($availability['purchasable'] ?? false) ? 'موجود و قابل سفارش' : 'موجود؛ نیازمند استعلام قیمت') : 'ناموجود' }}</dd>
                     </div>
                 @endif
             </dl>
+            @include('shop.partials.price-notice', ['product' => $product, 'pricePresentation' => $availability['priceFreshness'] ?? null])
 
             @if ($settings['show_cta'] && ($availability['purchasable'] ?? false))
                 @if (empty($context['isPreview']))

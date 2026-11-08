@@ -1,5 +1,9 @@
 <x-filament-panels::page>
 <div class=submission-view dir=rtl>
+@if (!empty($priceInquiry))
+<section class=submission-card><header><h2>محصول مورد استعلام</h2></header>
+<p>{{ $priceInquiry['title'] }} — شناسه: {{ $priceInquiry['product_id'] }} — SKU: <bdi>{{ $priceInquiry['sku'] ?? '—' }}</bdi></p></section>
+@endif
 <section class=submission-card>
 <header><h2>خلاصه ورودی</h2></header>
 <div class=summary-grid>

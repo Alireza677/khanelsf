@@ -13,16 +13,11 @@
                 @if ($model->sku)
                     <div><dt>SKU</dt><dd>{{ $model->sku }}</dd></div>
                 @endif
-                <div><dt>Availability</dt><dd>{{ $model->isPurchasable() ? 'In stock' : 'Out of stock' }}</dd></div>
+                <div><dt>Availability</dt><dd>{{ $model->has_stock && $model->stock_status === 'in_stock' ? 'In stock' : 'Out of stock' }}</dd></div>
                 <div>
-                    <dt>Price</dt>
+                    <dt>قیمت</dt>
                     <dd>
-                        @if ($model->hasSalePrice())
-                            <span class="product-price__sale">${{ number_format($model->currentPrice(), 2) }}</span>
-                            <span class="product-price__regular">${{ number_format((float) $model->price, 2) }}</span>
-                        @else
-                            ${{ number_format($model->currentPrice(), 2) }}
-                        @endif
+                        @include('shop.partials.price', ['product' => $model])
                     </dd>
                 </div>
             @elseif ($type === 'project')

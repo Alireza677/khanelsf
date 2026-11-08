@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\CMS\Navigation\Contracts\ResolvesNavigationUrl;
 use App\Models\Concerns\HasFeaturedImage;
+use App\Models\Concerns\TracksProductPrice;
+use App\Services\ProductPriceFreshness;
 use App\Services\ProductPricingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,12 +19,15 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Product extends Model implements HasMedia, ResolvesNavigationUrl
 {
+    protected $attributes = ['price' => '0.00'];
+
     use HasFactory;
     use HasFeaturedImage;
     use InteractsWithMedia {
         HasFeaturedImage::registerMediaCollections insteadof InteractsWithMedia;
         HasFeaturedImage::registerMediaConversions insteadof InteractsWithMedia;
     }
+    use TracksProductPrice;
 
     protected $fillable = [
         'product_category_id',
@@ -32,6 +37,8 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
         'content',
         'price',
         'sale_price',
+        'price_validity_mode',
+        'price_validity_days',
         'sku',
         'status',
         'published_at',
@@ -51,6 +58,9 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
         return [
             'price' => 'decimal:2',
             'sale_price' => 'decimal:2',
+            'price_changed_at' => 'datetime',
+            'price_verified_at' => 'datetime',
+            'price_validity_days' => 'integer',
             'published_at' => 'datetime',
             'is_featured' => 'boolean',
             'has_stock' => 'boolean',
@@ -85,6 +95,11 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'product_category_id');
+    }
+
+    public function priceHistories(): HasMany
+    {
+        return $this->hasMany(ProductPriceHistory::class)->orderByDesc('id');
     }
 
     public function specifications(): HasMany
@@ -163,6 +178,9 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
 
     public function isPurchasable(): bool
     {
-        return $this->has_stock && $this->stock_status === 'in_stock';
+        return $this->has_stock && $this->stock_status === 'in_stock'
+            && $this->status === 'published'
+            && (! $this->published_at || $this->published_at->lte(now()))
+            && app(ProductPriceFreshness::class)->allowsPurchase($this);
     }
 }

@@ -13,6 +13,7 @@ use App\Services\ProductImport\ProductImportMapper;
 use App\Services\ProductImport\ProductImportService;
 use App\Services\ProductImport\ProductImportTemplate;
 use App\Services\ProductImport\ProductWorkbookReader;
+use App\Services\ProductPriceFreshness;
 use App\Services\SettingsService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +75,7 @@ class ProductImportTest extends TestCase
         $this->assertSame('000123', $product->sku);
         $this->assertSame('پروفیل-سی-۹۰', $product->slug);
         $this->assertSame('0.00', $product->price);
+        $this->assertSame('missing', app(ProductPriceFreshness::class)->status($product));
         $this->assertSame('draft', $product->status);
         $this->assertSame('out_of_stock', $product->stock_status);
         $this->assertFalse($product->has_stock);
@@ -434,6 +436,36 @@ class ProductImportTest extends TestCase
     private function service(): ProductImportService
     {
         return app(ProductImportService::class);
+    }
+
+    public function test_import_price_changes_invalidate_verification_and_repeat_import_has_no_duplicate_history(): void
+    {
+        $batch = $this->stage([$this->product(['price' => '100.25'])]);
+        $this->service()->execute($batch, $this->actor, true);
+        $product = Product::query()->sole();
+        $freshness = app(ProductPriceFreshness::class);
+        $this->assertSame('unverified', $freshness->status($product));
+        $this->assertSame('import', $product->priceHistories()->sole()->source);
+        $this->assertSame($this->actor->id, $product->priceHistories()->sole()->user_id);
+        $product = $freshness->verify($product, $this->actor);
+        $originalChanged = $product->price_changed_at->toDateTimeString();
+        $this->travel(1)->day();
+        $same = $this->stage([$this->product(['price' => '100.25'])]);
+        $this->service()->execute($same, $this->actor, true);
+        $this->assertSame($originalChanged, $product->fresh()->price_changed_at->toDateTimeString());
+        $this->assertNotNull($product->fresh()->price_verified_at);
+        $this->assertDatabaseCount('product_price_histories', 2);
+
+        $changed = $this->stage([$this->product(['price' => '200.50'])]);
+        $changed = $this->service()->configure($changed, $this->actor, 'create_update', []);
+        $changed = $this->service()->decide($changed, $changed->rows()->sole(), $this->actor, ['update' => true]);
+        $this->service()->execute($changed, $this->actor, true);
+        $this->assertSame('200.50', $product->fresh()->price);
+        $this->assertNull($product->fresh()->price_verified_at);
+        $this->assertDatabaseCount('product_price_histories', 3);
+        $repeat = $this->stage([$this->product(['price' => '200.50'])]);
+        $this->service()->execute($repeat, $this->actor, true);
+        $this->assertDatabaseCount('product_price_histories', 3);
     }
 
     private function product(array $overrides = []): array

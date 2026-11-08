@@ -35,21 +35,18 @@
 
             <div>
                 <dt>وضعیت موجودی</dt>
-                <dd>{{ $product->isPurchasable() ? 'موجود' : 'ناموجود' }}</dd>
+                <dd>{{ $product->has_stock && $product->stock_status === 'in_stock' ? 'موجود' : 'ناموجود' }}</dd>
             </div>
 
             <div>
                 <dt>قیمت</dt>
                 <dd>
-                    @if ($product->hasSalePrice())
-                        <span class="product-price__sale">{{ number_format($product->currentPrice()) }} تومان</span>
-                        <span class="product-price__regular">{{ number_format((float) $product->price) }} تومان</span>
-                    @else
-                        {{ number_format($product->currentPrice()) }} تومان
-                    @endif
+                    @include('shop.partials.price', ['product' => $product])
                 </dd>
             </div>
         </dl>
+
+        @include('shop.partials.price-notice', ['product' => $product])
 
         @if ($product->isPurchasable() && empty($isPreview))
             <form class="cart-inline-form" method="post" action="{{ route('cart.add', $product) }}">

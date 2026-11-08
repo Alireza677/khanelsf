@@ -4,6 +4,7 @@
 
 @if ($product)
     <section class="content-block">
+        @include('shop.partials.price-notice', ['product' => $product])
         @if ($product->isPurchasable() && empty($isPreview))
             <form class="cart-inline-form" method="post" action="{{ route('cart.add', $product) }}">
                 @csrf
