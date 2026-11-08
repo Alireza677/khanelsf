@@ -156,11 +156,6 @@ class OrderResource extends Resource
                     ->label('تلفن')
                     ->searchable()
                     ->url(fn (Order $record): ?string => filled($record->customer_phone) ? 'tel:'.$record->customer_phone : null),
-                Tables\Columns\TextColumn::make('customer_email')
-                    ->label('ایمیل')
-                    ->searchable()
-                    ->toggleable()
-                    ->url(fn (Order $record): ?string => filled($record->customer_email) ? 'mailto:'.$record->customer_email : null),
                 Tables\Columns\TextColumn::make('status')
                     ->label('وضعیت سفارش')
                     ->formatStateUsing(fn (?string $state, Order $record): string => $record->statusLabel())

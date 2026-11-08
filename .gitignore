@@ -5,6 +5,7 @@
 /public/storage
 /storage/*.key
 /storage/app/private
+/storage/app/product-imports-private/
 /storage/framework/cache/*
 !/storage/framework/cache/.gitignore
 !/storage/framework/cache/data
