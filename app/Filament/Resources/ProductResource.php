@@ -327,21 +327,23 @@ class ProductResource extends Resource
                 Tables\Columns\SpatieMediaLibraryImageColumn::make('featured_image')
                     ->collection('featured_image')
                     ->conversion('thumb')
-                    ->label('تصویر'),
+                    ->label('تصویر')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('title')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('category.name')->label('دسته‌بندی')->sortable()->toggleable(),
+                Tables\Columns\TextColumn::make('category.name')->label('دسته‌بندی')->sortable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('price')
-                    ->label('قیمت')
+                    ->label('قیمت عادی')
                     ->formatStateUsing(fn (mixed $state): string => number_format((float) $state).' تومان')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('sale_price')
-                    ->label('قیمت فروش')
+                    ->label('قیمت با تخفیف')
                     ->formatStateUsing(fn (mixed $state): string => filled($state)
                         ? number_format((float) $state).' تومان'
                         : '—')
                     ->sortable()
-                    ->toggleable(),
-                Tables\Columns\TextColumn::make('status')->badge()->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('status')->badge()->sortable()->toggleable(),
                 SeoIndexComponents::column(),
                 Tables\Columns\TextColumn::make('price_state')->label('وضعیت قیمت')
                     ->state(fn (Product $record) => app(ProductPriceFreshness::class)->status($record))
@@ -351,8 +353,8 @@ class ProductResource extends Resource
                     })
                     ->icon(fn (string $state) => match ($state) {
                         'valid' => 'heroicon-o-check-circle', 'expired' => 'heroicon-o-x-circle', 'expiring_soon' => 'heroicon-o-clock', default => 'heroicon-o-question-mark-circle'
-                    }),
-                Tables\Columns\TextColumn::make('price_verified_at')->label('آخرین تأیید قیمت')->jalaliDateTime()->placeholder('تأیید نشده')->sortable(),
+                    })->toggleable(),
+                Tables\Columns\TextColumn::make('price_verified_at')->label('آخرین تأیید قیمت')->jalaliDateTime()->placeholder('تأیید نشده')->sortable()->toggleable(),
                 Tables\Columns\TextColumn::make('price_changed_at')->label('آخرین تغییر قیمت')->jalaliDateTime()->placeholder('ثبت نشده')->sortable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('effective_validity')->label('اعتبار قیمت')
                     ->state(fn (Product $record) => ($days = app(ProductPriceFreshness::class)->days($record)) === null ? 'نامحدود' : $days.' روز')->toggleable(isToggledHiddenByDefault: true),
@@ -361,8 +363,8 @@ class ProductResource extends Resource
                     ->jalaliDateTime()->placeholder('—')
                     ->sortable(query: fn ($query, string $direction) => $query->orderByRaw('('.app(ProductPriceFreshness::class)->expiryExpression().') '.($direction === 'desc' ? 'desc' : 'asc')))
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('stock_status')->badge()->sortable(),
-                Tables\Columns\IconColumn::make('is_featured')->boolean()->label('ویژه')->sortable(),
+                Tables\Columns\TextColumn::make('stock_status')->badge()->sortable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_featured')->boolean()->label('ویژه')->sortable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')->jalaliDateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
