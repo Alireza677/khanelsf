@@ -183,7 +183,7 @@ class ClientServiceDeliveryPortalTest extends TestCase
         $this->actingAs($this->member, 'client')->get(route('account.projects.show', $this->project))->assertOk()->assertSee('تعهد محفوظ')->assertSee('12345678901234.1234')->assertSee('شرایط تاریخی')->assertDontSee('کار داخلی محرمانه')->assertDontSee('یادداشت مدیریتی محرمانه')->assertDontSee('مصرف دوره جاری');
         $this->get(route('account.delivery.show', ['project' => $this->project->id, 'workItem' => $extra->id]))->assertNotFound();
         $this->get($this->url('show'))->assertOk()->assertDontSee('یادداشت مدیریتی محرمانه')->assertSee('در حال اجرا')->assertSee('برنامه کار ثبت شد');
-        $this->get(route('account.services.index'))->assertOk()->assertSee('تعهدات تحویل')->assertSee('تعهد محفوظ');
+        $this->get(route('account.services.index'))->assertOk()->assertSee('تحویل خروجی‌ها')->assertSee('تعهد محفوظ');
     }
 
     public function test_reports_preserve_cycle_snapshots_reject_false_success_and_create_immutable_corrections(): void

@@ -4,33 +4,41 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Services\ClientAuthenticator;
+use App\Services\ClientAuthResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): View
+    public function create(Request $request, ClientAuthResponse $continuation): View
     {
+        $continuation->capture($request);
+
         return view('client.auth.login');
     }
 
-    public function store(Request $request, ClientAuthenticator $authenticator): RedirectResponse
+    public function store(Request $request, ClientAuthenticator $authenticator, ClientAuthResponse $continuation): JsonResponse|RedirectResponse
     {
+        $continuation->capture($request);
+        if ($response = $continuation->alreadyAuthenticated($request)) {
+            return $response;
+        }
+
         $credentials = $request->validate([
             'mobile' => ['required', 'string', 'max:32'],
             'password' => ['required', 'string'],
         ]);
 
         if (! $authenticator->attemptWithPassword($credentials['mobile'], $credentials['password'])) {
-            return back()->withErrors([
-                'mobile' => 'The provided credentials are incorrect.',
-            ])->onlyInput('mobile');
+            throw ValidationException::withMessages([
+                'mobile' => 'شماره موبایل یا رمز عبور صحیح نیست، یا حساب شما فعال نیست.',
+            ]);
         }
 
-        $request->session()->regenerate();
-
-        return redirect()->intended(route('account.home'));
+        return $continuation->success($request);
     }
 
     public function destroy(Request $request, ClientAuthenticator $authenticator): RedirectResponse

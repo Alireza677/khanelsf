@@ -30,21 +30,21 @@
 
             <div>
                 <label for="customer_name">نام</label>
-                <input id="customer_name" name="customer_name" type="text" value="{{ old('customer_name') }}" required>
+                <input id="customer_name" name="customer_name" type="text" autocomplete="name" value="{{ old('customer_name', $checkoutUser->name) }}" required>
                 <p class="field-help">نامی که برای پیگیری سفارش استفاده می‌شود.</p>
                 @error('customer_name') <p class="form-error">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label for="customer_phone">تلفن</label>
-                <input id="customer_phone" name="customer_phone" type="text" value="{{ old('customer_phone') }}" required>
+                <input id="customer_phone" name="customer_phone" type="tel" autocomplete="tel" dir="ltr" value="{{ old('customer_phone', $checkoutUser->mobile) }}" required>
                 <p class="field-help">برای تایید و پیگیری سفارش الزامی است.</p>
                 @error('customer_phone') <p class="form-error">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label for="customer_email">ایمیل</label>
-                <input id="customer_email" name="customer_email" type="email" value="{{ old('customer_email') }}">
+                <input id="customer_email" name="customer_email" type="email" autocomplete="email" dir="ltr" value="{{ old('customer_email', $checkoutUser->email) }}">
                 <p class="field-help">اختیاری است. برای دریافت ایمیل تایید سفارش وارد کنید.</p>
                 @error('customer_email') <p class="form-error">{{ $message }}</p> @enderror
             </div>

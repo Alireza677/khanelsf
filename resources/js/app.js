@@ -1,6 +1,7 @@
 import './bootstrap';
 import { initIndustrialStickyHeader } from './components/industrial-sticky-header';
 import { initHeaderOverlays } from './components/header-overlays';
+import { initCheckoutAuth } from './components/checkout-auth';
 import { initFormDatePickers } from './components/form-date-pickers';
 import { initFormNumberInputs } from './components/form-number-inputs';
 import { initFormPages } from './components/form-page';
@@ -1000,6 +1001,7 @@ const initPublicInteractions = () => {
     initMobileHeader();
     initIndustrialStickyHeader();
     initHeaderOverlays();
+    initCheckoutAuth();
     initDesktopNavigationOverflow();
     initActionPlaceholders();
     initGalleryLightbox();

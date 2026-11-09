@@ -94,9 +94,14 @@ while (! is_file($barrier)) {
 for ($retry = 0; ; $retry++) {
     try {
         if ($mode === 'checkout') {
-            [$order, $created] = app(CheckoutIdempotency::class)->execute($request, null,
-                ['customer_name' => 'Race customer', 'customer_phone' => '09120000000'], 'manual', function (): Order {
+            $owner = User::query()->findOrFail($actorId);
+            if (! $owner->isClient() || ! $owner->isActive()) {
+                throw new RuntimeException('Checkout race requires an active client owner.');
+            }
+            [$order, $created] = app(CheckoutIdempotency::class)->execute($request, $owner->id,
+                ['customer_name' => 'Race customer', 'customer_phone' => '09120000000'], 'manual', function () use ($owner): Order {
                     $order = Order::query()->create([
+                        'user_id' => $owner->id,
                         'order_number' => 'RACE-'.Str::uuid(),
                         'customer_name' => 'Race customer', 'customer_phone' => '09120000000',
                         'status' => 'pending', 'payment_status' => 'unpaid', 'payment_method' => 'manual',

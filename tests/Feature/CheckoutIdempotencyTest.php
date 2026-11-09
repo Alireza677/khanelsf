@@ -23,6 +23,7 @@ class CheckoutIdempotencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAs(User::factory()->client()->create(), 'client');
         Mail::fake();
         Http::preventStrayRequests();
     }
@@ -37,7 +38,7 @@ class CheckoutIdempotencyTest extends TestCase
         $this->assertDatabaseCount('order_items', 1);
         $this->assertDatabaseCount('payment_attempts', 0);
         $this->assertSame('0.30', $order->total);
-        $this->assertNull($order->user_id);
+        $this->assertSame(auth('client')->id(), $order->user_id);
         $this->get($first->headers->get('Location'))->assertOk()->assertSee('سفارش دریافت شد');
         $this->assertDatabaseHas('checkout_intents', ['order_id' => $order->id]);
         Http::assertNothingSent();
@@ -74,7 +75,7 @@ class CheckoutIdempotencyTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
     }
 
-    public function test_customer_switch_cannot_replay_an_owned_or_guest_order(): void
+    public function test_customer_switch_cannot_replay_an_owned_order(): void
     {
         $user = User::factory()->client()->create();
         $this->actingAs($user, 'client');

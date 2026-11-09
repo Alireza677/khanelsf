@@ -67,9 +67,10 @@ class CustomerManagementFoundationTest extends TestCase
         $this->actingAs($client, 'client')
             ->get('/dashboard')
             ->assertOk()
-            ->assertSee('Assigned Account')
+            ->assertViewHas('customer', fn (Customer $customer): bool => $customer->is($assigned))
+            ->assertViewHas('customers', fn ($customers): bool => $customers->modelKeys() === [$assigned->id])
             ->assertSee('پروژه‌های فعال')
-            ->assertSee('دسترسی سریع')
+            ->assertSee('پروژه‌های من')
             ->assertDontSee('Other Account');
 
         $this->actingAs($client, 'client')

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
 use App\Services\CartService;
 use App\Services\ProductPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,6 +22,8 @@ class CheckoutTransactionIntegrityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->actingAs(User::factory()->client()->create(), 'client');
 
         Mail::fake();
         Http::preventStrayRequests();
@@ -123,7 +126,7 @@ class CheckoutTransactionIntegrityTest extends TestCase
         $order = Order::query()->with('items')->sole();
         $this->assertSame('0.70', $order->total);
         $this->assertSame('0.70', $order->subtotal);
-        $this->assertNull($order->user_id);
+        $this->assertSame(auth('client')->id(), $order->user_id);
         $item = $order->items->firstWhere('product_id', $first->id);
         $this->assertSame('Database title', $item->product_title);
         $this->assertSame('SKU-DB', $item->product_sku);

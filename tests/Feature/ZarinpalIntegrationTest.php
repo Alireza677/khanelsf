@@ -243,6 +243,27 @@ class ZarinpalIntegrationTest extends TestCase
         $this->assertFalse($second->refresh()->isPaid());
     }
 
+    public function test_owned_payment_callback_without_browser_session_settles_once_and_is_visible_only_to_owner(): void
+    {
+        $owner = User::factory()->client()->create();
+        $order = $this->order(['user_id' => $owner->id, 'customer_name' => 'Private Callback Buyer']);
+        $attempt = $this->initiate($order);
+        app(OrderConfirmationUrl::class)->remember($order);
+        session()->invalidate();
+        auth('client')->logout();
+        $this->fakeHttp(['*' => Http::response(['data' => ['code' => 100, 'ref_id' => 123], 'errors' => []])]);
+        $callback = route('payments.zarinpal.callback', $this->callbackPayload($attempt));
+        $this->get($callback)->assertOk()->assertDontSee('Private Callback Buyer')->assertDontSee($order->order_number);
+        $this->get($callback)->assertOk()->assertDontSee('Private Callback Buyer');
+        $this->assertTrue($order->fresh()->isPaid());
+        $this->assertSame($owner->id, $order->fresh()->user_id);
+        $this->assertDatabaseCount('payment_attempts', 1);
+        Http::assertSentCount(1);
+        $this->actingAs($owner, 'client')->get(route('account.orders.show', $order))
+            ->assertOk()->assertSee('پرداخت تأیید شد')->assertSee('Private Callback Buyer');
+        $this->actingAs(User::factory()->client()->create(), 'client')->get(route('account.orders.show', $order))->assertNotFound();
+    }
+
     public function test_changed_merchant_environment_or_disabled_gateway_cannot_verify_an_old_attempt(): void
     {
         $order = $this->order();
@@ -333,8 +354,10 @@ class ZarinpalIntegrationTest extends TestCase
         $this->assertNull($b->settlement_order_id);
     }
 
-    public function test_guest_checkout_redirect_and_receipt_keep_order_idempotency_and_exact_amount(): void
+    public function test_authenticated_checkout_redirect_and_receipt_keep_order_idempotency_and_exact_amount(): void
     {
+        $owner = User::factory()->client()->create();
+        $this->actingAs($owner, 'client');
         app(SettingsService::class)->set('payment_gateway', 'zarinpal');
         $product = Product::factory()->published()->create(['price' => '10000.00', 'sale_price' => null]);
         $this->fakeHttp(['*' => Http::response(['data' => ['code' => 100, 'authority' => $this->authority()], 'errors' => []])]);
@@ -346,7 +369,7 @@ class ZarinpalIntegrationTest extends TestCase
         $this->post(route('checkout.store'), $payload)->assertRedirect('https://sandbox.zarinpal.com/pg/StartPay/'.$this->authority());
         $order = Order::query()->sole();
         $attempt = PaymentAttempt::query()->sole();
-        $this->assertNull($order->user_id);
+        $this->assertSame($owner->id, $order->user_id);
         $this->assertSame('10000.00', $order->total);
         Http::assertSentCount(1);
         $this->fakeHttp(['*' => Http::response(['data' => ['code' => 100, 'ref_id' => 123], 'errors' => []])]);
@@ -361,6 +384,8 @@ class ZarinpalIntegrationTest extends TestCase
         $attempt = $this->initiate($order);
         $confirmation = app(OrderConfirmationUrl::class);
         $this->post(route('payments.zarinpal.retry', $order))->assertForbidden();
+        $this->post($confirmation->paymentAction($order, 'retry'))->assertNotFound();
+        $confirmation->remember($order);
         $this->post($confirmation->paymentAction($order, 'retry'))->assertRedirect('https://sandbox.zarinpal.com/pg/StartPay/'.$attempt->authority);
         $owner = User::factory()->client()->create();
         $owned = $this->order(['user_id' => $owner->id]);
@@ -478,6 +503,7 @@ class ZarinpalIntegrationTest extends TestCase
 
     public function test_fractional_checkout_gateway_amount_preserves_cart_and_does_not_create_order(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         app(SettingsService::class)->set('payment_gateway', 'zarinpal');
         $product = Product::factory()->published()->create(['price' => '1000.50']);
         $this->post(route('cart.add', $product), ['quantity' => 1]);

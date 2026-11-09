@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\ZarinpalGraphqlClient;
 use App\Services\ZarinpalPaymentGateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,6 +19,7 @@ class ZarinpalPaymentGatewayTest extends TestCase
 
     public function test_manual_payment_checkout_still_works(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         Mail::fake();
 
         $product = Product::factory()->published()->create([
@@ -45,6 +47,7 @@ class ZarinpalPaymentGatewayTest extends TestCase
 
     public function test_zarinpal_without_token_does_not_crash_or_clear_cart(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         Setting::query()->create([
             'key' => 'payment_gateway',
             'value' => 'zarinpal',
@@ -101,7 +104,7 @@ class ZarinpalPaymentGatewayTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('نتیجه پرداخت')
-            ->assertSee('رسید امضاشده سفارش');
+            ->assertSee('سفارش‌های من');
     }
 
     public function test_disabled_zarinpal_methods_are_safe(): void

@@ -8,9 +8,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\CustomerMembershipManager;
 use App\Services\OrderConfirmationUrl;
-use App\Support\PublicOrderCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -88,20 +86,15 @@ class ShopAccountIntegrationTest extends TestCase
         $this->assertSignedConfirmationRedirect($response, $order);
     }
 
-    public function test_guest_and_web_admin_checkouts_create_null_owner_orders(): void
+    public function test_guest_and_web_admin_checkouts_cannot_create_orders(): void
     {
-        $response = $this->checkout();
-        $guestOrder = Order::query()->sole();
-        $this->assertNull($guestOrder->user_id);
-        $this->assertSignedConfirmationRedirect($response, $guestOrder);
-
-        // Fixture cleanup: durable checkout evidence deliberately prevents deleting its Order.
-        DB::table('checkout_intents')->delete();
-        Order::query()->delete();
+        $this->checkout()->assertRedirect(route('login', ['continue' => 'checkout']));
+        $this->assertDatabaseCount('orders', 0);
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin, 'web')->checkout(['customer_name' => 'Admin browser guest order']);
-
-        $this->assertNull(Order::query()->sole()->user_id);
+        $this->actingAs($admin, 'web')->checkout(['customer_name' => 'Admin browser guest order'])
+            ->assertRedirect(route('login', ['continue' => 'checkout']));
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('payment_attempts', 0);
     }
 
     public function test_guest_cannot_access_account_orders(): void
@@ -168,8 +161,9 @@ class ShopAccountIntegrationTest extends TestCase
 
         $this->get($url)
             ->assertOk()
-            ->assertSee($order->displayCode())
-            ->assertDontSee($order->order_number);
+            ->assertSee('پیگیری سفارش قدیمی')
+            ->assertDontSee($order->order_number)
+            ->assertDontSee($order->customer_phone);
         $this->get(route('checkout.thank-you', $order))->assertForbidden();
         $this->get(str_replace("/{$order->id}?", "/{$other->id}?", $url))
             ->assertForbidden()

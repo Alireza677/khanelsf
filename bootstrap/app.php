@@ -8,6 +8,8 @@ use App\Http\Middleware\ShareClientPortalContext;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 abort(404);
             }
 
-            return route('login');
+            return route('login', $request->routeIs('checkout.create', 'checkout.store') ? ['continue' => 'checkout'] : []);
         });
         $middleware->alias([
             'client' => EnsureClientUser::class,
@@ -39,5 +41,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Use Laravel's default exception reporting and rendering.
+        // Public modal transport; retain the framework status and rate-limit headers.
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
+            if (! $request->expectsJson() || ! $request->routeIs('client.login.store', 'client.register.store')
+                || ! in_array($exception->getStatusCode(), [419, 429], true)) {
+                return null;
+            }
+            $expired = $exception->getStatusCode() === 419;
+
+            return response()->json([
+                'code' => $expired ? 'session_expired' : 'rate_limited',
+                'message' => $expired
+                    ? 'نشست فرم منقضی شده است. صفحه ورود را دوباره باز کنید.'
+                    : 'تعداد تلاش‌ها زیاد است. کمی صبر کنید و دوباره تلاش کنید.',
+            ], $exception->getStatusCode(), $exception->getHeaders())->header('Cache-Control', 'no-store, private');
+        });
     })->create();

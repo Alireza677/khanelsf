@@ -6,7 +6,6 @@ use App\Contracts\PaymentGateway;
 use App\Models\Order;
 use App\Services\CartService;
 use App\Services\CheckoutIdempotency;
-use App\Services\ManualPaymentGateway;
 use App\Services\ModuleService;
 use App\Services\OrderConfirmationUrl;
 use App\Services\OrderReceiptPresentation;
@@ -16,6 +15,7 @@ use App\Services\ZarinpalPaymentGateway;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -43,6 +43,7 @@ class CheckoutController extends Controller
             'subtotal' => $cart->totalFor($items),
             'cartReview' => $cart->reviewToken($items),
             'checkoutIntent' => app(CheckoutIdempotency::class)->issue($request, $this->publicOwnerId()),
+            'checkoutUser' => $request->user('client'),
         ]);
     }
 
@@ -142,13 +143,16 @@ class CheckoutController extends Controller
         return redirect()->to($confirmations->temporary($order))->with('success', 'سفارش شما دریافت شد.');
     }
 
-    public function thankYou(Order $order, PaymentGateway $paymentGateway, ModuleService $modules): View
+    public function thankYou(Order $order, OrderConfirmationUrl $confirmations): Response
     {
-        $ownerId = Auth::guard('client')->id();
+        // Null ownership also includes deleted accounts. Never expose their snapshots.
+        if ($order->user_id === null) {
+            return response()->view('shop.legacy-receipt')->header('Cache-Control', 'no-store, private');
+        }
+        $confirmations->assertOwner($order);
 
-        abort_if($order->user_id !== null && $ownerId !== $order->user_id, 404);
-
-        return view('shop.thank-you', app(OrderReceiptPresentation::class)->forOrder($order));
+        return response()->view('shop.thank-you', app(OrderReceiptPresentation::class)->forOrder($order))
+            ->header('Cache-Control', 'no-store, private');
     }
 
     private function sendOrderEmails(Order $order, SettingsService $settings, PaymentGateway $paymentGateway): void
@@ -230,10 +234,12 @@ class CheckoutController extends Controller
         abort_unless($modules->shopEnabled(), 404);
     }
 
-    private function publicOwnerId(): ?int
+    private function publicOwnerId(): int
     {
-        $user = Auth::guard('client')->user();
+        $user = Auth::guard('client')->user()?->fresh();
 
-        return $user && ! $user->is_admin && $user->status === 'active' ? $user->getKey() : null;
+        abort_unless($user?->isClient() && $user->isActive(), 403);
+
+        return $user->getKey();
     }
 }

@@ -217,6 +217,7 @@ export const initHeaderOverlays = () => {
 
     document.documentElement.dataset.headerOverlaysInitialized = 'true';
     let activeOverlay = null;
+    let activeTrigger = null;
     let returnFocus = null;
     let inertElements = [];
 
@@ -233,20 +234,26 @@ export const initHeaderOverlays = () => {
         }
 
         const trigger = returnFocus;
+        const closedOverlay = activeOverlay;
         activeOverlay.hidden = true;
         activeOverlay = null;
         returnFocus = null;
         restoreBackground();
         document.body.classList.remove('header-overlay-open');
+        activeTrigger?.setAttribute('aria-expanded', 'false');
+        activeTrigger = null;
         document.querySelectorAll('[data-header-overlay-trigger][aria-expanded="true"]')
             .forEach((item) => item.setAttribute('aria-expanded', 'false'));
 
         if (restoreFocus) {
             trigger?.focus();
         }
+        closedOverlay.dispatchEvent(new CustomEvent('header-overlay:closed'));
     };
 
     const open = (overlay, trigger) => {
+        // A checkout link inside the drawer disappears when that drawer closes.
+        const focusTarget = activeOverlay?.contains(trigger) ? returnFocus : trigger;
         if (activeOverlay) {
             close({ restoreFocus: false });
         }
@@ -255,7 +262,8 @@ export const initHeaderOverlays = () => {
             .forEach((details) => details.removeAttribute('open'));
 
         activeOverlay = overlay;
-        returnFocus = trigger;
+        returnFocus = focusTarget;
+        activeTrigger = trigger;
         overlay.hidden = false;
         trigger.setAttribute('aria-expanded', 'true');
         document.body.classList.add('header-overlay-open');
@@ -268,10 +276,16 @@ export const initHeaderOverlays = () => {
             });
 
         requestAnimationFrame(() => {
-            const autofocus = overlay.querySelector('[data-header-overlay-autofocus]');
+            const autofocus = Array.from(overlay.querySelectorAll('[data-header-overlay-autofocus]'))
+                .find((element) => element.getClientRects().length > 0);
             (autofocus || overlay.querySelector('[data-header-overlay-panel]'))?.focus();
         });
     };
+
+    document.addEventListener('header-overlay:open', (event) => {
+        const overlay = overlays.get(event.detail?.id);
+        if (overlay && event.detail?.trigger) open(overlay, event.detail.trigger);
+    });
 
     document.addEventListener('click', (event) => {
         const trigger = event.target.closest('[data-header-overlay-trigger]');
@@ -308,7 +322,7 @@ export const initHeaderOverlays = () => {
         }
 
         const focusable = Array.from(activeOverlay.querySelectorAll(focusableSelector))
-            .filter((element) => ! element.hidden);
+            .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && ! element.closest('[hidden]'));
 
         if (focusable.length === 0) {
             event.preventDefault();

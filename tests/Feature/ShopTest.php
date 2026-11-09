@@ -198,6 +198,7 @@ class ShopTest extends TestCase
 
     public function test_checkout_page_requires_cart_and_loads_when_cart_has_items(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         $this->get(route('checkout.create'))
             ->assertRedirect(route('cart.index'));
 
@@ -217,6 +218,7 @@ class ShopTest extends TestCase
 
     public function test_checkout_creates_order_and_clears_cart(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         Mail::fake();
 
         $product = Product::factory()->published()->create([
@@ -272,6 +274,7 @@ class ShopTest extends TestCase
 
     public function test_checkout_validation_failure_keeps_cart(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         $product = Product::factory()->published()->create([
             'title' => 'Validation Product',
             'price' => 40,
@@ -333,7 +336,10 @@ class ShopTest extends TestCase
 
     public function test_thank_you_page_loads_with_order_details(): void
     {
+        $owner = User::factory()->client()->create();
+        $this->actingAs($owner, 'client');
         $order = Order::query()->create([
+            'user_id' => $owner->id,
             'order_number' => 'ORD-TEST-100',
             'customer_name' => 'Jane Client',
             'customer_phone' => '+1 555 000 0000',
@@ -364,6 +370,7 @@ class ShopTest extends TestCase
 
     public function test_order_emails_do_not_break_checkout(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         Mail::fake();
 
         Setting::query()->create([
@@ -398,7 +405,7 @@ class ShopTest extends TestCase
         ]);
 
         $this->get(route('admin.preview.products.show', $product))
-            ->assertRedirect();
+            ->assertNotFound();
 
         $this->actingAs(User::factory()->admin()->create())
             ->get(route('admin.preview.products.show', $product))

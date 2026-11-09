@@ -15,6 +15,7 @@ use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\ModuleCleanupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -94,7 +95,8 @@ class ModuleToggleTest extends TestCase
         $this->get(route('shop.index'))->assertNotFound();
         $this->get(route('shop.show', 'hidden-product'))->assertNotFound();
         $this->get(route('cart.index'))->assertNotFound();
-        $this->get(route('checkout.create'))->assertNotFound();
+        $this->actingAs(User::factory()->client()->create(), 'client')
+            ->get(route('checkout.create'))->assertNotFound();
     }
 
     public function test_cleanup_projects_deletes_projects_and_categories(): void

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ClientAuthResponse;
 use App\Support\MobileNormalizer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,13 +16,20 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    public function create(): View
+    public function create(Request $request, ClientAuthResponse $continuation): View
     {
+        $continuation->capture($request);
+
         return view('client.auth.register');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ClientAuthResponse $continuation): JsonResponse|RedirectResponse
     {
+        $continuation->capture($request);
+        if ($response = $continuation->alreadyAuthenticated($request)) {
+            return $response;
+        }
+
         $request->merge([
             'mobile' => MobileNormalizer::normalize($request->input('mobile')),
         ]);
@@ -43,8 +52,7 @@ class RegisteredUserController extends Controller
         ]);
 
         Auth::guard('client')->login($user);
-        $request->session()->regenerate();
 
-        return redirect()->intended(route('account.home'));
+        return $continuation->success($request);
     }
 }

@@ -251,6 +251,7 @@ class ProductPriceFreshnessTest extends TestCase
 
     public function test_expiry_in_cart_blocks_update_checkout_and_order_but_keeps_rows_removable(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         $this->settings('freshness_enabled', true);
         $expired = $this->verified(['price_validity_mode' => 'custom', 'price_validity_days' => 1]);
         $valid = $this->verified(['price_validity_mode' => 'unlimited']);
@@ -271,6 +272,7 @@ class ProductPriceFreshnessTest extends TestCase
 
     public function test_price_expiring_after_checkout_review_is_rejected_on_final_post(): void
     {
+        $this->actingAs(User::factory()->client()->create(), 'client');
         $this->settings('freshness_enabled', true);
         $product = $this->verified(['price_validity_mode' => 'custom', 'price_validity_days' => 1]);
         $this->travelTo(app(ProductPriceFreshness::class)->expiresAt($product)->subSecond());

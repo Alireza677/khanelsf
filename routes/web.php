@@ -58,14 +58,15 @@ Route::get('/search', PublicSearchController::class)->name('search.index');
 
 Route::middleware('guest:client')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
-        ->middleware('throttle:5,1')
-        ->name('client.login.store');
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('/register', [RegisteredUserController::class, 'store'])
-        ->middleware('throttle:5,1')
-        ->name('client.register.store');
 });
+
+// A second tab/replayed modal POST may already have authenticated this client.
+// The controllers return the current safe continuation without changing identity.
+Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+    ->middleware('throttle:5,1')->name('client.login.store');
+Route::post('/register', [RegisteredUserController::class, 'store'])
+    ->middleware('throttle:5,1')->name('client.register.store');
 
 Route::middleware(['auth:client', 'client', 'client.context'])->group(function (): void {
     Route::get('/dashboard', ClientDashboardController::class)->name('client.dashboard');
@@ -156,8 +157,10 @@ Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.a
 Route::match(['patch', 'post'], '/cart/update', [CartController::class, 'update'])->name('cart.update');
 Route::match(['delete', 'post'], '/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
 
-Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
-Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::middleware(['auth:client', 'client'])->group(function (): void {
+    Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+});
 Route::get('/checkout/thank-you/{order}', [CheckoutController::class, 'thankYou'])
     ->middleware('signed')
     ->name('checkout.thank-you');

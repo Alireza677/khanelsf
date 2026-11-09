@@ -4,6 +4,7 @@
 @import "./form-page.css";
 @import "./text-image.css";
 @import './components/feature-grid-videos.css';
+@import './components/checkout-auth.css';
 
 @tailwind base;
 @tailwind components;

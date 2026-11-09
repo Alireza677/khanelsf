@@ -9,6 +9,7 @@ use App\Models\PaymentAttempt;
 use App\Services\ModuleService;
 use App\Services\OrderPaymentService;
 use App\Services\ProductPricingService;
+use App\Services\ZarinpalPaymentGateway;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Components as Info;
@@ -58,7 +59,9 @@ class OrderResource extends Resource
                             Order::PAYMENT_STATUS_PAID => 'پرداخت‌شده',
                             Order::PAYMENT_STATUS_FAILED => 'ناموفق',
                         ]),
-                    Forms\Components\TextInput::make('payment_method')->label('روش پرداخت')->formatStateUsing(fn (?string $state): string => match ($state) { 'manual' => 'پرداخت دستی', 'zarinpal' => 'درگاه زرین‌پال', default => '—' })->disabled()->dehydrated(false),
+                    Forms\Components\TextInput::make('payment_method')->label('روش پرداخت')->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'manual' => 'پرداخت دستی', 'zarinpal' => 'درگاه زرین‌پال', default => '—'
+                    })->disabled()->dehydrated(false),
                     Forms\Components\Placeholder::make('payment_provenance')
                         ->label('منشأ تأیید پرداخت')
                         ->content(fn (?Order $record): string => $record?->paymentProvenanceLabel() ?? 'بدون تأیید پرداخت'),
@@ -136,7 +139,7 @@ class OrderResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('items'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['items', 'user']))
             ->recordUrl(fn (Order $record): string => static::getUrl('view', ['record' => $record]))
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -152,6 +155,10 @@ class OrderResource extends Resource
                     ->description(fn (Order $record): string => 'شناسه داخلی: '.$record->order_number)
                     ->tooltip(fn (Order $record): string => 'شناسه داخلی: '.$record->order_number),
                 Tables\Columns\TextColumn::make('customer_name')->label('مشتری')->searchable(),
+                Tables\Columns\TextColumn::make('user.name')->label('حساب مالک')
+                    ->placeholder('بدون مالک / قدیمی')->searchable()
+                    ->url(fn (Order $record): ?string => $record->user && ! $record->user->isAdmin()
+                        ? SiteUserResource::getUrl('view', ['record' => $record->user]) : null),
                 Tables\Columns\TextColumn::make('customer_phone')
                     ->label('تلفن')
                     ->searchable()
@@ -236,7 +243,7 @@ class OrderResource extends Resource
                 ->visible(fn (Order $record): bool => $record->payment_method === 'zarinpal' && ! $record->isPaid())
                 ->action(function (Order $record): void {
                     app(OrderPaymentService::class)->authorizeAdministrator(Auth::guard('web')->user());
-                    app(\App\Services\ZarinpalPaymentGateway::class)->reconcilePayment($record);
+                    app(ZarinpalPaymentGateway::class)->reconcilePayment($record);
                 }),
             $actionClass::make('markCompleted')->label('تکمیل سفارش')->icon('heroicon-o-check-circle')->color('success')
                 ->modalDescription('تکمیل سفارش وضعیت پرداخت را تغییر نمی‌دهد.')
@@ -272,6 +279,9 @@ class OrderResource extends Resource
                 Info\TextEntry::make('created_at')->label('زمان ثبت')->jalaliDateTime(),
             ])->columns(3),
             Info\Section::make('مشتری')->icon('heroicon-o-user')->schema([
+                Info\TextEntry::make('user.name')->label('حساب مالک')->placeholder('بدون مالک / قدیمی')
+                    ->url(fn (Order $record): ?string => $record->user && ! $record->user->isAdmin()
+                        ? SiteUserResource::getUrl('view', ['record' => $record->user]) : null),
                 Info\TextEntry::make('customer_name')->label('نام مشتری'),
                 Info\TextEntry::make('customer_phone')->label('تلفن')->url(fn (Order $record): ?string => filled($record->customer_phone) ? 'tel:'.$record->customer_phone : null),
                 Info\TextEntry::make('customer_email')->label('ایمیل')->url(fn (Order $record): ?string => filled($record->customer_email) ? 'mailto:'.$record->customer_email : null)->placeholder('ثبت نشده'),

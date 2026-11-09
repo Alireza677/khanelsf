@@ -780,6 +780,7 @@
         @include('partials.footer')
     @endif
 
+    @include('partials.checkout-auth-modal')
     @include('partials.action-form-modal-script')
 </body>
 </html>

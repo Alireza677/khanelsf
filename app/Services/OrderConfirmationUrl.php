@@ -26,7 +26,7 @@ class OrderConfirmationUrl
 
     public function canReturnToReceipt(Order $order): bool
     {
-        $user = Auth::guard('client')->user();
+        $user = Auth::guard('client')->user()?->fresh();
 
         return $order->user_id !== null
             ? $user && ! $user->is_admin && $user->isActive() && $user->id === $order->user_id
@@ -35,7 +35,8 @@ class OrderConfirmationUrl
 
     public function assertOwner(Order $order): void
     {
-        abort_if($order->user_id !== null && Auth::guard('client')->id() !== $order->user_id, 404);
+        // Legacy payment actions retain the original browser capability, not just a leaked URL.
+        abort_unless($this->canReturnToReceipt($order), 404);
     }
 
     public function paymentAction(Order $order, string $action, string $intent = 'initial'): string

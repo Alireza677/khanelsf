@@ -73,6 +73,7 @@ class CommerceConcurrencyTest extends TestCase
         });
         (require database_path('migrations/2026_10_27_000000_create_commerce_payment_foundation.php'))->up();
         (require database_path('migrations/2026_10_27_000001_add_zarinpal_operations_to_payment_attempts.php'))->up();
+        (require database_path('migrations/2026_11_07_000000_add_public_order_code_to_orders.php'))->up();
     }
 
     protected function tearDown(): void
@@ -106,11 +107,13 @@ class CommerceConcurrencyTest extends TestCase
         $session->put('shop_cart', [['product_id' => 1, 'quantity' => 1]]);
         $request = Request::create('/checkout');
         $request->setLaravelSession($session);
-        $key = app(CheckoutIdempotency::class)->issue($request, null);
-        [$first, $second] = $this->race('checkout', $key);
+        $owner = User::query()->create(['name' => 'Race client', 'is_admin' => false, 'status' => 'active']);
+        $key = app(CheckoutIdempotency::class)->issue($request, $owner->id);
+        [$first, $second] = $this->race('checkout', $key, (string) $owner->id);
         $this->assertSame($first['order'], $second['order']);
         $this->assertNotSame($first['created'], $second['created']);
         $this->assertDatabaseCount('orders', 1);
+        $this->assertSame($owner->id, Order::query()->sole()->user_id);
         $this->assertDatabaseCount('order_items', 1);
         $this->assertSame(1, DB::table('checkout_intents')->whereNotNull('order_id')->count());
     }
