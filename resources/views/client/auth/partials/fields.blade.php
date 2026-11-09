@@ -10,6 +10,7 @@
         $password = str_starts_with($name, 'password');
         $id = $prefix.'-'.$name;
         $fieldError = $modal ? null : $errors->first($name);
+        $fieldValue = $modal ? '' : old($name, '');
         $autocomplete = match ($name) {
             'mobile' => $registration ? 'tel' : 'username',
             'password' => $registration ? 'new-password' : 'current-password',
@@ -23,7 +24,7 @@
             id="{{ $id }}"
             name="{{ $name }}"
             type="{{ $password ? 'password' : ($name === 'email' ? 'email' : ($name === 'mobile' ? 'tel' : 'text')) }}"
-            @unless ($password) value="{{ $modal ? '' : old($name) }}" maxlength="{{ $name === 'mobile' ? 32 : 255 }}" @endunless
+            @unless ($password) value="{{ is_string($fieldValue) ? $fieldValue : '' }}" maxlength="{{ $name === 'mobile' ? 32 : 255 }}" @endunless
             @if ($password && $registration) maxlength="255" @endif
             @if ($registration && $password) minlength="8" @endif
             @if ($name === 'mobile') inputmode="tel" @endif

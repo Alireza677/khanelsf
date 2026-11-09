@@ -34,7 +34,7 @@ class AuthenticatedSessionController extends Controller
 
         if (! $authenticator->attemptWithPassword($credentials['mobile'], $credentials['password'])) {
             throw ValidationException::withMessages([
-                'mobile' => 'شماره موبایل یا رمز عبور صحیح نیست، یا حساب شما فعال نیست.',
+                'mobile' => __('auth.client_failed'),
             ]);
         }
 

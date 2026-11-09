@@ -40,6 +40,10 @@ class RegisteredUserController extends Controller
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'max:255', 'confirmed', Password::min(8)],
             'password_confirmation' => ['required', 'string'],
+        ], [
+            'email.unique' => __('auth.validation.email_unique'),
+            'mobile.unique' => __('auth.validation.mobile_unique'),
+            'password.confirmed' => __('auth.validation.password_confirmed'),
         ]);
 
         $user = User::query()->create([

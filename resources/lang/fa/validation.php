@@ -2,12 +2,19 @@
 
 return [
     'required' => 'وارد کردن :attribute الزامی است.',
+    'string' => 'مقدار :attribute باید متن باشد.',
+    'unique' => ':attribute قبلاً استفاده شده است.',
+    'confirmed' => 'تکرار :attribute با مقدار واردشده مطابقت ندارد.',
     'email' => ':attribute باید یک ایمیل معتبر باشد.',
     'max' => [
+        'array' => ':attribute نباید بیشتر از :max مورد داشته باشد.',
+        'file' => 'حجم :attribute نباید بیشتر از :max کیلوبایت باشد.',
         'string' => ':attribute نباید بیشتر از :max کاراکتر باشد.',
         'numeric' => ':attribute نباید بیشتر از :max باشد.',
     ],
     'min' => [
+        'array' => ':attribute باید حداقل :min مورد داشته باشد.',
+        'file' => 'حجم :attribute باید حداقل :min کیلوبایت باشد.',
         'string' => ':attribute باید حداقل :min کاراکتر باشد.',
         'numeric' => ':attribute باید حداقل :min باشد.',
     ],
@@ -16,6 +23,9 @@ return [
     'url' => ':attribute باید یک نشانی معتبر باشد.',
     'attributes' => [
         'name' => 'نام',
+        'mobile' => 'شماره موبایل',
+        'password' => 'رمز عبور',
+        'password_confirmation' => 'تکرار رمز عبور',
         'email' => 'ایمیل',
         'phone' => 'تلفن',
         'subject' => 'موضوع',

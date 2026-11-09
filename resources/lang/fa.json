@@ -1,4 +1,9 @@
 {
+    "The given data was invalid.": "اطلاعات واردشده معتبر نیست.",
+    "(and :count more error)": "(و :count خطای دیگر)",
+    "(and :count more errors)": "(و :count خطای دیگر)",
+    "Too Many Requests": "تعداد تلاش‌ها زیاد است. کمی صبر کنید و دوباره تلاش کنید.",
+    "Page Expired": "نشست فرم منقضی شده است. صفحه ورود را دوباره باز کنید.",
     "This block is not available for the selected template type.": "این بلوک برای نوع قالب انتخاب‌شده قابل افزودن نیست.",
     "Template settings": "تنظیمات قالب",
     "Published default templates replace the built-in layout for their selected type. If no published template exists, the original Blade view is used as fallback.": "قالب پیش‌فرض منتشرشده جایگزین چیدمان اصلی نوع انتخاب‌شده می‌شود. اگر قالب منتشرشده‌ای وجود نداشته باشد، چیدمان اصلی سایت نمایش داده می‌شود.",

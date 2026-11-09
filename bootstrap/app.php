@@ -52,8 +52,8 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'code' => $expired ? 'session_expired' : 'rate_limited',
                 'message' => $expired
-                    ? 'نشست فرم منقضی شده است. صفحه ورود را دوباره باز کنید.'
-                    : 'تعداد تلاش‌ها زیاد است. کمی صبر کنید و دوباره تلاش کنید.',
+                    ? __('Page Expired')
+                    : __('Too Many Requests'),
             ], $exception->getStatusCode(), $exception->getHeaders())->header('Cache-Control', 'no-store, private');
         });
     })->create();
