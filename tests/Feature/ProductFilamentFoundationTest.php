@@ -7,6 +7,8 @@ use App\Filament\Resources\ProductResource\Pages\EditProduct;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -73,6 +75,53 @@ class ProductFilamentFoundationTest extends TestCase
             'mime_type' => 'application/pdf',
             'sort_order' => 1,
         ]);
+    }
+
+    public function test_admin_can_add_an_empty_product_document_row(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $product = Product::factory()->create();
+
+        foreach ([
+            Livewire::test(CreateProduct::class),
+            Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()]),
+        ] as $editor) {
+            $editor->callFormComponentAction('documents', 'add')
+                ->assertSuccessful()
+                ->assertSee('سند');
+
+            $documents = $editor->get('data.documents');
+            $this->assertCount(1, $documents);
+            $this->assertNull(reset($documents)['title']);
+            $this->assertSame([], reset($documents)['file_path']);
+        }
+    }
+
+    public function test_admin_can_upload_and_reopen_a_product_document_without_a_title(): void
+    {
+        Storage::fake('public');
+        $this->actingAs(User::factory()->create());
+        $product = Product::factory()->create();
+
+        $editor = Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
+            ->callFormComponentAction('documents', 'add');
+        $key = array_key_first($editor->get('data.documents'));
+
+        $editor->fillForm([
+            "documents.{$key}.file_path" => UploadedFile::fake()->create('datasheet.pdf', 10, 'application/pdf'),
+        ])
+            ->assertSuccessful()
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $document = $product->documents()->sole();
+        $this->assertNull($document->title);
+        $this->assertSame('product-documents/datasheet.pdf', $document->file_path);
+        Storage::disk('public')->assertExists($document->file_path);
+
+        Livewire::test(EditProduct::class, ['record' => $product->getRouteKey()])
+            ->assertSuccessful()
+            ->assertSee('سند');
     }
 
     public function test_admin_can_assign_an_ordered_related_product(): void

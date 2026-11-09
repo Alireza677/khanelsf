@@ -182,7 +182,7 @@ class ProductResource extends Resource
                                         ->minValue(0)
                                         ->default(0),
                                 ])
-                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? $state['file_path'] ?? 'سند')
+                                ->itemLabel(fn (array $state): string => filled($state['title'] ?? null) ? $state['title'] : 'سند')
                                 ->orderColumn('sort_order')
                                 ->reorderable()
                                 ->collapsible()
