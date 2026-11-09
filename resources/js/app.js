@@ -994,6 +994,13 @@ const initCalculatorResultModals = () => {
 };
 
 const initPublicInteractions = () => {
+    document.querySelectorAll('[data-shop-sort]').forEach((select) => {
+        if (select.dataset.shopSortInitialized === 'true') return;
+        select.dataset.shopSortInitialized = 'true';
+        select.addEventListener('change', () => select.form?.requestSubmit());
+        const submit = select.form?.querySelector('[data-shop-sort-submit]');
+        if (submit) submit.hidden = true;
+    });
     initFeatureGridVideos();
     initFaqAccordions();
     initProjectGalleryFilters();

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\Concerns\LogsFilamentCreateDebug;
 use App\Filament\Resources\ProductResource;
+use App\Filament\Support\ProductCatalogEditor;
 use App\Models\Product;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -14,11 +15,14 @@ class CreateProduct extends CreateRecord
 
     protected static string $resource = ProductResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected function handleRecordCreation(array $data): Model
     {
         $product = new Product($data);
         $product->priceChangeSource = 'manual';
         $product->save();
+        ProductCatalogEditor::sync($product, $this->form->getRawState());
 
         return $product;
     }

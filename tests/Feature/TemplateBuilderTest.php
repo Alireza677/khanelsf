@@ -164,18 +164,24 @@ class TemplateBuilderTest extends TestCase
             'title' => 'Steel Panel',
         ]);
 
-        $this->publishedTemplate('shop_index', [
-            [
-                'type' => 'template_shop_complete',
-                'data' => [
-                    'title' => 'Complete Shop',
-                    'category_section_title' => 'Buy by category',
-                    'products_title' => 'Product list',
+        foreach (['shop_index', 'product_category'] as $type) {
+            $this->publishedTemplate($type, [
+                [
+                    'type' => 'template_shop_complete',
+                    'data' => [
+                        'title' => 'Complete Shop',
+                        'category_section_title' => 'Buy by category',
+                        'products_title' => 'Product list',
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        }
 
         $this->get(route('shop.index', ['q' => 'Steel', 'category' => 'pipes']))
+            ->assertStatus(301)
+            ->assertRedirect(route('shop.category', ['slug' => 'pipes', 'q' => 'Steel']));
+
+        $this->get(route('shop.category', ['slug' => 'pipes', 'q' => 'Steel']))
             ->assertOk()
             ->assertSee('Complete Shop')
             ->assertSee('Buy by category')

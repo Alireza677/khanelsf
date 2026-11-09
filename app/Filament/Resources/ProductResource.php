@@ -5,8 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Concerns\UsesMediaLibraryImages;
 use App\Filament\Resources\Concerns\UsesPersianResourceLabels;
 use App\Filament\Resources\ProductResource\Pages;
+use App\Filament\Support\ProductCatalogEditor;
 use App\Filament\Support\SeoIndexComponents;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Services\ModuleService;
 use App\Services\ProductPriceFreshness;
 use Filament\Forms;
@@ -58,8 +60,16 @@ class ProductResource extends Resource
                             Forms\Components\Select::make('product_category_id')
                                 ->label('دسته‌بندی')
                                 ->relationship('category', 'name')
+                                ->options(fn () => ProductCategory::treeOptions())
+                                ->live()
                                 ->searchable()
                                 ->preload(),
+                            Forms\Components\Select::make('product_brand_id')->label('برند')
+                                ->relationship('brand', 'name', modifyQueryUsing: fn ($query, ?Product $record) => $query
+                                    ->where(fn ($query) => $query->where('status', 'active')->orWhere('id', $record?->product_brand_id)))
+                                ->searchable()->preload()->helperText('اختیاری؛ برند مستقل از فروشنده است.'),
+                            Forms\Components\Select::make('tags')->label('برچسب‌ها')->multiple()
+                                ->relationship('tags', 'name')->searchable()->preload()->columnSpanFull(),
                             Forms\Components\Textarea::make('excerpt')
                                 ->rows(3)
                                 ->helperText('خلاصه کوتاهی که در کارت محصول و در صورت خالی بودن توضیحات سئو نمایش داده می‌شود.')
@@ -149,6 +159,8 @@ class ProductResource extends Resource
                                 ->columns(2)
                                 ->columnSpanFull(),
                         ]),
+                    Forms\Components\Tabs\Tab::make('ویژگی‌های عمومی')
+                        ->schema([ProductCatalogEditor::field()]),
                     Forms\Components\Tabs\Tab::make('اسناد')
                         ->schema([
                             Forms\Components\Repeater::make('documents')

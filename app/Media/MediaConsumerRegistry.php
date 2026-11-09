@@ -21,6 +21,7 @@ final class MediaConsumerRegistry
             [Models\Project::class, Resources\ProjectResource::class, ['content', 'seo_image'], false],
             [Models\Service::class, Resources\ServiceResource::class, ['description', 'content', 'seo_image'], false],
             [Models\Product::class, Resources\ProductResource::class, ['description', 'content', 'seo_image'], false],
+            [Models\ProductBrand::class, Resources\ProductBrandResource::class, ['description'], false],
             [Models\Post::class, Resources\PostResource::class, ['content', 'seo_image'], false],
             [Models\Video::class, Resources\VideoResource::class, ['description', 'source_url', 'cached_thumbnail'], false],
             [Models\Gallery::class, Resources\GalleryResource::class, ['description', 'seo_image', 'thumbnail_url'], false],

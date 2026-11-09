@@ -5,10 +5,14 @@ namespace Tests\Feature;
 use App\Filament\Resources\ProductResource;
 use App\Filament\Resources\ProductResource\Pages\ImportProducts;
 use App\Models\Product;
+use App\Models\ProductAttribute;
+use App\Models\ProductBrand;
 use App\Models\ProductCategory;
 use App\Models\ProductImport;
 use App\Models\ProductSpecification;
+use App\Models\ProductTag;
 use App\Models\User;
+use App\Services\ProductCatalogService;
 use App\Services\ProductImport\ProductImportMapper;
 use App\Services\ProductImport\ProductImportService;
 use App\Services\ProductImport\ProductImportTemplate;
@@ -207,6 +211,13 @@ class ProductImportTest extends TestCase
         $existing->documents()->create(['title' => 'سند', 'external_url' => 'https://example.test/file.pdf']);
         $related = Product::factory()->create();
         $existing->relatedProducts()->attach($related);
+        $brand = ProductBrand::create(['name' => 'Existing brand']);
+        $tag = ProductTag::create(['name' => 'Existing tag']);
+        $attribute = ProductAttribute::create(['name' => 'Existing material']);
+        $value = $attribute->values()->create(['name' => 'Steel']);
+        $existing->update(['product_brand_id' => $brand->id]);
+        $existing->tags()->sync([$tag->id]);
+        app(ProductCatalogService::class)->syncAttributes($existing, [['attribute_id' => $attribute->id, 'value_ids' => [$value->id]]]);
         $image = $this->actor->addMedia(UploadedFile::fake()->image('old.jpg'))->toMediaCollection('media_library', 'public');
         ProductResource::syncFeaturedImage($existing, $image->id);
         ProductResource::syncMediaLibraryCollection($existing, 'gallery', [$image->id]);
@@ -229,6 +240,9 @@ class ProductImportTest extends TestCase
         $this->assertSame([$related->id], $existing->relatedProducts()->pluck('products.id')->all());
         $this->assertSame($image->id, $existing->featuredImage()->id);
         $this->assertSame([$image->id], $existing->galleryImages()->pluck('id')->all());
+        $this->assertSame($brand->id, $existing->product_brand_id);
+        $this->assertSame([$tag->id], $existing->tags()->pluck('product_tags.id')->all());
+        $this->assertSame([$value->id], $existing->attributeAssignments()->pluck('product_attribute_value_id')->all());
     }
 
     public function test_changed_data_after_preview_is_not_overwritten(): void

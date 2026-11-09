@@ -669,15 +669,15 @@ class TemplateResource extends Resource
                         ->suffix('%'),
                     Forms\Components\TextInput::make('search_placeholder')
                         ->label(__('Search placeholder'))
-                        ->default('Search products')
+                        ->default('جستجو در محصولات')
                         ->maxLength(255),
                     Forms\Components\TextInput::make('category_label')
                         ->label(__('Category dropdown label'))
-                        ->default('Categories')
+                        ->default('انتخاب دسته‌بندی')
                         ->maxLength(255),
                     Forms\Components\TextInput::make('category_section_title')
                         ->label(__('Category section title'))
-                        ->default('Shop by category')
+                        ->default('خرید بر اساس دسته‌بندی')
                         ->maxLength(255),
                     static::headingTagField(__('Category heading tag'), 'category_heading_tag'),
                     Forms\Components\Hidden::make('all_categories_image'),
@@ -694,11 +694,11 @@ class TemplateResource extends Resource
                         ->columnSpanFull(),
                     Forms\Components\TextInput::make('products_title')
                         ->label(__('Products section title'))
-                        ->default('Products')
+                        ->default('محصولات')
                         ->maxLength(255),
                     Forms\Components\TextInput::make('empty_message')
                         ->label(__('Empty message'))
-                        ->default('No products matched your filters.')
+                        ->default('محصولی با شرایط انتخاب‌شده پیدا نشد.')
                         ->maxLength(255),
                     Forms\Components\Placeholder::make('context_note')
                         ->label(__('Context'))

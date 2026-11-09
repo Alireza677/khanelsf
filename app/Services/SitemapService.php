@@ -123,6 +123,7 @@ class SitemapService
         if (filter_var($this->settings->get('shop_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
             ProductCategory::query()
                 ->active()
+                ->whereIn('id', app(ShopCategoryTree::class)->ids())
                 ->where('robots_index', true)
                 ->latest('updated_at')
                 ->get()

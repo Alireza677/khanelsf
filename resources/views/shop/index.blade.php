@@ -16,15 +16,19 @@
 
         @if (($categories ?? collect())->isNotEmpty())
             <nav class="archive-nav" aria-label="دسته‌بندی محصولات">
-                <a href="{{ route('shop.index') }}" @class(['is-active' => empty($activeCategory)])>همه</a>
+                <a href="{{ $filterUi['allCategoriesUrl'] }}" @if ($filterUi['isFiltered']) rel="nofollow" @endif @class(['is-active' => empty($activeCategory)])>همه</a>
 
                 @foreach ($categories as $category)
-                    <a href="{{ route('shop.category', $category->slug) }}" @class(['is-active' => isset($activeCategory) && $activeCategory->is($category)])>
+                    <a href="{{ $filterUi['categoryUrls'][$category->id] }}" @if ($filterUi['isFiltered']) rel="nofollow" @endif @class(['is-active' => isset($activeCategory) && $activeCategory->is($category)])>
                         {{ $category->name }}
                     </a>
                 @endforeach
             </nav>
         @endif
+
+        @include('shop.partials.filter-form')
+        @include('shop.partials.filter-sort')
+        @include('shop.partials.filter-summary', ['items' => $products])
 
         <div class="blog-index__grid">
             @forelse ($products as $product)

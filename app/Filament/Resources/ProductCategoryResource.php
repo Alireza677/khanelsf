@@ -55,6 +55,13 @@ class ProductCategoryResource extends Resource
                                 ->maxLength(255)
                                 ->unique(ignoreRecord: true),
                             Forms\Components\Textarea::make('description')->rows(4)->columnSpanFull(),
+                            Forms\Components\Select::make('parent_id')->label('دسته والد')
+                                ->options(fn (?ProductCategory $record): array => ProductCategory::treeOptions($record?->id))
+                                ->searchable()->preload()->placeholder('بدون والد (سطح اول)')
+                                ->helperText('مسیر و نشانی دسته‌های قبلی تغییر نمی‌کند.'),
+                            Forms\Components\Select::make('attributes')->label('ویژگی‌های مرتبط')->multiple()
+                                ->relationship('attributes', 'name')->searchable()->preload()->columnSpanFull()
+                                ->helperText('پیشنهاد برای ورود اطلاعات محصول؛ تغییر دسته، ویژگی‌های ثبت‌شده محصول را حذف نمی‌کند.'),
                             Forms\Components\TextInput::make('price_validity_days')->label('اعتبار اختصاصی قیمت (روز)')
                                 ->integer()->minValue(1)->maxValue(36500)->nullable()
                                 ->helperText('خالی: استفاده از مدت پیش‌فرض فروشگاه. برای محصولات همین دسته اعمال می‌شود.'),
@@ -98,6 +105,7 @@ class ProductCategoryResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('slug')->searchable()->toggleable(),
+                Tables\Columns\TextColumn::make('parent.name')->label('والد')->placeholder('سطح اول')->toggleable(),
                 Tables\Columns\TextColumn::make('products_count')->counts('products')->label('Products')->sortable(),
                 Tables\Columns\TextColumn::make('status')->badge()->sortable(),
                 Tables\Columns\TextColumn::make('sort_order')->sortable(),

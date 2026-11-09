@@ -14,6 +14,7 @@ final class ProductMediaService
     {
         $product->loadMissing([
             'media',
+            'mediaUsages.media',
             'documents',
         ]);
 

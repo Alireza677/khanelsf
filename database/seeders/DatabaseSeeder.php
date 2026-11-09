@@ -117,10 +117,10 @@ class DatabaseSeeder extends Seeder
             ['shop_enabled', '1', 'shop', 'boolean'],
             ['shop_label', 'فروشگاه', 'shop', 'text'],
             ['shop_index_title', 'فروشگاه', 'shop', 'text'],
-            ['shop_index_description', 'Browse simple products and starter catalog items.', 'shop', 'textarea'],
+            ['shop_index_description', 'محصولات موجود را مشاهده کنید.', 'shop', 'textarea'],
             ['shop_per_page', '12', 'shop', 'number'],
             ['shop_seo_title', 'فروشگاه', 'shop', 'text'],
-            ['shop_seo_description', 'Browse available products.', 'shop', 'textarea'],
+            ['shop_seo_description', 'محصولات موجود را مشاهده کنید.', 'shop', 'textarea'],
             ['shop_order_admin_email', '', 'shop', 'text'],
             ['shop_manual_payment_message', 'Payment is manual for now. We will contact you to confirm payment and fulfillment.', 'shop', 'textarea'],
             ['payment_gateway', 'manual', 'payment', 'select'],
@@ -616,7 +616,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CorporateFooterTemplateSeeder::class);
 
         foreach ([
-            ['shop-index-template', 'Shop Index Template', 'shop_index', 'Shop', 'Browse simple products and starter catalog items.'],
+            ['shop-index-template', 'Shop Index Template', 'shop_index', 'فروشگاه', 'محصولات موجود را مشاهده کنید.'],
         ] as [$slug, $title, $type, $heading, $description]) {
             $template = Template::query()->firstOrCreate(
                 ['slug' => $slug],
@@ -637,7 +637,7 @@ class DatabaseSeeder extends Seeder
                         [
                             'type' => 'template_archive_header',
                             'data' => [
-                                'eyebrow' => 'Dynamic template',
+                                'eyebrow' => 'فروشگاه',
                                 'title' => $heading,
                                 'description' => $description,
                             ],
@@ -645,7 +645,7 @@ class DatabaseSeeder extends Seeder
                         [
                             'type' => 'template_content_grid',
                             'data' => [
-                                'empty_message' => 'No items have been published yet.',
+                                'empty_message' => 'هنوز محصولی منتشر نشده است.',
                             ],
                         ],
                     ],
@@ -667,15 +667,15 @@ class DatabaseSeeder extends Seeder
                         'data' => [
                             'eyebrow' => 'فروشگاه',
                             'title' => 'محصولات فروشگاه',
-                            'description' => 'Search products, browse categories, and narrow the catalog with filters.',
+                            'description' => 'محصولات را جستجو کنید و با انتخاب دسته‌بندی و فیلترها، محصول موردنظر را بیابید.',
                             'background_image' => '',
                             'overlay_opacity' => 20,
-                            'search_placeholder' => 'Search products',
-                            'category_label' => 'Categories',
+                            'search_placeholder' => 'جستجو در محصولات',
+                            'category_label' => 'انتخاب دسته‌بندی',
                             'category_section_title' => 'خرید بر اساس دسته‌بندی',
                             'all_categories_image' => '',
                             'products_title' => 'محصولات',
-                            'empty_message' => 'No products matched your filters.',
+                            'empty_message' => 'محصولی با شرایط انتخاب‌شده پیدا نشد.',
                         ],
                     ],
                 ],

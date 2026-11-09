@@ -31,6 +31,7 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
 
     protected $fillable = [
         'product_category_id',
+        'product_brand_id',
         'title',
         'slug',
         'excerpt',
@@ -100,6 +101,21 @@ class Product extends Model implements HasMedia, ResolvesNavigationUrl
     public function priceHistories(): HasMany
     {
         return $this->hasMany(ProductPriceHistory::class)->orderByDesc('id');
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(ProductBrand::class, 'product_brand_id');
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductTag::class, 'product_product_tag');
+    }
+
+    public function attributeAssignments(): HasMany
+    {
+        return $this->hasMany(ProductAttributeAssignment::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function specifications(): HasMany

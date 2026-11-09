@@ -10,42 +10,20 @@
         ?? ($data['background_image'] ?? null);
     $allCategoriesImage = \App\Models\Media::reusableImage($data['all_categories_media_id'] ?? null)?->getUrl()
         ?? ($data['all_categories_image'] ?? null);
-    $thicknessOptions = ['0.75' => '۰٫۷۵', '0.9' => '۰٫۹', '1.25' => '۱٫۲۵', '1.5' => '۱٫۵'];
-    $applicationOptions = [
-        'wall' => 'دیوار',
-        'roof' => 'سقف',
-        'truss' => 'خرپا',
-        'connections' => 'اتصالات',
-        'insulation' => 'عایق‌کاری',
-    ];
     $overlayOpacity = (int) ($data['overlay_opacity'] ?? 20);
     $overlayOpacity = max(0, min(90, $overlayOpacity));
     $overlayColor = "color-mix(in srgb, var(--theme-secondary, #111827) {$overlayOpacity}%, transparent)";
     $style = filled($backgroundImage)
         ? "background-image: linear-gradient({$overlayColor}, {$overlayColor}), url('".e($backgroundImage)."');"
         : null;
-    $query = [
-        'q' => $filters['q'] ?? '',
-        'category' => $filters['category'] ?? $activeCategory?->slug ?? '',
-        'min_price' => $filters['min_price'] ?? '',
-        'max_price' => $filters['max_price'] ?? '',
-        'stock' => $filters['stock'] ?? '',
-        'featured' => ! empty($filters['featured']) ? '1' : '',
-        'favorites' => ! empty($filters['favorites']) ? '1' : '',
-        'thickness' => $filters['thickness'] ?? [],
-        'application' => $filters['application'] ?? [],
-    ];
-    $cleanQuery = fn (array $values): array => collect($values)
-        ->reject(fn ($value): bool => $value === '' || $value === null || $value === false || $value === [])
-        ->all();
-    $hasActiveProductFilters = $query['q'] !== ''
-        || $query['category'] !== ''
-        || $query['min_price'] !== ''
-        || $query['max_price'] !== ''
-        || $query['stock'] !== ''
-        || $query['featured'] !== ''
-        || $query['thickness'] !== []
-        || $query['application'] !== [];
+    $filterUi = $context['filterUi'] ?? [];
+    $filters = array_replace([
+        'q' => '', 'category' => $activeCategory?->slug ?? '', 'brands' => [], 'tags' => [], 'attributes' => [],
+        'min_price' => null, 'max_price' => null, 'stock' => '', 'featured' => false, 'favorites' => false,
+        'on_sale' => false, 'include_children' => true, 'sort' => 'default',
+    ], $filters);
+    $query = $filters;
+    $hasActiveProductFilters = ($filterUi['isFiltered'] ?? false) || $filters['category'] !== '';
 @endphp
 
 @if (($context['type'] ?? null) === 'products')
@@ -64,27 +42,9 @@
                     @endif
                 </div>
 
-                <form class="shop-template__search" action="{{ route('shop.index') }}" method="get">
-                    @if ($query['favorites'])
-                        <input type="hidden" name="favorites" value="1">
-                    @endif
-                    @if ($query['min_price'] !== '')
-                        <input type="hidden" name="min_price" value="{{ $query['min_price'] }}">
-                    @endif
-                    @if ($query['max_price'] !== '')
-                        <input type="hidden" name="max_price" value="{{ $query['max_price'] }}">
-                    @endif
-                    @if ($query['stock'])
-                        <input type="hidden" name="stock" value="{{ $query['stock'] }}">
-                    @endif
-                    @if ($query['featured'])
-                        <input type="hidden" name="featured" value="1">
-                    @endif
-                    @foreach ($query['thickness'] as $thickness)
-                        <input type="hidden" name="thickness[]" value="{{ $thickness }}">
-                    @endforeach
-                    @foreach ($query['application'] as $application)
-                        <input type="hidden" name="application[]" value="{{ $application }}">
+                <form class="shop-template__search" action="{{ $filterUi['action'] ?? route('shop.index') }}" method="get">
+                    @foreach ($filterUi['searchHidden'] ?? [] as $input)
+                        <input type="hidden" name="{{ $input['name'] }}" value="{{ $input['value'] }}">
                     @endforeach
                     <label class="sr-only" for="shop-template-q">جستجوی محصولات</label>
                     <span class="shop-template__search-field">
@@ -93,6 +53,7 @@
                             id="shop-template-q"
                             name="q"
                             type="search"
+                            maxlength="200"
                             value="{{ $query['q'] }}"
                             placeholder="{{ $data['search_placeholder'] ?? 'جستجو در بین هزاران محصول...' }}"
                         >
@@ -104,7 +65,7 @@
                             <option value="">{{ $data['category_label'] ?? 'انتخاب دسته‌بندی' }}</option>
                             @foreach ($categories as $category)
                                 <option value="{{ $category->slug }}" @selected($query['category'] === $category->slug)>
-                                    {{ $category->name }}
+                                    {{ $filterUi['categoryLabels'][$category->id] ?? $category->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -142,7 +103,7 @@
                 <div class="shop-template__category-slider">
                     <div class="shop-template__category-viewport" data-shop-category-viewport>
                         <div class="shop-template__category-row" data-shop-category-track>
-                            <a @class(['shop-template__category', 'shop-template__category--all', 'is-active' => ! $activeCategory]) href="{{ route('shop.index', $cleanQuery([...$query, 'category' => ''])) }}">
+                            <a @class(['shop-template__category', 'shop-template__category--all', 'is-active' => ! $activeCategory]) href="{{ $filterUi['allCategoriesUrl'] ?? route('shop.index') }}" @if ($hasActiveProductFilters) rel="nofollow" @endif>
                                 <span class="shop-template__category-media">
                                     @if (filled($allCategoriesImage))
                                         <img src="{{ $allCategoriesImage }}" alt="همه محصولات">
@@ -156,14 +117,7 @@
                             </a>
 
                             @foreach ($categories as $category)
-                                @php
-                                    $categoryQuery = $cleanQuery([
-                                        ...$query,
-                                        'category' => $category->slug,
-                                    ]);
-                                @endphp
-
-                                <a @class(['shop-template__category', 'is-active' => $activeCategory?->is($category)]) href="{{ route('shop.index', $categoryQuery) }}">
+                                <a @class(['shop-template__category', 'is-active' => $activeCategory?->is($category)]) href="{{ $filterUi['categoryUrls'][$category->id] ?? route('shop.category', $category->slug) }}" @if ($hasActiveProductFilters) rel="nofollow" @endif>
                                     <span class="shop-template__category-media">
                                         @if (! empty($category->seo_image))
                                             <img src="{{ $category->seo_image }}" alt="{{ $category->name }}">
@@ -205,99 +159,11 @@
                     </button>
                 </header>
 
-                <form action="{{ route('shop.index') }}" method="get">
-                    @if ($query['favorites'])
-                        <input type="hidden" name="favorites" value="1">
-                    @endif
-
-                    <label class="sr-only" for="shop-sidebar-q">جستجوی محصول</label>
-                    <span class="shop-template__sidebar-search">
-                        <input id="shop-sidebar-q" name="q" type="search" value="{{ $query['q'] }}" placeholder="جستجوی محصول...">
-                        <i class="icon-search-normal" aria-hidden="true"></i>
-                    </span>
-
-                    <details class="shop-template__filter-group" open>
-                        <summary>دسته‌بندی</summary>
-                        <div class="shop-template__filter-options">
-                            <label>
-                                <input name="category" type="radio" value="" @checked($query['category'] === '')>
-                                همه دسته‌بندی‌ها
-                            </label>
-                            @foreach ($categories as $category)
-                                <label>
-                                    <input name="category" type="radio" value="{{ $category->slug }}" @checked($query['category'] === $category->slug)>
-                                    {{ $category->name }}
-                                </label>
-                            @endforeach
-                        </div>
-                    </details>
-
-                    <details class="shop-template__filter-group" @if ($query['min_price'] !== '' || $query['max_price'] !== '') open @endif>
-                        <summary>محدوده قیمت</summary>
-                        <div class="shop-template__price-fields">
-                            <label>
-                                از
-                                <input name="min_price" type="number" min="0" step="1" value="{{ $query['min_price'] }}" placeholder="حداقل قیمت">
-                            </label>
-                            <label>
-                                تا
-                                <input name="max_price" type="number" min="0" step="1" value="{{ $query['max_price'] }}" placeholder="حداکثر قیمت">
-                            </label>
-                        </div>
-                    </details>
-
-                    <details class="shop-template__filter-group" @if ($query['thickness']) open @endif>
-                        <summary>ضخامت ورق</summary>
-                        <div class="shop-template__filter-options">
-                            @foreach ($thicknessOptions as $value => $label)
-                                <label>
-                                    <input name="thickness[]" type="checkbox" value="{{ $value }}" @checked(in_array($value, $query['thickness'], true))>
-                                    {{ $label }} میلی‌متر
-                                </label>
-                            @endforeach
-                        </div>
-                    </details>
-
-                    <details class="shop-template__filter-group" @if ($query['application']) open @endif>
-                        <summary>نوع کاربرد</summary>
-                        <div class="shop-template__filter-options">
-                            @foreach ($applicationOptions as $value => $label)
-                                <label>
-                                    <input name="application[]" type="checkbox" value="{{ $value }}" @checked(in_array($value, $query['application'], true))>
-                                    {{ $label }}
-                                </label>
-                            @endforeach
-                        </div>
-                    </details>
-
-                    <details class="shop-template__filter-group" @if ($query['stock']) open @endif>
-                        <summary>وضعیت موجودی</summary>
-                        <div class="shop-template__filter-options">
-                            <label><input name="stock" type="radio" value="" @checked($query['stock'] === '')> همه محصولات</label>
-                            <label><input name="stock" type="radio" value="in_stock" @checked($query['stock'] === 'in_stock')> موجود</label>
-                            <label><input name="stock" type="radio" value="out_of_stock" @checked($query['stock'] === 'out_of_stock')> ناموجود</label>
-                        </div>
-                    </details>
-
-                    <details class="shop-template__filter-group" @if ($query['featured']) open @endif>
-                        <summary>محصولات ویژه</summary>
-                        <div class="shop-template__filter-options">
-                            <label>
-                                <input name="featured" type="checkbox" value="1" @checked($query['featured'])>
-                                فقط محصولات ویژه
-                            </label>
-                        </div>
-                    </details>
-
-                    <div class="shop-template__filter-actions">
-                        <button class="button" type="submit">اعمال فیلترها</button>
-                        <a class="button button-secondary" href="{{ route('shop.index') }}">حذف فیلترها</a>
-                    </div>
-                </form>
+                @include('shop.partials.filter-form')
             </aside>
 
             <div class="shop-template__products">
-                <h2 id="shop-template-products-title" class="sr-only">محصولات فروشگاه</h2>
+                <h2 id="shop-template-products-title" class="sr-only">{{ filled($data['products_title'] ?? null) ? $data['products_title'] : 'محصولات فروشگاه' }}</h2>
                 <div class="shop-template__toolbar">
                     <div class="shop-template__toolbar-actions">
                         <button
@@ -313,21 +179,11 @@
                             <span>فیلتر محصولات</span>
                         </button>
 
-                        <div class="shop-template__sort">
-                            <i class="shop-template__sort-icon icon-sort" aria-hidden="true"></i>
-                            <span class="shop-template__sort-label">مرتب‌سازی:</span>
-                            <select aria-label="مرتب‌سازی محصولات">
-                                <option>جدیدترین</option>
-                                <option>پربازدیدترین</option>
-                                <option>ارزان‌ترین</option>
-                                <option>گران‌ترین</option>
-                            </select>
-                            <i class="shop-template__sort-chevron icon-arrow-down-1" aria-hidden="true"></i>
-                        </div>
+                        @include('shop.partials.filter-sort')
 
                         <a
                             @class(['shop-template__favorites-filter', 'is-active' => $query['favorites']])
-                            href="{{ route('shop.index', $cleanQuery([...$query, 'favorites' => $query['favorites'] ? '' : '1'])) }}"
+                            href="{{ $filterUi['favoriteUrl'] ?? route('shop.index', ['favorites' => 1]) }}" rel="nofollow"
                             aria-pressed="{{ $query['favorites'] ? 'true' : 'false' }}"
                             aria-label="{{ $query['favorites'] ? 'نمایش همه محصولات' : 'مشاهده علاقه‌مندی‌ها' }}"
                         >
@@ -336,10 +192,9 @@
                         </a>
                     </div>
 
-                    
-
-                    
                 </div>
+
+                @include('shop.partials.filter-summary')
 
                 <div class="shop-template__product-scroll">
                     <div class="shop-template__product-grid">
@@ -393,33 +248,6 @@
                 @if (is_object($items) && method_exists($items, 'links'))
                     <div class="blog-index__pagination">
                         {{ $items->links() }}
-                    </div>
-                @endif
-
-                @if ($query['q'] || $query['category'] || $query['stock'] || $query['min_price'] || $query['max_price'] || $query['featured'] || $query['favorites'] || $query['thickness'] || $query['application'])
-                    <div class="shop-template__active-filters">
-                        @if ($query['category'])
-                            <span>دسته‌بندی: {{ $activeCategory?->name ?? $query['category'] }}</span>
-                        @endif
-                        @if ($query['stock'])
-                            <span>وضعیت موجودی: {{ $query['stock'] === 'in_stock' ? 'موجود' : 'ناموجود' }}</span>
-                        @endif
-                        @if ($query['featured'])
-                            <span>فقط محصولات ویژه: بله</span>
-                        @endif
-                        @if ($query['q'])
-                            <span>جستجو: {{ $query['q'] }}</span>
-                        @endif
-                        @if ($query['favorites'])
-                            <span>فقط علاقه‌مندی‌ها: بله</span>
-                        @endif
-                        @if ($query['thickness'])
-                            <span>ضخامت: {{ collect($query['thickness'])->map(fn ($value) => $thicknessOptions[$value] ?? $value)->join('، ') }} میلی‌متر</span>
-                        @endif
-                        @if ($query['application'])
-                            <span>کاربرد: {{ collect($query['application'])->map(fn ($value) => $applicationOptions[$value] ?? $value)->join('، ') }}</span>
-                        @endif
-                        <a href="{{ route('shop.index') }}">پاک کردن همه</a>
                     </div>
                 @endif
             </div>

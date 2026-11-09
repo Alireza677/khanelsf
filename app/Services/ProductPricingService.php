@@ -34,6 +34,25 @@ final class ProductPricingService
         return $this->exactSalePrice($product) ?? $this->amount($product->getAttributes()['price'] ?? null);
     }
 
+    /** SQL companion of exactSalePrice, owned here so catalog queries share its rule. */
+    public function salePriceConditionSql(): string
+    {
+        return 'products.sale_price IS NOT NULL AND products.sale_price >= 0 AND products.sale_price < products.price';
+    }
+
+    public function effectivePriceSql(): string
+    {
+        return 'CAST((CASE WHEN '.$this->salePriceConditionSql().' THEN products.sale_price ELSE products.price END) AS DECIMAL(12,2))';
+    }
+
+    /** Corrupt legacy amounts must not become a different, apparently valid price. */
+    public function validPriceConditionSql(): string
+    {
+        $valid = fn (string $column): string => "{$column} >= 0 AND {$column} <= ".self::MAX_AMOUNT." AND ROUND({$column}, 2) = {$column}";
+
+        return '('.$valid('products.price').') AND (products.sale_price IS NULL OR ('.$valid('products.sale_price').'))';
+    }
+
     private function exactSalePrice(Product $product): ?string
     {
         $attributes = $product->getAttributes();

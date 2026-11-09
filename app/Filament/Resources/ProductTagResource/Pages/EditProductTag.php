@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Filament\Resources\ProductTagResource\Pages;
+
+use App\Filament\Resources\Concerns\HandlesProductCatalogRecords;
+use App\Filament\Resources\ProductTagResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
+
+class EditProductTag extends EditRecord
+{
+    use HandlesProductCatalogRecords;
+
+    protected static string $resource = ProductTagResource::class;
+
+    protected ?bool $hasDatabaseTransactions = true;
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\DeleteAction::make()];
+    }
+}

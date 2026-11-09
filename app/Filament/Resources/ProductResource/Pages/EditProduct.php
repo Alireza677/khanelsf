@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\Concerns\LogsFilamentEditDebug;
 use App\Filament\Resources\ProductResource;
+use App\Filament\Support\ProductCatalogEditor;
 use App\Services\ProductPriceFreshness;
 use App\Services\ProductPricingService;
 use Filament\Actions;
@@ -19,11 +20,16 @@ class EditProduct extends EditRecord
 
     protected static string $resource = ProductResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         $record->priceChangeSource = 'manual';
 
-        return parent::handleRecordUpdate($record, $data);
+        $record = parent::handleRecordUpdate($record, $data);
+        ProductCatalogEditor::sync($record, $this->form->getRawState());
+
+        return $record;
     }
 
     protected function afterSave(): void

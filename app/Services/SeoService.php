@@ -12,6 +12,7 @@ use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Service;
+use App\Shop\ShopFilters;
 use App\Support\SeoData;
 use Illuminate\Support\Str;
 
@@ -291,35 +292,36 @@ class SeoService
         ]);
     }
 
-    public function forShopIndex(): SeoData
+    public function forShopIndex(?ShopFilters $filters = null): SeoData
     {
         return $this->make([
             'title' => $this->settings->get('shop_seo_title', $this->settings->get('shop_index_title', 'فروشگاه')),
-            'description' => $this->settings->get('shop_seo_description', $this->settings->get('shop_index_description', 'Browse available products.')),
-            'canonical_url' => route('shop.index'),
+            'description' => $this->settings->get('shop_seo_description', $this->settings->get('shop_index_description', 'محصولات موجود را مشاهده کنید.')),
+            'canonical_url' => $filters?->url(withPage: true) ?? route('shop.index'),
+            'robots_index' => ! ($filters?->isFiltered() ?? false),
             'schema' => [
                 '@context' => 'https://schema.org',
                 '@type' => 'CollectionPage',
                 'name' => $this->settings->get('shop_index_title', 'فروشگاه'),
-                'url' => route('shop.index'),
+                'url' => $filters?->url(withPage: true) ?? route('shop.index'),
             ],
         ]);
     }
 
-    public function forProductCategory(ProductCategory $category): SeoData
+    public function forProductCategory(ProductCategory $category, ?ShopFilters $filters = null): SeoData
     {
         return $this->make([
             'title' => $category->seo_title ?: $category->name,
             'description' => $category->seo_description ?: $category->description,
-            'canonical_url' => route('shop.category', $category->slug),
-            'robots_index' => $category->robots_index,
+            'canonical_url' => $filters?->url(withPage: true) ?? route('shop.category', $category->slug),
+            'robots_index' => ($category->robots_index ?? true) && ! ($filters?->isFiltered() ?? false),
             'robots_follow' => $category->robots_follow,
             'og_image' => $category->seo_image,
             'schema' => [
                 '@context' => 'https://schema.org',
                 '@type' => 'CollectionPage',
                 'name' => $category->name,
-                'url' => route('shop.category', $category->slug),
+                'url' => $filters?->url(withPage: true) ?? route('shop.category', $category->slug),
             ],
         ]);
     }

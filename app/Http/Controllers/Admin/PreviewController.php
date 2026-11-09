@@ -11,7 +11,6 @@ use App\Models\GalleryCategory;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use App\Models\Project;
 use App\Models\ProjectCategory;
 use App\Models\Service;
@@ -27,6 +26,9 @@ use App\Services\ServiceArchiveContextBuilder;
 use App\Services\ServiceQueryService;
 use App\Services\ServiceTemplateRuntime;
 use App\Services\SettingsService;
+use App\Services\ShopArchiveService;
+use App\Services\ShopCategoryTree;
+use App\Services\ShopFilterParser;
 use App\Services\TemplateService;
 use App\Support\SeoData;
 use Illuminate\Contracts\View\View;
@@ -117,6 +119,35 @@ class PreviewController extends Controller
         SettingsService $settings,
     ): View {
         $this->authorizePreview();
+
+        if (in_array($template->type, ['shop_index', 'product_category'], true)) {
+            $tree = app(ShopCategoryTree::class);
+            $category = null;
+            if ($template->type === 'product_category') {
+                $contextId = (int) $request->query('context_id');
+                $category = $contextId > 0 ? $tree->visible()->firstWhere('id', $contextId) : $tree->visible()->first();
+                abort_unless($category, 404);
+            }
+            $query = $request->query();
+            unset($query['context_id']);
+            $filters = app(ShopFilterParser::class)->parse($query, $category?->slug);
+            $archive = app(ShopArchiveService::class);
+            $selected = $archive->validate($filters, $tree);
+            $favorites = collect($request->session()->get('shop.favorite_product_ids', []))
+                ->filter(fn ($id): bool => is_numeric($id) && (int) $id > 0)
+                ->map(fn ($id): int => (int) $id)->unique()->values()->all();
+            $data = $archive->viewData($filters, $tree, $selected, $favorites, (int) $settings->get('shop_per_page', 12));
+            abort_if($data['status'] !== 200, 404);
+            $category = $data['activeCategory'];
+            $data['templateContext']['isPreview'] = true;
+
+            return view('templates.render', [
+                ...$data,
+                'template' => $template,
+                'seo' => $this->noindex($category ? $seoService->forProductCategory($category, $filters) : $seoService->forShopIndex($filters)),
+                'isPreview' => true,
+            ]);
+        }
 
         if ($template->type === 'service_single') {
             $contextId = (int) $request->query('context_id');
@@ -324,11 +355,6 @@ class PreviewController extends Controller
                 Project::query()->with('category')->published()->where('project_category_id', $this->findContextModel(ProjectCategory::class, $contextId)?->id)->latest('published_at')->paginate(12),
                 $this->findContextModel(ProjectCategory::class, $contextId),
             ),
-            'product_category' => $this->archiveContext(
-                'products',
-                Product::query()->with('category')->published()->where('product_category_id', $this->findContextModel(ProductCategory::class, $contextId)?->id)->latest('published_at')->paginate(12),
-                $this->findContextModel(ProductCategory::class, $contextId),
-            ),
             'gallery_category' => $this->archiveContext(
                 'galleries',
                 Gallery::query()->with(['category', 'project'])->published()->where('gallery_category_id', $this->findContextModel(GalleryCategory::class, $contextId)?->id)->latest('published_at')->paginate(12),
@@ -336,7 +362,6 @@ class PreviewController extends Controller
             ),
             'blog_index' => $this->archiveContext('posts', Post::query()->with('category')->published()->latest('published_at')->paginate(12), null, 'Blog'),
             'projects_index' => $this->archiveContext('projects', Project::query()->with('category')->published()->latest('published_at')->paginate(12), null, 'Projects'),
-            'shop_index' => $this->archiveContext('products', Product::query()->with('category')->published()->latest('published_at')->paginate(12), null, 'فروشگاه'),
             'galleries_index' => $this->archiveContext('galleries', Gallery::query()->with(['category', 'project'])->published()->latest('published_at')->paginate(12), null, 'Galleries'),
             default => [
                 'kind' => 'template',

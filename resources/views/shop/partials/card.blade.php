@@ -19,7 +19,7 @@
         </p>
 
         @unless ($product->has_stock && $product->stock_status === 'in_stock')
-            <span class="stock-badge">Out of stock</span>
+            <span class="stock-badge">ناموجود</span>
         @endunless
 
         @if ($product->excerpt)

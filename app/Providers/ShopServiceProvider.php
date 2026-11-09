@@ -12,10 +12,16 @@ use App\CMS\InternalLinks\Sources\ProductInternalLinkSource;
 use App\CMS\Navigation\NavigationSource;
 use App\CMS\Navigation\NavigationSourceRegistry;
 use App\Contracts\PaymentGateway;
+use App\Models\ProductAttribute;
+use App\Models\ProductAttributeValue;
+use App\Models\ProductBrand;
+use App\Models\ProductTag;
+use App\Policies\ProductCatalogPolicy;
 use App\Services\ManualPaymentGateway;
 use App\Services\ModuleService;
 use App\Services\SettingsService;
 use App\Services\ZarinpalPaymentGateway;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class ShopServiceProvider extends ServiceProvider implements RegistersActionTargets
@@ -40,6 +46,9 @@ class ShopServiceProvider extends ServiceProvider implements RegistersActionTarg
         SettingsService $settings,
         ModuleService $modules,
     ): void {
+        foreach ([ProductBrand::class, ProductTag::class, ProductAttribute::class, ProductAttributeValue::class] as $model) {
+            Gate::policy($model, ProductCatalogPolicy::class);
+        }
         $this->registerActionTargets($actionTargets);
         $internalLinks->register($internalLinkSource);
 

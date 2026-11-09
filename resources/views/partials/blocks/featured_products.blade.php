@@ -7,7 +7,7 @@
 
     $products = $shopEnabled
         ? \App\Models\Product::query()
-            ->with('category')
+            ->with(['category', 'media', 'mediaUsages.media'])
             ->published()
             ->when($source === 'featured', fn ($query) => $query->featured())
             ->when($source === 'category' && ! empty($data['product_category_id']), fn ($query) => $query->where('product_category_id', $data['product_category_id']))

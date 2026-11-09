@@ -39,7 +39,7 @@ class DynamicShopMobileToolbarTest extends TestCase
             ->assertSee('aria-label="مرتب‌سازی محصولات"', false)
             ->assertSee('class="icon-heart"', false)
             ->assertSee('aria-label="مشاهده علاقه‌مندی‌ها"', false)
-            ->assertSee(route('shop.index', ['q' => 'Toolbar', 'favorites' => '1']))
+            ->assertSee(route('shop.index', ['favorites' => '1', 'q' => 'Toolbar']))
             ->assertSee($product->title);
     }
 
