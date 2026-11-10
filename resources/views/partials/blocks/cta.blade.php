@@ -42,6 +42,10 @@
         || filled($primaryCta['label'])
         || filled($secondaryCta['label'])
         || filled($backgroundImage);
+    if (! empty($context['isProductStandard'])) {
+        $hasVisibleContent = (filled($content['title']) || filled($content['description']))
+            && ((filled($primaryCta['label']) && $primaryPresentation) || (filled($secondaryCta['label']) && $secondaryPresentation));
+    }
 @endphp
 
 @include('partials.blocks._image_control_styles')

@@ -114,6 +114,13 @@ class ProductDomainServicesTest extends TestCase
             'media',
             'relatedProducts',
             'seo',
+            'breadcrumbs',
+            'displayCategory',
+            'brand',
+            'globalAttributes',
+            'galleryPresentation',
+            'isFavorite',
+            'relatedCards',
         ], array_keys($context));
         $this->assertTrue($product->is($context['product']));
         $this->assertTrue($category->is($context['category']));

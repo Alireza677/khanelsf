@@ -6,6 +6,7 @@
 
 @include('partials.blocks._image_control_styles')
 
+@if (empty($context['isProductStandard']) || count($items) > 0)
 <section data-feature-grid-section @class([
     'content-block',
     'block-feature-grid',
@@ -31,3 +32,4 @@
 </section>
 
 @include('partials.blocks._feature_grid_full_bleed')
+@endif

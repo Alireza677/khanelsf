@@ -51,6 +51,7 @@ final class ProductMediaService
         return [
             'id' => $media->getKey(),
             'name' => $media->name,
+            'alt' => (string) $media->getCustomProperty('alt_text', ''),
             'fileName' => $media->file_name,
             'url' => $media->getUrl(),
             'mimeType' => $media->mime_type,

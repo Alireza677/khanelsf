@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\CMS\Templates\Recipes\Contracts\TemplateDraftStore;
 use App\CMS\Templates\Recipes\EloquentTemplateDraftStore;
 use App\CMS\Templates\Recipes\ProductIndustrialV1Recipe;
+use App\CMS\Templates\Recipes\ProductStandardV1Recipe;
 use App\CMS\Templates\Recipes\ProjectCaseStudyRecipe;
 use App\CMS\Templates\Recipes\ServiceProfessionalV1Recipe;
 use App\CMS\Templates\Recipes\TemplateRecipeRegistry;
@@ -19,6 +20,7 @@ final class TemplateRecipeServiceProvider extends ServiceProvider
             [
                 'project_case_study' => ProjectCaseStudyRecipe::class,
                 'product-industrial-v1' => ProductIndustrialV1Recipe::class,
+                'product-standard-v1' => ProductStandardV1Recipe::class,
                 'service-professional-v1' => ServiceProfessionalV1Recipe::class,
             ],
         ));

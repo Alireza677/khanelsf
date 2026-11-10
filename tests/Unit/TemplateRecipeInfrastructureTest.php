@@ -35,6 +35,7 @@ class TemplateRecipeInfrastructureTest extends TestCase
         $this->assertSame([
             'project_case_study',
             'product-industrial-v1',
+            'product-standard-v1',
             'service-professional-v1',
         ], $registry->keys());
         $this->assertInstanceOf(ProjectCaseStudyRecipe::class, $recipe);

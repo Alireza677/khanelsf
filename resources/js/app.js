@@ -1,3 +1,5 @@
+import { initGalleryLightbox } from './components/gallery-lightbox';
+import { initProductStandard } from './components/product-standard';
 import './bootstrap';
 import { initIndustrialStickyHeader } from './components/industrial-sticky-header';
 import { initHeaderOverlays } from './components/header-overlays';
@@ -352,69 +354,6 @@ const initActionPlaceholders = () => {
 
         if (placeholder) {
             event.preventDefault();
-        }
-    });
-};
-
-const initGalleryLightbox = () => {
-    if (window.__galleryLightboxInitialized) {
-        return;
-    }
-
-    window.__galleryLightboxInitialized = true;
-
-    let overlay = null;
-    let image = null;
-
-    const close = () => {
-        overlay?.remove();
-        overlay = null;
-        image = null;
-        document.body.classList.remove('gallery-lightbox-open');
-    };
-
-    const open = (src, alt = '') => {
-        close();
-
-        overlay = document.createElement('div');
-        overlay.className = 'gallery-lightbox';
-        overlay.setAttribute('role', 'dialog');
-        overlay.setAttribute('aria-modal', 'true');
-
-        const closeButton = document.createElement('button');
-        closeButton.type = 'button';
-        closeButton.className = 'gallery-lightbox__close';
-        closeButton.setAttribute('aria-label', 'Close image preview');
-        closeButton.textContent = '×';
-
-        image = document.createElement('img');
-        image.src = src;
-        image.alt = alt;
-
-        overlay.append(closeButton, image);
-        document.body.appendChild(overlay);
-        document.body.classList.add('gallery-lightbox-open');
-        closeButton.focus();
-    };
-
-    document.addEventListener('click', (event) => {
-        const trigger = event.target.closest('[data-gallery-lightbox-src]');
-
-        if (trigger) {
-            event.preventDefault();
-            open(trigger.getAttribute('data-gallery-lightbox-src'), trigger.getAttribute('data-gallery-lightbox-alt') || '');
-
-            return;
-        }
-
-        if (overlay && (event.target === overlay || event.target.closest('.gallery-lightbox__close'))) {
-            close();
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && overlay) {
-            close();
         }
     });
 };
@@ -1012,6 +951,7 @@ const initPublicInteractions = () => {
     initDesktopNavigationOverflow();
     initActionPlaceholders();
     initGalleryLightbox();
+    initProductStandard();
     initHeroTemplateSelectors();
     initHeroTemplateVideos();
     initStatsCounters();

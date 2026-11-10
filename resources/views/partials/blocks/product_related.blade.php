@@ -5,6 +5,9 @@
 @endphp
 
 @if ($relatedProducts->isNotEmpty())
+    @if (($data['settings']['variant'] ?? null) === 'compact_visual')
+        @include('shop.partials.related-compact', ['data' => $data, 'relatedProducts' => $relatedProducts])
+    @else
     <section class="content-block product-related" dir="rtl">
         @include('partials.blocks._heading', ['title' => $data['content']['title'] ?: 'محصولات مرتبط', 'tag' => data_get($data, 'settings.heading_tag', 'h2')])
 
@@ -24,4 +27,5 @@
             @endforeach
         </div>
     </section>
+    @endif
 @endif

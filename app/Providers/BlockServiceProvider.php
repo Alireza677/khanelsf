@@ -14,12 +14,14 @@ use App\CMS\Blocks\Hero\HeroBlock;
 use App\CMS\Blocks\Hero\HeroMediaResolver;
 use App\CMS\Blocks\Pricing\PricingCardsBlock;
 use App\CMS\Blocks\Pricing\PricingCardsRuntime;
+use App\CMS\Blocks\Product\ProductDetailsBlock;
 use App\CMS\Blocks\Product\ProductDocumentsBlock;
 use App\CMS\Blocks\Product\ProductGalleryBlock;
 use App\CMS\Blocks\Product\ProductHeaderBlock;
 use App\CMS\Blocks\Product\ProductOverviewBlock;
 use App\CMS\Blocks\Product\ProductRelatedBlock;
 use App\CMS\Blocks\Product\ProductSpecificationsBlock;
+use App\CMS\Blocks\Product\ProductSummaryBlock;
 use App\CMS\Blocks\Project\ProjectGalleryBlock;
 use App\CMS\Blocks\Project\ProjectHeaderBlock;
 use App\CMS\Blocks\Project\ProjectMetricsBlock;
@@ -83,6 +85,8 @@ class BlockServiceProvider extends ServiceProvider
                 'product_gallery' => ProductGalleryBlock::class,
                 'product_documents' => ProductDocumentsBlock::class,
                 'product_related' => ProductRelatedBlock::class,
+                'product_summary' => ProductSummaryBlock::class,
+                'product_details' => ProductDetailsBlock::class,
                 'service_header' => ServiceHeaderBlock::class,
                 'service_overview' => ServiceOverviewBlock::class,
                 'service_benefits' => ServiceBenefitsBlock::class,

@@ -24,6 +24,8 @@ final class ProductRelatedBlock extends AbstractProductBlock
     protected function schema(): array
     {
         return [
+            Forms\Components\Select::make('settings.variant')->label('نحوه نمایش')
+                ->options(['default' => 'نمایش قبلی', 'compact_visual' => 'کارت تصویری فشرده'])->default('default'),
             Forms\Components\TextInput::make('content.title')
                 ->label('عنوان بخش')
                 ->default('محصولات مرتبط')
@@ -47,6 +49,7 @@ final class ProductRelatedBlock extends AbstractProductBlock
     {
         return [
             'limit' => $this->integerBetween($settings['limit'] ?? null, 1, 6, 3),
+            ...(($settings['variant'] ?? null) === 'compact_visual' ? ['variant' => 'compact_visual'] : []),
         ];
     }
 }

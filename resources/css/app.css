@@ -5,6 +5,7 @@
 @import "./text-image.css";
 @import './components/feature-grid-videos.css';
 @import './components/checkout-auth.css';
+@import './components/product-standard.css';
 
 @tailwind base;
 @tailwind components;

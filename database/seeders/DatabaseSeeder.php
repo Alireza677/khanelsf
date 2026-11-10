@@ -47,6 +47,11 @@ class DatabaseSeeder extends Seeder
                 ['key' => CorporateFooterTemplateSeeder::INSTALLATION_STATE_KEY],
                 ['value' => 'pending', 'group' => 'system', 'type' => 'text'],
             );
+            // The same empty-database evidence authorizes Product bootstrap independently.
+            Setting::query()->firstOrCreate(
+                ['key' => StandardProductTemplateSeeder::INSTALLATION_STATE_KEY],
+                ['value' => 'pending', 'group' => 'system', 'type' => 'text'],
+            );
         });
     }
 
@@ -611,6 +616,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ServiceArchiveTemplateSeeder::class);
         $this->call(StandardProjectTemplateSeeder::class);
         $this->call(StandardServiceTemplateSeeder::class);
+        $this->call(StandardProductTemplateSeeder::class);
 
         // Footer menus, selections and preset belong to the one-time fresh bootstrap.
         $this->call(CorporateFooterTemplateSeeder::class);

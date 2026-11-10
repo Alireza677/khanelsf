@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $productStandard = $template->type === 'product_single' && collect($template->blocks)->contains('type', 'product_summary');
+        if ($productStandard) $templateContext['isProductStandard'] = true;
+    @endphp
     @if (in_array($template->type, ['site_header', 'site_footer'], true))
         <section class="template-header-preview-note" aria-label="پیش‌نمایش قالب سراسری">
             <p>
@@ -20,6 +24,7 @@
         <div @class([
             'service-detail' => $template->type === 'service_single',
             'project-case-study' => $template->type === 'project_single',
+            'product-standard' => $productStandard,
             'services-archive' => in_array($template->type, ['service_index', 'blog_index'], true),
         ])>
             @include('partials.page-blocks', [
